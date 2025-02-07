@@ -10,6 +10,7 @@ import About from "./pages/About";
 import Features from "./pages/Features";
 import Testimonials from "./pages/Testimonials";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ const App = () => (
           <Route path="/features" element={<Features />} />
           <Route path="/pricing" element={<Index />} />
           <Route path="/testimonials" element={<Testimonials />} />
+          <Route path="/auth" element={<Auth />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

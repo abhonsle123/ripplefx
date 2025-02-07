@@ -46,41 +46,41 @@ const Navigation = () => {
             <div className="hidden md:flex items-center gap-6">
               <Link
                 to="/"
-                className={`hover:text-primary transition-colors ${
+                className={\`hover:text-primary transition-colors \${
                   isActive("/") ? "text-primary" : "text-foreground"
-                }`}
+                }\`}
               >
                 Home
               </Link>
               <Link
                 to="/about"
-                className={`hover:text-primary transition-colors ${
+                className={\`hover:text-primary transition-colors \${
                   isActive("/about") ? "text-primary" : "text-foreground"
-                }`}
+                }\`}
               >
                 About Us
               </Link>
               <Link
                 to="/features"
-                className={`hover:text-primary transition-colors ${
+                className={\`hover:text-primary transition-colors \${
                   isActive("/features") ? "text-primary" : "text-foreground"
-                }`}
+                }\`}
               >
                 Features
               </Link>
               <Link
                 to="/pricing"
-                className={`hover:text-primary transition-colors ${
+                className={\`hover:text-primary transition-colors \${
                   isActive("/pricing") ? "text-primary" : "text-foreground"
-                }`}
+                }\`}
               >
                 Pricing
               </Link>
               <Link
                 to="/testimonials"
-                className={`hover:text-primary transition-colors ${
+                className={\`hover:text-primary transition-colors \${
                   isActive("/testimonials") ? "text-primary" : "text-foreground"
-                }`}
+                }\`}
               >
                 Testimonials
               </Link>
