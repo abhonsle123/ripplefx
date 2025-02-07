@@ -112,7 +112,7 @@ const Dashboard = () => {
     <div className="container px-4 pt-24 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <h1 className="text-3xl font-bold">Event Dashboard</h1>
-        <Tabs value={view} onValueChange={(v) => setView(v as "grid" | "analytics")}>
+        <Tabs defaultValue={view} onValueChange={(v) => setView(v as "grid" | "analytics")}>
           <TabsList>
             <TabsTrigger value="grid">Grid View</TabsTrigger>
             <TabsTrigger value="analytics">Analytics</TabsTrigger>
@@ -137,7 +137,7 @@ const Dashboard = () => {
           ))}
         </div>
       ) : (
-        <Tabs.Root value={view}>
+        <Tabs defaultValue={view}>
           <TabsContent value="grid">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {allEvents.map((event) => (
@@ -164,7 +164,7 @@ const Dashboard = () => {
               </div>
             </Card>
           </TabsContent>
-        </Tabs.Root>
+        </Tabs>
       )}
     </div>
   );
