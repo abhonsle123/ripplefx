@@ -1,1 +1,5 @@
+
 project_id = "pqxzzviqodstimvybgow"
+
+[functions.fetch-events]
+verify_jwt = false
