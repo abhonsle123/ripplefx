@@ -52,6 +52,16 @@ const Navigation = () => {
               >
                 Home
               </Link>
+              {user && (
+                <Link
+                  to="/dashboard"
+                  className={`hover:text-primary transition-colors ${
+                    isActive("/dashboard") ? "text-primary" : "text-foreground"
+                  }`}
+                >
+                  Dashboard
+                </Link>
+              )}
               <Link
                 to="/about"
                 className={`hover:text-primary transition-colors ${
@@ -88,9 +98,14 @@ const Navigation = () => {
           </div>
           <div className="flex items-center gap-4">
             {user ? (
-              <Button onClick={handleSignOut} variant="outline" className="hidden md:inline-flex">
-                Sign Out
-              </Button>
+              <>
+                <Button onClick={() => navigate("/dashboard")} variant="outline" className="hidden md:inline-flex">
+                  Dashboard
+                </Button>
+                <Button onClick={handleSignOut} variant="outline" className="hidden md:inline-flex">
+                  Sign Out
+                </Button>
+              </>
             ) : (
               <>
                 <Button
@@ -102,7 +117,6 @@ const Navigation = () => {
                 </Button>
                 <Button onClick={() => {
                   navigate("/auth");
-                  // Set signup mode in Auth page
                   localStorage.setItem("authMode", "signup");
                 }}>
                   Get Started
@@ -117,4 +131,3 @@ const Navigation = () => {
 };
 
 export default Navigation;
-

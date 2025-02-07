@@ -9,6 +9,60 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      events: {
+        Row: {
+          affected_organizations: Json | null
+          city: string | null
+          country: string | null
+          created_at: string | null
+          description: string
+          event_type: Database["public"]["Enums"]["event_type"]
+          id: string
+          impact_analysis: Json | null
+          latitude: number | null
+          longitude: number | null
+          severity: Database["public"]["Enums"]["severity_level"]
+          source_api: string | null
+          source_url: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          affected_organizations?: Json | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          description: string
+          event_type: Database["public"]["Enums"]["event_type"]
+          id?: string
+          impact_analysis?: Json | null
+          latitude?: number | null
+          longitude?: number | null
+          severity: Database["public"]["Enums"]["severity_level"]
+          source_api?: string | null
+          source_url?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          affected_organizations?: Json | null
+          city?: string | null
+          country?: string | null
+          created_at?: string | null
+          description?: string
+          event_type?: Database["public"]["Enums"]["event_type"]
+          id?: string
+          impact_analysis?: Json | null
+          latitude?: number | null
+          longitude?: number | null
+          severity?: Database["public"]["Enums"]["severity_level"]
+          source_api?: string | null
+          source_url?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -38,7 +92,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      event_type: "NATURAL_DISASTER" | "GEOPOLITICAL" | "ECONOMIC" | "OTHER"
+      severity_level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
     }
     CompositeTypes: {
       [_ in never]: never
