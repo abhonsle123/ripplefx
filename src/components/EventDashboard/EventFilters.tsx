@@ -7,12 +7,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import type { Database } from "@/integrations/supabase/types";
+
+type EventType = Database["public"]["Enums"]["event_type"];
+type SeverityLevel = Database["public"]["Enums"]["severity_level"];
 
 interface EventFiltersProps {
-  eventType: string;
-  setEventType: (type: string) => void;
-  severity: string;
-  setSeverity: (severity: string) => void;
+  eventType: EventType | "ALL";
+  setEventType: (type: EventType | "ALL") => void;
+  severity: SeverityLevel | "ALL";
+  setSeverity: (severity: SeverityLevel | "ALL") => void;
 }
 
 const EventFilters = ({

@@ -9,11 +9,13 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
+type EventType = Database["public"]["Enums"]["event_type"];
+type SeverityLevel = Database["public"]["Enums"]["severity_level"];
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const [eventType, setEventType] = useState("ALL");
-  const [severity, setSeverity] = useState("ALL");
+  const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
+  const [severity, setSeverity] = useState<SeverityLevel | "ALL">("ALL");
   const [realTimeEvents, setRealTimeEvents] = useState<Event[]>([]);
 
   // Check authentication
