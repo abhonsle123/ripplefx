@@ -1,9 +1,35 @@
 
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { useEffect, useState } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import type { User } from "@supabase/supabase-js";
 
 const Navigation = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [user, setUser] = useState<User | null>(null);
+  
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    navigate("/auth");
+  };
   
   const isActive = (path: string) => {
     return location.pathname === path;
@@ -61,10 +87,28 @@ const Navigation = () => {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="outline" className="hidden md:inline-flex">
-              Sign In
-            </Button>
-            <Button>Get Started</Button>
+            {user ? (
+              <Button onClick={handleSignOut} variant="outline" className="hidden md:inline-flex">
+                Sign Out
+              </Button>
+            ) : (
+              <>
+                <Button
+                  variant="outline"
+                  className="hidden md:inline-flex"
+                  onClick={() => navigate("/auth")}
+                >
+                  Sign In
+                </Button>
+                <Button onClick={() => {
+                  navigate("/auth");
+                  // Set signup mode in Auth page
+                  localStorage.setItem("authMode", "signup");
+                }}>
+                  Get Started
+                </Button>
+              </>
+            )}
           </div>
         </div>
       </div>

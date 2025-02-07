@@ -2,8 +2,11 @@
 import { Button } from "@/components/ui/button";
 import PricingCard from "@/components/PricingCard";
 import { ArrowRight } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 
 const Index = () => {
+  const navigate = useNavigate();
+  
   const plans = [
     {
       title: "Basic",
@@ -56,7 +59,14 @@ const Index = () => {
             Real-time alerts and AI-powered analysis of global events that impact
             your investments. Never miss a market-moving moment.
           </p>
-          <Button className="group" size="lg">
+          <Button 
+            className="group" 
+            size="lg"
+            onClick={() => {
+              navigate("/auth");
+              localStorage.setItem("authMode", "signup");
+            }}
+          >
             Get Started
             <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Button>
