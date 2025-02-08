@@ -35,12 +35,28 @@ export function buildPrompt(event: any): string {
        - Supply chain vulnerabilities and dependencies
        - Competitive dynamics within affected sectors
 
-    3. Company-Specific Considerations:
+    3. Market & Financial Data:
+       - Stock volatility and beta values
+       - Trading volume and liquidity metrics
+       - Short interest levels and implications
+       - Recent earnings reports and guidance
+       - Technical analysis indicators
+
+    4. Macroeconomic & Sentiment Factors:
+       - News and social media sentiment analysis
+       - Government policy and regulatory responses
+       - Interest rate and inflation impacts
+       - Investor behavior patterns
+       - Institutional money flows
+       - Market risk appetite indicators
+
+    5. Company-Specific Analysis:
        - Revenue exposure to affected regions/sectors
        - Supply chain resilience
        - Balance sheet strength
        - Market position and competitive advantages
        - Historical stock performance during similar events
+       - Pending corporate events or announcements
 
     Return ONLY the following JSON structure with NO additional text or markdown:
     {
@@ -85,18 +101,19 @@ export function buildPrompt(event: any): string {
     Affected Organizations: ${affectedOrgsString}
     Severity: ${event.severity || 'Unknown'}
     
-    Additional Analysis Guidelines:
+    Analysis Guidelines:
     - For each stock prediction:
-      * Consider both immediate and secondary effects
-      * Evaluate company-specific exposures and resilience
-      * Account for historical performance in similar scenarios
-      * Assess supply chain dependencies
-      * Consider balance sheet strength and market position
+      * Consider market liquidity and trading volumes
+      * Evaluate short interest and potential squeeze scenarios
+      * Account for upcoming earnings or corporate events
+      * Assess technical analysis indicators
+      * Factor in institutional positioning
     
-    - For risk assessment:
-      * Evaluate the probability of various scenarios
-      * Consider cascading effects across sectors
-      * Account for market sentiment and investor behavior
-      * Factor in regulatory and policy responses
-      * Assess potential duration of impacts`;
+    - For sentiment assessment:
+      * Analyze news and social media sentiment
+      * Consider regulatory and policy implications
+      * Evaluate interest rate and inflation impacts
+      * Monitor institutional money flows
+      * Track market risk appetite indicators
+      * Assess broader market technical factors`;
 }
