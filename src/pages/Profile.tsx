@@ -46,7 +46,21 @@ const Profile = () => {
         .single();
 
       if (error) throw error;
-      setProfile(data);
+      
+      // Transform the data to match our Profile type
+      const transformedProfile: Profile = {
+        id: data.id,
+        username: data.username,
+        email: data.email,
+        full_name: data.full_name,
+        preferences: {
+          emailNotifications: data.preferences?.emailNotifications ?? false,
+          darkMode: data.preferences?.darkMode ?? false,
+          language: data.preferences?.language ?? 'en',
+        }
+      };
+      
+      setProfile(transformedProfile);
     } catch (error) {
       toast.error("Error loading profile");
       console.error("Error:", error);
