@@ -47,6 +47,9 @@ const Profile = () => {
 
       if (error) throw error;
       
+      // Parse the preferences from the JSONB data, providing defaults if needed
+      const rawPreferences = data.preferences as Record<string, any> || {};
+      
       // Transform the data to match our Profile type
       const transformedProfile: Profile = {
         id: data.id,
@@ -54,9 +57,9 @@ const Profile = () => {
         email: data.email,
         full_name: data.full_name,
         preferences: {
-          emailNotifications: data.preferences?.emailNotifications ?? false,
-          darkMode: data.preferences?.darkMode ?? false,
-          language: data.preferences?.language ?? 'en',
+          emailNotifications: Boolean(rawPreferences.emailNotifications),
+          darkMode: Boolean(rawPreferences.darkMode),
+          language: rawPreferences.language || 'en',
         }
       };
       
