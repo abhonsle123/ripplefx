@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,9 +10,14 @@ type Event = Database["public"]["Tables"]["events"]["Row"];
 
 interface EventCardProps {
   event: Event;
+  userPreferences?: {
+    industries?: string[];
+    companies?: string[];
+    event_types?: string[];
+  };
 }
 
-const EventCard = ({ event }: EventCardProps) => {
+const EventCard = ({ event, userPreferences }: EventCardProps) => {
   const { data: analysis, isLoading } = useQuery({
     queryKey: ['eventAnalysis', event.id],
     queryFn: async () => {
@@ -69,8 +73,38 @@ const EventCard = ({ event }: EventCardProps) => {
 
   const impactAnalysis = event.impact_analysis || analysis;
 
+  const isRelevantToUser = () => {
+    if (!userPreferences) return false;
+
+    const eventTypeMatch = userPreferences.event_types?.includes(event.event_type);
+
+    const companiesMatch = userPreferences.companies?.some(company => {
+      if (!event.affected_organizations) return false;
+      const orgs = Array.isArray(event.affected_organizations) 
+        ? event.affected_organizations
+        : typeof event.affected_organizations === 'object'
+          ? Object.values(event.affected_organizations)
+          : [];
+      return orgs.some(org => 
+        org.toLowerCase().includes(company.toLowerCase())
+      );
+    });
+
+    const industriesMatch = userPreferences.industries?.some(industry => {
+      const analysis = event.impact_analysis;
+      if (!analysis?.affected_sectors) return false;
+      return analysis.affected_sectors.some((sector: string) =>
+        sector.toLowerCase().includes(industry.toLowerCase())
+      );
+    });
+
+    return eventTypeMatch || companiesMatch || industriesMatch;
+  };
+
+  const isRelevant = isRelevantToUser();
+
   return (
-    <Card className="h-full hover:shadow-lg transition-shadow">
+    <Card className={`h-full hover:shadow-lg transition-shadow ${isRelevant ? 'ring-2 ring-primary' : ''}`}>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
         <div className="flex flex-col gap-2">
           <h3 className="font-semibold text-lg">{event.title}</h3>
@@ -81,6 +115,11 @@ const EventCard = ({ event }: EventCardProps) => {
             <Badge variant="outline">
               {formatEventType(event.event_type)}
             </Badge>
+            {isRelevant && (
+              <Badge variant="default" className="bg-primary">
+                Relevant
+              </Badge>
+            )}
           </div>
         </div>
       </CardHeader>

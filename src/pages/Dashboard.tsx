@@ -37,6 +37,7 @@ const Dashboard = () => {
     city: "",
     country: "",
   });
+  const [userPreferences, setUserPreferences] = useState(null);
 
   // Check authentication
   useEffect(() => {
@@ -153,6 +154,26 @@ const Dashboard = () => {
       });
     }
   };
+
+  // Add this useEffect to fetch user preferences
+  useEffect(() => {
+    const fetchUserPreferences = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { data, error } = await supabase
+          .from("profiles")
+          .select("preferences")
+          .eq("id", session.user.id)
+          .single();
+        
+        if (!error && data?.preferences?.tracking) {
+          setUserPreferences(data.preferences.tracking);
+        }
+      }
+    };
+
+    fetchUserPreferences();
+  }, []);
 
   return (
     <div className="container px-4 pt-24 pb-20">
@@ -274,7 +295,11 @@ const Dashboard = () => {
           <TabsContent value="grid">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {allEvents.map((event) => (
-                <EventCard key={event.id} event={event} />
+                <EventCard 
+                  key={event.id} 
+                  event={event}
+                  userPreferences={userPreferences}
+                />
               ))}
             </div>
           </TabsContent>

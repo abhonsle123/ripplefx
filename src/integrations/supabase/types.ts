@@ -103,6 +103,7 @@ export type Database = {
           full_name: string | null
           id: string
           preferences: Json | null
+          tracking_preferences: Json | null
           username: string | null
         }
         Insert: {
@@ -112,6 +113,7 @@ export type Database = {
           full_name?: string | null
           id: string
           preferences?: Json | null
+          tracking_preferences?: Json | null
           username?: string | null
         }
         Update: {
@@ -121,6 +123,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           preferences?: Json | null
+          tracking_preferences?: Json | null
           username?: string | null
         }
         Relationships: []

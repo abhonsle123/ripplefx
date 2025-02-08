@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { BasicProfileInfo } from "@/components/profile/BasicProfileInfo";
 import { EmailNotificationPreferences } from "@/components/profile/EmailNotificationPreferences";
 import { SMSNotificationPreferences } from "@/components/profile/SMSNotificationPreferences";
+import { TrackingPreferences } from "@/components/profile/TrackingPreferences";
 
 type Profile = {
   id: string;
@@ -32,6 +32,11 @@ type Profile = {
         lowSeverity: boolean;
       };
     };
+    tracking: {
+      industries: string[];
+      companies: string[];
+      event_types: string[];
+    };
   };
 };
 
@@ -50,6 +55,11 @@ const defaultPreferences = {
       mediumSeverity: false,
       lowSeverity: false,
     },
+  },
+  tracking: {
+    industries: [],
+    companies: [],
+    event_types: [],
   },
 };
 
@@ -84,25 +94,28 @@ const Profile = () => {
       
       if (data.preferences && typeof data.preferences === 'object' && !Array.isArray(data.preferences)) {
         const prefs = data.preferences as Record<string, any>;
-        if (prefs.notifications) {
-          parsedPreferences = {
-            notifications: {
-              email: {
-                enabled: Boolean(prefs.notifications?.email?.enabled ?? false),
-                highSeverity: Boolean(prefs.notifications?.email?.highSeverity ?? true),
-                mediumSeverity: Boolean(prefs.notifications?.email?.mediumSeverity ?? false),
-                lowSeverity: Boolean(prefs.notifications?.email?.lowSeverity ?? false),
-              },
-              sms: {
-                enabled: Boolean(prefs.notifications?.sms?.enabled ?? false),
-                phoneNumber: prefs.notifications?.sms?.phoneNumber ?? null,
-                highSeverity: Boolean(prefs.notifications?.sms?.highSeverity ?? false),
-                mediumSeverity: Boolean(prefs.notifications?.sms?.mediumSeverity ?? false),
-                lowSeverity: Boolean(prefs.notifications?.sms?.lowSeverity ?? false),
-              },
+        parsedPreferences = {
+          notifications: {
+            email: {
+              enabled: Boolean(prefs.notifications?.email?.enabled ?? false),
+              highSeverity: Boolean(prefs.notifications?.email?.highSeverity ?? true),
+              mediumSeverity: Boolean(prefs.notifications?.email?.mediumSeverity ?? false),
+              lowSeverity: Boolean(prefs.notifications?.email?.lowSeverity ?? false),
             },
-          };
-        }
+            sms: {
+              enabled: Boolean(prefs.notifications?.sms?.enabled ?? false),
+              phoneNumber: prefs.notifications?.sms?.phoneNumber ?? null,
+              highSeverity: Boolean(prefs.notifications?.sms?.highSeverity ?? false),
+              mediumSeverity: Boolean(prefs.notifications?.sms?.mediumSeverity ?? false),
+              lowSeverity: Boolean(prefs.notifications?.sms?.lowSeverity ?? false),
+            },
+          },
+          tracking: {
+            industries: Array.isArray(prefs.tracking?.industries) ? prefs.tracking.industries : [],
+            companies: Array.isArray(prefs.tracking?.companies) ? prefs.tracking.companies : [],
+            event_types: Array.isArray(prefs.tracking?.event_types) ? prefs.tracking.event_types : [],
+          },
+        };
       }
       
       const transformedProfile: Profile = {
@@ -171,6 +184,24 @@ const Profile = () => {
     });
   };
 
+  const updateTrackingPreference = (
+    type: "industries" | "companies" | "event_types",
+    values: string[]
+  ) => {
+    if (!profile) return;
+
+    setProfile({
+      ...profile,
+      preferences: {
+        ...profile.preferences,
+        tracking: {
+          ...profile.preferences.tracking,
+          [type]: values,
+        },
+      },
+    });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -216,6 +247,13 @@ const Profile = () => {
                 }
               />
             </div>
+
+            <Separator className="my-6" />
+
+            <TrackingPreferences
+              preferences={profile.preferences.tracking}
+              onPreferenceChange={updateTrackingPreference}
+            />
 
             <Button type="submit" disabled={updating} className="w-full">
               {updating ? (
