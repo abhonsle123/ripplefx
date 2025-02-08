@@ -8,24 +8,9 @@ import type { Database } from "@/integrations/supabase/types";
 import EventCardHeader from "./EventCardHeader";
 import EventCardDetails from "./EventCardDetails";
 import ImpactAnalysis from "./ImpactAnalysis";
+import type { ImpactAnalysis as ImpactAnalysisType } from "@/supabase/functions/analyze-event/types";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
-
-interface ImpactAnalysis {
-  affected_sectors: string[];
-  stock_predictions?: {
-    positive?: string[];
-    negative?: string[];
-    confidence_scores?: {
-      overall_prediction: number;
-      sector_impact: number;
-      market_direction: number;
-    };
-  };
-  analysis_metadata?: {
-    data_quality_score: number;
-  };
-}
 
 interface EventCardProps {
   event: Event;
@@ -45,15 +30,15 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
           body: { event_id: event.id }
         });
         if (error) throw error;
-        return data.analysis as unknown as ImpactAnalysis;
+        return data.analysis as ImpactAnalysisType;
       }
-      return event.impact_analysis as unknown as ImpactAnalysis;
+      return event.impact_analysis as ImpactAnalysisType;
     },
     enabled: !event.impact_analysis,
   });
 
   const impactAnalysis = event.impact_analysis 
-    ? (event.impact_analysis as unknown as ImpactAnalysis) 
+    ? (event.impact_analysis as ImpactAnalysisType) 
     : analysis;
 
   const isRelevantToUser = () => {
