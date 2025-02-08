@@ -16,6 +16,8 @@ const corsHeaders = {
 
 async function generateImpactAnalysis(event: any) {
   try {
+    console.log("Generating impact analysis for event:", event);
+    
     const prompt = `Analyze this event and provide market impact analysis:
     Event Type: ${event.event_type}
     Location: ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown'}
@@ -42,6 +44,8 @@ async function generateImpactAnalysis(event: any) {
       "risk_level": "low" | "medium" | "high" | "critical"
     }`;
 
+    console.log("Sending request to OpenAI with prompt:", prompt);
+
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -49,7 +53,7 @@ async function generateImpactAnalysis(event: any) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: "gpt-4o",
         messages: [
           {
             role: "system",
@@ -64,8 +68,21 @@ async function generateImpactAnalysis(event: any) {
       }),
     });
 
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("OpenAI API error:", errorData);
+      throw new Error(`OpenAI API error: ${errorData}`);
+    }
+
     const data = await response.json();
+    console.log("OpenAI response:", data);
+
+    if (!data.choices?.[0]?.message?.content) {
+      throw new Error("Invalid response format from OpenAI");
+    }
+
     const analysis = JSON.parse(data.choices[0].message.content);
+    console.log("Parsed analysis:", analysis);
 
     // Update the event with the impact analysis
     const { error: updateError } = await supabase
@@ -75,7 +92,10 @@ async function generateImpactAnalysis(event: any) {
       })
       .eq('id', event.id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error("Error updating event:", updateError);
+      throw updateError;
+    }
 
     return analysis;
   } catch (error) {
@@ -91,6 +111,11 @@ serve(async (req) => {
 
   try {
     const { event_id } = await req.json();
+    console.log("Received request for event_id:", event_id);
+
+    if (!event_id) {
+      throw new Error('event_id is required');
+    }
 
     // Fetch event details
     const { data: event, error: fetchError } = await supabase
@@ -99,8 +124,15 @@ serve(async (req) => {
       .eq('id', event_id)
       .single();
 
-    if (fetchError) throw fetchError;
-    if (!event) throw new Error('Event not found');
+    if (fetchError) {
+      console.error("Error fetching event:", fetchError);
+      throw fetchError;
+    }
+    if (!event) {
+      throw new Error('Event not found');
+    }
+
+    console.log("Found event:", event);
 
     const analysis = await generateImpactAnalysis(event);
 
@@ -113,7 +145,10 @@ serve(async (req) => {
           processed: false
         }]);
 
-      if (notificationError) throw notificationError;
+      if (notificationError) {
+        console.error("Error queueing notification:", notificationError);
+        throw notificationError;
+      }
     }
 
     return new Response(JSON.stringify({ analysis }), {
