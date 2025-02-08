@@ -10,6 +10,7 @@ import type { Database } from "@/integrations/supabase/types";
 import CreateEventDialog from "@/components/EventDashboard/CreateEventDialog";
 import EventAnalytics from "@/components/EventDashboard/EventAnalytics";
 import EventsGrid from "@/components/EventDashboard/EventsGrid";
+import { useToast } from "@/components/ui/use-toast";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
 type EventType = Database["public"]["Enums"]["event_type"];
@@ -46,6 +47,7 @@ interface TrackingPreferences {
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
   const [severity, setSeverity] = useState<SeverityLevel | "ALL">("ALL");
   const [realTimeEvents, setRealTimeEvents] = useState<Event[]>([]);
@@ -84,7 +86,7 @@ const Dashboard = () => {
     },
   });
 
-  // Set up real-time subscription
+  // Set up real-time subscription and analysis
   useEffect(() => {
     let channel: RealtimeChannel;
 
@@ -98,12 +100,41 @@ const Dashboard = () => {
             schema: "public",
             table: "events",
           },
-          (payload) => {
+          async (payload) => {
             if (payload.eventType === "INSERT") {
-              setRealTimeEvents((current) => [
-                payload.new as Event,
-                ...current,
-              ]);
+              const newEvent = payload.new as Event;
+              
+              // Trigger immediate analysis
+              try {
+                const { data: analysis, error: analysisError } = await supabase.functions.invoke('analyze-event', {
+                  body: { event_id: newEvent.id }
+                });
+                
+                if (analysisError) {
+                  console.error("Analysis error:", analysisError);
+                  toast({
+                    title: "Analysis Error",
+                    description: "There was an error analyzing the event. Please try again.",
+                    variant: "destructive",
+                  });
+                } else {
+                  // Update event with analysis
+                  const updatedEvent = {
+                    ...newEvent,
+                    impact_analysis: analysis,
+                  };
+                  setRealTimeEvents((current) => [updatedEvent, ...current]);
+                  
+                  toast({
+                    title: "New Event Added",
+                    description: "Event analysis completed successfully.",
+                  });
+                }
+              } catch (error) {
+                console.error("Error processing event:", error);
+                // Still show the event even if analysis fails
+                setRealTimeEvents((current) => [newEvent, ...current]);
+              }
             }
           }
         )
@@ -117,7 +148,7 @@ const Dashboard = () => {
         supabase.removeChannel(channel);
       }
     };
-  }, []);
+  }, [toast]);
 
   // Add this useEffect to fetch user preferences
   useEffect(() => {
