@@ -105,6 +105,27 @@ function buildPrompt(event: any): string {
     Affected Organizations: ${affectedOrgsString}
     Severity: ${event.severity || 'Unknown'}
 
+    Consider and analyze:
+    1. Regional vs Global Impact:
+       - Direct impact on the specified region
+       - Potential ripple effects to connected regions
+       - Supply chain dependencies across regions
+    
+    2. Industry-Specific Analysis:
+       - Primary affected industry sectors
+       - Secondary/tertiary effects on related industries
+       - Historical patterns in similar industry events
+    
+    3. Company-Level Impact:
+       - Directly affected companies
+       - Competitors who might benefit/suffer
+       - Supply chain partners
+    
+    4. Market Sentiment Factors:
+       - Previous market reactions to similar events
+       - Current market conditions and sentiment
+       - Regional vs global investor perspective
+
     Return ONLY a JSON object with these exact fields (no explanation, no markdown, just pure JSON):
     {
       "affected_sectors": string[],
