@@ -44,6 +44,12 @@ interface UserPreferences {
   };
 }
 
+interface TrackingPreferences {
+  industries?: string[];
+  companies?: string[];
+  event_types?: string[];
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -60,7 +66,7 @@ const Dashboard = () => {
     city: "",
     country: "",
   });
-  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
+  const [userPreferences, setUserPreferences] = useState<TrackingPreferences | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -192,7 +198,11 @@ const Dashboard = () => {
         if (!error && data?.preferences) {
           const prefs = data.preferences as UserPreferences;
           if (prefs.tracking) {
-            setUserPreferences(prefs.tracking);
+            setUserPreferences({
+              industries: prefs.tracking.industries,
+              companies: prefs.tracking.companies,
+              event_types: prefs.tracking.event_types,
+            });
           }
         }
       }

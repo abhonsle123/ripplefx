@@ -1,4 +1,3 @@
-
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -43,9 +42,9 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
           body: { event_id: event.id }
         });
         if (error) throw error;
-        return data.analysis as ImpactAnalysis;
+        return data.analysis as unknown as ImpactAnalysis;
       }
-      return event.impact_analysis as ImpactAnalysis;
+      return event.impact_analysis as unknown as ImpactAnalysis;
     },
     enabled: !event.impact_analysis,
   });
@@ -88,7 +87,9 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
     return 'text-red-600';
   };
 
-  const impactAnalysis = event.impact_analysis ? event.impact_analysis as ImpactAnalysis : analysis;
+  const impactAnalysis = event.impact_analysis 
+    ? (event.impact_analysis as unknown as ImpactAnalysis) 
+    : analysis;
 
   const isRelevantToUser = () => {
     if (!userPreferences) return false;
