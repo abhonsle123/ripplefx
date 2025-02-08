@@ -79,7 +79,21 @@ export async function generateAnalysis(event: any): Promise<ImpactAnalysis> {
     throw new Error("Invalid response format from Perplexity");
   }
 
-  const cleanContent = data.choices[0].message.content.trim();
+  // Clean and extract JSON from the response
+  let cleanContent = data.choices[0].message.content.trim();
+  
+  // Remove any markdown code block markers if present
+  cleanContent = cleanContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+  
+  // Remove any trailing commas in arrays and objects which can cause parsing errors
+  cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1');
+  
+  // Ensure we have valid JSON structure
+  if (!cleanContent.startsWith('{') || !cleanContent.endsWith('}')) {
+    console.error("Invalid JSON structure:", cleanContent);
+    throw new Error("Invalid JSON structure in response");
+  }
+
   return parseAndValidateAnalysis(cleanContent);
 }
 
@@ -154,6 +168,7 @@ function buildPrompt(event: any): string {
 
 function parseAndValidateAnalysis(content: string): ImpactAnalysis {
   try {
+    // Attempt to parse the JSON string
     const analysis = JSON.parse(content);
     
     // Validate required fields
@@ -179,6 +194,23 @@ function parseAndValidateAnalysis(content: string): ImpactAnalysis {
       if (typeof value !== 'number' || value < 0 || value > 1) {
         throw new Error(`Invalid confidence score for ${key}: must be between 0 and 1`);
       }
+    }
+
+    // Ensure arrays are actually arrays
+    if (!Array.isArray(analysis.affected_sectors)) {
+      analysis.affected_sectors = [];
+    }
+    if (!Array.isArray(analysis.stock_predictions.positive)) {
+      analysis.stock_predictions.positive = [];
+    }
+    if (!Array.isArray(analysis.stock_predictions.negative)) {
+      analysis.stock_predictions.negative = [];
+    }
+    if (!Array.isArray(analysis.analysis_metadata.confidence_factors)) {
+      analysis.analysis_metadata.confidence_factors = [];
+    }
+    if (!Array.isArray(analysis.analysis_metadata.uncertainty_factors)) {
+      analysis.analysis_metadata.uncertainty_factors = [];
     }
 
     return analysis;
