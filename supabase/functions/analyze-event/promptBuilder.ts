@@ -20,7 +20,29 @@ export function formatAffectedOrganizations(organizations: any): string {
 export function buildPrompt(event: any): string {
   const affectedOrgsString = formatAffectedOrganizations(event.affected_organizations);
 
-  return `Analyze this event and provide a detailed market impact analysis. Consider historical precedents, regional economic factors, and industry-specific vulnerabilities. For wildfires, consider utility companies' liability exposure, infrastructure damage risks, and regulatory implications. For natural disasters, factor in insurance costs, reconstruction needs, and supply chain disruptions. Return ONLY the following JSON structure with NO additional text or markdown:
+  return `Analyze this event and provide a comprehensive market impact analysis. Consider all of the following factors when predicting stock movements and market impact:
+
+    1. Event-Specific Factors:
+       - Event type and characteristics
+       - Severity and scale (local vs. global impact)
+       - Expected duration of impact
+       - Geographic proximity to key financial/industrial centers
+       - Immediate and secondary effects on business operations
+
+    2. Sector & Industry Analysis:
+       - Direct and indirect industry exposure
+       - Historical sector performance during similar events
+       - Supply chain vulnerabilities and dependencies
+       - Competitive dynamics within affected sectors
+
+    3. Company-Specific Considerations:
+       - Revenue exposure to affected regions/sectors
+       - Supply chain resilience
+       - Balance sheet strength
+       - Market position and competitive advantages
+       - Historical stock performance during similar events
+
+    Return ONLY the following JSON structure with NO additional text or markdown:
     {
       "affected_sectors": [],
       "market_impact": "",
@@ -63,26 +85,18 @@ export function buildPrompt(event: any): string {
     Affected Organizations: ${affectedOrgsString}
     Severity: ${event.severity || 'Unknown'}
     
-    Additional Context:
-    - For utility companies during wildfires, consider:
-      * Historical liability costs from previous fires
-      * Infrastructure damage potential
-      * Regulatory risk exposure
-      * Insurance coverage limitations
-      * Regional economic impact
-      * Emergency response capabilities
-      * Grid reliability concerns
-      * Public safety shutdown requirements
-      * Long-term climate adaptation costs
+    Additional Analysis Guidelines:
+    - For each stock prediction:
+      * Consider both immediate and secondary effects
+      * Evaluate company-specific exposures and resilience
+      * Account for historical performance in similar scenarios
+      * Assess supply chain dependencies
+      * Consider balance sheet strength and market position
     
-    - For natural disasters:
-      * Direct infrastructure damage costs
-      * Insurance claim projections
-      * Supply chain disruptions
-      * Regional economic recovery timeline
-      * Emergency response requirements
-      * Reconstruction material demands
-      * Labor market impacts
-      * Environmental remediation needs`;
+    - For risk assessment:
+      * Evaluate the probability of various scenarios
+      * Consider cascading effects across sectors
+      * Account for market sentiment and investor behavior
+      * Factor in regulatory and policy responses
+      * Assess potential duration of impacts`;
 }
-
