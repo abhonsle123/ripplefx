@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -9,6 +8,13 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { useToast } from "@/components/ui/use-toast";
 import type { Database } from "@/integrations/supabase/types";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
@@ -17,10 +23,20 @@ type SeverityLevel = Database["public"]["Enums"]["severity_level"];
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
   const [severity, setSeverity] = useState<SeverityLevel | "ALL">("ALL");
   const [realTimeEvents, setRealTimeEvents] = useState<Event[]>([]);
   const [view, setView] = useState<"grid" | "analytics">("grid");
+  const [isCreating, setIsCreating] = useState(false);
+  const [newEvent, setNewEvent] = useState({
+    title: "",
+    description: "",
+    event_type: "NATURAL_DISASTER" as EventType,
+    severity: "LOW" as SeverityLevel,
+    city: "",
+    country: "",
+  });
 
   // Check authentication
   useEffect(() => {
@@ -108,16 +124,133 @@ const Dashboard = () => {
     return acc;
   }, [] as any[]);
 
+  const handleCreateEvent = async () => {
+    try {
+      const { error } = await supabase.from("events").insert([newEvent]);
+      
+      if (error) throw error;
+
+      toast({
+        title: "Event created successfully",
+        description: "The new event has been added to the dashboard.",
+      });
+
+      setIsCreating(false);
+      setNewEvent({
+        title: "",
+        description: "",
+        event_type: "NATURAL_DISASTER",
+        severity: "LOW",
+        city: "",
+        country: "",
+      });
+    } catch (error) {
+      console.error("Error creating event:", error);
+      toast({
+        title: "Error creating event",
+        description: "There was an error creating the event. Please try again.",
+        variant: "destructive",
+      });
+    }
+  };
+
   return (
     <div className="container px-4 pt-24 pb-20">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
         <h1 className="text-3xl font-bold">Event Dashboard</h1>
-        <Tabs defaultValue={view} onValueChange={(v) => setView(v as "grid" | "analytics")}>
-          <TabsList>
-            <TabsTrigger value="grid">Grid View</TabsTrigger>
-            <TabsTrigger value="analytics">Analytics</TabsTrigger>
-          </TabsList>
-        </Tabs>
+        <div className="flex items-center gap-4">
+          <Dialog open={isCreating} onOpenChange={setIsCreating}>
+            <DialogTrigger asChild>
+              <Button>Create New Event</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Create New Event</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Title</Label>
+                  <Input
+                    id="title"
+                    value={newEvent.title}
+                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                    placeholder="Event title"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    value={newEvent.description}
+                    onChange={(e) => setNewEvent({ ...newEvent, description: e.target.value })}
+                    placeholder="Describe the event"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="event-type">Event Type</Label>
+                  <Select
+                    value={newEvent.event_type}
+                    onValueChange={(value: EventType) => setNewEvent({ ...newEvent, event_type: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select event type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="NATURAL_DISASTER">Natural Disaster</SelectItem>
+                      <SelectItem value="GEOPOLITICAL">Geopolitical</SelectItem>
+                      <SelectItem value="ECONOMIC">Economic</SelectItem>
+                      <SelectItem value="OTHER">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="severity">Severity</Label>
+                  <Select
+                    value={newEvent.severity}
+                    onValueChange={(value: SeverityLevel) => setNewEvent({ ...newEvent, severity: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select severity" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="LOW">Low</SelectItem>
+                      <SelectItem value="MEDIUM">Medium</SelectItem>
+                      <SelectItem value="HIGH">High</SelectItem>
+                      <SelectItem value="CRITICAL">Critical</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="city">City</Label>
+                  <Input
+                    id="city"
+                    value={newEvent.city}
+                    onChange={(e) => setNewEvent({ ...newEvent, city: e.target.value })}
+                    placeholder="City"
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="country">Country</Label>
+                  <Input
+                    id="country"
+                    value={newEvent.country}
+                    onChange={(e) => setNewEvent({ ...newEvent, country: e.target.value })}
+                    placeholder="Country"
+                  />
+                </div>
+                <Button onClick={handleCreateEvent} className="mt-2">
+                  Create Event
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          <Tabs defaultValue={view} onValueChange={(v) => setView(v as "grid" | "analytics")}>
+            <TabsList>
+              <TabsTrigger value="grid">Grid View</TabsTrigger>
+              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
       </div>
       
       <EventFilters
