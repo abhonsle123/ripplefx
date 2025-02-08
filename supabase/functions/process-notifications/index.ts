@@ -45,6 +45,29 @@ async function processNotificationQueue() {
               ? Object.values(event.affected_organizations)
               : [];
 
+          // Format the market impact analysis section
+          let marketAnalysis = '';
+          if (event.impact_analysis) {
+            const analysis = event.impact_analysis;
+            marketAnalysis = `
+📊 Market Impact Analysis:
+${analysis.market_impact}
+
+📈 Positive Stock Impact:
+${analysis.stock_predictions?.positive?.slice(0, 5).join('\n') || 'None identified'}
+
+📉 Negative Stock Impact:
+${analysis.stock_predictions?.negative?.slice(0, 5).join('\n') || 'None identified'}
+
+🔄 Supply Chain Impact:
+${analysis.supply_chain_impact}
+
+📊 Market Sentiment:
+- Short Term: ${analysis.market_sentiment?.short_term}
+- Long Term: ${analysis.market_sentiment?.long_term}
+`;
+          }
+
           const emailContent = `
 Dear ${profile.full_name || "Valued User"},
 
@@ -53,8 +76,7 @@ A ${event.severity} ${event.event_type} has just occurred in ${event.city ? `${e
 🔍 Affected Sectors:
 ${affectedOrganizations.map(org => `• ${org}`).join('\n')}
 
-📉 Potential Market Impact:
-${event.impact_analysis ? JSON.stringify(event.impact_analysis, null, 2) : 'Impact analysis pending'}
+${marketAnalysis}
 
 For a full breakdown and real-time updates, visit your RippleEffect Dashboard: ${supabaseUrl}/dashboard
 
@@ -65,7 +87,7 @@ The RippleEffect Team
           await resend.emails.send({
             from: "RippleEffect <notifications@resend.dev>",
             to: [profile.email || ''],
-            subject: `🚨 Urgent Alert: ${event.event_type} in ${event.country || 'Unknown Location'} – Potential Market Impact`,
+            subject: `🚨 Market Alert: ${event.event_type} in ${event.country || 'Unknown Location'} – Significant Market Impact Expected`,
             html: emailContent.replace(/\n/g, '<br>'),
           });
 

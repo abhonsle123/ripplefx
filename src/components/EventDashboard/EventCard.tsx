@@ -2,7 +2,9 @@
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { MapPin, Calendar, ExternalLink, AlertCircle } from "lucide-react";
+import { MapPin, Calendar, ExternalLink, AlertCircle, TrendingUp, TrendingDown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
@@ -12,6 +14,21 @@ interface EventCardProps {
 }
 
 const EventCard = ({ event }: EventCardProps) => {
+  const { data: analysis, isLoading } = useQuery({
+    queryKey: ['eventAnalysis', event.id],
+    queryFn: async () => {
+      if (!event.impact_analysis) {
+        const { data, error } = await supabase.functions.invoke('analyze-event', {
+          body: { event_id: event.id }
+        });
+        if (error) throw error;
+        return data.analysis;
+      }
+      return event.impact_analysis;
+    },
+    enabled: !event.impact_analysis,
+  });
+
   const getSeverityColor = (severity: string) => {
     switch (severity.toLowerCase()) {
       case 'critical':
@@ -39,6 +56,8 @@ const EventCard = ({ event }: EventCardProps) => {
       minute: '2-digit'
     });
   };
+
+  const impactAnalysis = event.impact_analysis || analysis;
 
   return (
     <Card className="h-full hover:shadow-lg transition-shadow">
@@ -83,6 +102,57 @@ const EventCard = ({ event }: EventCardProps) => {
                     ? Object.values(event.affected_organizations).join(', ')
                     : event.affected_organizations
               }</span>
+            </div>
+          )}
+
+          {impactAnalysis && (
+            <div className="mt-4 space-y-2 border-t pt-4">
+              <h4 className="font-semibold text-sm mb-2">Market Impact Analysis</h4>
+              
+              {impactAnalysis.affected_sectors && (
+                <div className="text-sm">
+                  <span className="font-medium">Affected Sectors:</span>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {impactAnalysis.affected_sectors.map((sector: string) => (
+                      <Badge key={sector} variant="secondary" className="text-xs">
+                        {sector}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {impactAnalysis.stock_predictions && (
+                <div className="flex gap-4 mt-2">
+                  {impactAnalysis.stock_predictions.positive && (
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1 text-sm text-green-600">
+                        <TrendingUp className="h-4 w-4" />
+                        <span className="font-medium">Positive Impact</span>
+                      </div>
+                      <ul className="text-xs mt-1 list-disc list-inside">
+                        {impactAnalysis.stock_predictions.positive.slice(0, 3).map((stock: string) => (
+                          <li key={stock}>{stock}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  
+                  {impactAnalysis.stock_predictions.negative && (
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1 text-sm text-red-600">
+                        <TrendingDown className="h-4 w-4" />
+                        <span className="font-medium">Negative Impact</span>
+                      </div>
+                      <ul className="text-xs mt-1 list-disc list-inside">
+                        {impactAnalysis.stock_predictions.negative.slice(0, 3).map((stock: string) => (
+                          <li key={stock}>{stock}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           )}
         </div>
