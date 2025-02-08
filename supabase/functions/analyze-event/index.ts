@@ -21,16 +21,24 @@ async function generateImpactAnalysis(event: any) {
     if (!event || typeof event !== 'object') {
       throw new Error('Invalid event object provided');
     }
+
+    // Safely handle affected_organizations
+    let affectedOrgsString = 'Unknown';
+    if (event.affected_organizations) {
+      if (Array.isArray(event.affected_organizations)) {
+        affectedOrgsString = event.affected_organizations.join(', ');
+      } else if (typeof event.affected_organizations === 'object' && event.affected_organizations !== null) {
+        affectedOrgsString = Object.values(event.affected_organizations).filter(Boolean).join(', ');
+      } else if (typeof event.affected_organizations === 'string') {
+        affectedOrgsString = event.affected_organizations;
+      }
+    }
     
     const prompt = `Analyze this event and provide market impact analysis:
     Event Type: ${event.event_type || 'Unknown'}
     Location: ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown'}
     Description: ${event.description || 'No description provided'}
-    Affected Organizations: ${Array.isArray(event.affected_organizations) 
-      ? event.affected_organizations.join(', ') 
-      : typeof event.affected_organizations === 'object'
-        ? Object.values(event.affected_organizations).join(', ')
-        : event.affected_organizations || 'Unknown'}
+    Affected Organizations: ${affectedOrgsString}
     Severity: ${event.severity || 'Unknown'}
 
     Please provide a detailed analysis including:
