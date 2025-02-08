@@ -63,6 +63,38 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_queue: {
+        Row: {
+          created_at: string | null
+          error: string | null
+          event_id: string | null
+          id: string
+          processed: boolean | null
+        }
+        Insert: {
+          created_at?: string | null
+          error?: string | null
+          event_id?: string | null
+          id?: string
+          processed?: boolean | null
+        }
+        Update: {
+          created_at?: string | null
+          error?: string | null
+          event_id?: string | null
+          id?: string
+          processed?: boolean | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_queue_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
