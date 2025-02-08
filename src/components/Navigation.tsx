@@ -53,14 +53,24 @@ const Navigation = () => {
                 Home
               </Link>
               {user && (
-                <Link
-                  to="/dashboard"
-                  className={`hover:text-primary transition-colors ${
-                    isActive("/dashboard") ? "text-primary" : "text-foreground"
-                  }`}
-                >
-                  Dashboard
-                </Link>
+                <>
+                  <Link
+                    to="/dashboard"
+                    className={`hover:text-primary transition-colors ${
+                      isActive("/dashboard") ? "text-primary" : "text-foreground"
+                    }`}
+                  >
+                    Dashboard
+                  </Link>
+                  <Link
+                    to="/profile"
+                    className={`hover:text-primary transition-colors ${
+                      isActive("/profile") ? "text-primary" : "text-foreground"
+                    }`}
+                  >
+                    Profile
+                  </Link>
+                </>
               )}
               <Link
                 to="/about"
@@ -99,8 +109,8 @@ const Navigation = () => {
           <div className="flex items-center gap-4">
             {user ? (
               <>
-                <Button onClick={() => navigate("/dashboard")} variant="outline" className="hidden md:inline-flex">
-                  Dashboard
+                <Button onClick={() => navigate("/profile")} variant="outline" className="hidden md:inline-flex">
+                  Profile
                 </Button>
                 <Button onClick={handleSignOut} variant="outline" className="hidden md:inline-flex">
                   Sign Out
