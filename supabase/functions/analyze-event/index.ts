@@ -18,16 +18,20 @@ async function generateImpactAnalysis(event: any) {
   try {
     console.log("Generating impact analysis for event:", event);
     
+    if (!event || typeof event !== 'object') {
+      throw new Error('Invalid event object provided');
+    }
+    
     const prompt = `Analyze this event and provide market impact analysis:
-    Event Type: ${event.event_type}
+    Event Type: ${event.event_type || 'Unknown'}
     Location: ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown'}
-    Description: ${event.description}
+    Description: ${event.description || 'No description provided'}
     Affected Organizations: ${Array.isArray(event.affected_organizations) 
       ? event.affected_organizations.join(', ') 
       : typeof event.affected_organizations === 'object'
         ? Object.values(event.affected_organizations).join(', ')
         : event.affected_organizations || 'Unknown'}
-    Severity: ${event.severity}
+    Severity: ${event.severity || 'Unknown'}
 
     Please provide a detailed analysis including:
     1. Key affected sectors and businesses
@@ -43,6 +47,10 @@ async function generateImpactAnalysis(event: any) {
       "stock_predictions": {"positive": string[], "negative": string[]},
       "risk_level": "low" | "medium" | "high" | "critical"
     }`;
+
+    if (!openAIApiKey) {
+      throw new Error('OpenAI API key is not configured');
+    }
 
     console.log("Sending request to OpenAI with prompt:", prompt);
 
@@ -110,12 +118,16 @@ serve(async (req) => {
   }
 
   try {
-    const { event_id } = await req.json();
-    console.log("Received request for event_id:", event_id);
+    const body = await req.json();
+    console.log("Received request body:", body);
 
+    const { event_id } = body;
+    
     if (!event_id) {
       throw new Error('event_id is required');
     }
+
+    console.log("Processing event_id:", event_id);
 
     // Fetch event details
     const { data: event, error: fetchError } = await supabase
@@ -128,6 +140,7 @@ serve(async (req) => {
       console.error("Error fetching event:", fetchError);
       throw fetchError;
     }
+
     if (!event) {
       throw new Error('Event not found');
     }
@@ -163,3 +176,4 @@ serve(async (req) => {
     });
   }
 });
+
