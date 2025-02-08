@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -80,38 +79,38 @@ const Profile = () => {
 
       if (error) throw error;
       
-      // Ensure the preferences structure exists with defaults
-      const preferences = data.preferences 
-        ? (typeof data.preferences === 'object' 
-            ? data.preferences 
-            : defaultPreferences)
-        : defaultPreferences;
+      // Safely parse preferences data
+      let parsedPreferences = defaultPreferences;
       
-      // Ensure the preferences match our expected structure
-      const validatedPreferences = {
-        notifications: {
-          email: {
-            enabled: Boolean(preferences?.notifications?.email?.enabled ?? false),
-            highSeverity: Boolean(preferences?.notifications?.email?.highSeverity ?? true),
-            mediumSeverity: Boolean(preferences?.notifications?.email?.mediumSeverity ?? false),
-            lowSeverity: Boolean(preferences?.notifications?.email?.lowSeverity ?? false),
-          },
-          sms: {
-            enabled: Boolean(preferences?.notifications?.sms?.enabled ?? false),
-            phoneNumber: preferences?.notifications?.sms?.phoneNumber ?? null,
-            highSeverity: Boolean(preferences?.notifications?.sms?.highSeverity ?? false),
-            mediumSeverity: Boolean(preferences?.notifications?.sms?.mediumSeverity ?? false),
-            lowSeverity: Boolean(preferences?.notifications?.sms?.lowSeverity ?? false),
-          },
-        },
-      };
+      if (data.preferences && typeof data.preferences === 'object' && !Array.isArray(data.preferences)) {
+        const prefs = data.preferences as Record<string, any>;
+        if (prefs.notifications) {
+          parsedPreferences = {
+            notifications: {
+              email: {
+                enabled: Boolean(prefs.notifications?.email?.enabled ?? false),
+                highSeverity: Boolean(prefs.notifications?.email?.highSeverity ?? true),
+                mediumSeverity: Boolean(prefs.notifications?.email?.mediumSeverity ?? false),
+                lowSeverity: Boolean(prefs.notifications?.email?.lowSeverity ?? false),
+              },
+              sms: {
+                enabled: Boolean(prefs.notifications?.sms?.enabled ?? false),
+                phoneNumber: prefs.notifications?.sms?.phoneNumber ?? null,
+                highSeverity: Boolean(prefs.notifications?.sms?.highSeverity ?? false),
+                mediumSeverity: Boolean(prefs.notifications?.sms?.mediumSeverity ?? false),
+                lowSeverity: Boolean(prefs.notifications?.sms?.lowSeverity ?? false),
+              },
+            },
+          };
+        }
+      }
       
       const transformedProfile: Profile = {
         id: data.id,
         username: data.username,
         email: data.email,
         full_name: data.full_name,
-        preferences: validatedPreferences,
+        preferences: parsedPreferences,
       };
       
       setProfile(transformedProfile);
