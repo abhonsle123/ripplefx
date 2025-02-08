@@ -42,87 +42,68 @@ export async function generateAnalysis(event: any): Promise<ImpactAnalysis> {
   const prompt = buildPrompt(event);
   console.log("Sending request to Perplexity with prompt:", prompt);
 
-  const response = await fetch('https://api.perplexity.ai/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${perplexityApiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'llama-3.1-sonar-small-128k-online',
-      messages: [
-        {
-          role: 'system',
-          content: 'You are a financial analysis AI that specializes in market impact predictions. For stock predictions, always return exactly 1 to 3 stocks for both positive and negative impacts. Always return valid JSON with detailed analysis and confidence metrics. Format your response as a single JSON object with no additional text or markdown.'
-        },
-        {
-          role: 'user',
-          content: prompt
-        }
-      ],
-      temperature: 0.1,
-      max_tokens: 1000,
-      frequency_penalty: 0.1
-    }),
-  });
-
-  if (!response.ok) {
-    const errorData = await response.text();
-    console.error("Perplexity API error:", errorData);
-    throw new Error(`Perplexity API error: ${errorData}`);
-  }
-
-  const data = await response.json();
-  console.log("Raw Perplexity response:", JSON.stringify(data, null, 2));
-
-  if (!data.choices?.[0]?.message?.content) {
-    console.error("Invalid response structure:", data);
-    throw new Error("Invalid response format from Perplexity");
-  }
-
-  let cleanContent = data.choices[0].message.content.trim();
-  
-  // Remove any markdown code block markers
-  cleanContent = cleanContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
-  
-  // Remove any trailing commas in arrays and objects
-  cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1');
-
-  // Try to find a valid JSON object in the response
-  const jsonStart = cleanContent.indexOf('{');
-  const jsonEnd = cleanContent.lastIndexOf('}') + 1;
-  
-  if (jsonStart === -1 || jsonEnd === 0) {
-    console.error("No valid JSON object found in content:", cleanContent);
-    throw new Error("No valid JSON object found in response");
-  }
-  
-  cleanContent = cleanContent.slice(jsonStart, jsonEnd);
-  console.log("Cleaned content before parsing:", cleanContent);
-
   try {
-    const parsedContent = JSON.parse(cleanContent);
-    return parseAndValidateAnalysis(cleanContent);
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${perplexityApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-sonar-small-128k-online',
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a financial analysis AI that specializes in market impact predictions. You must return a valid JSON object containing exactly the fields specified, with no additional text or markdown. For stock predictions, return between 1 and 3 stocks for both positive and negative impacts.'
+          },
+          {
+            role: 'user',
+            content: prompt
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 1000,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.text();
+      console.error("Perplexity API error:", errorData);
+      throw new Error(`Perplexity API error: ${response.status} ${errorData}`);
+    }
+
+    const data = await response.json();
+    console.log("Raw Perplexity response:", JSON.stringify(data, null, 2));
+
+    if (!data.choices?.[0]?.message?.content) {
+      console.error("Invalid response structure:", data);
+      throw new Error("Invalid response format from Perplexity");
+    }
+
+    let cleanContent = data.choices[0].message.content.trim();
+    cleanContent = cleanContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
+    cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1');
+    
+    console.log("Cleaned content before parsing:", cleanContent);
+
+    try {
+      const analysis = JSON.parse(cleanContent);
+      return validateAndNormalizeAnalysis(analysis);
+    } catch (error) {
+      console.error("JSON parse error:", error);
+      console.error("Content that failed to parse:", cleanContent);
+      return getDefaultAnalysis();
+    }
   } catch (error) {
-    console.error("Failed to parse JSON response:", error);
-    console.error("Content that failed to parse:", cleanContent);
-    throw new Error("Invalid JSON structure in response");
+    console.error("Error in generateAnalysis:", error);
+    return getDefaultAnalysis();
   }
 }
 
 function buildPrompt(event: any): string {
-  let affectedOrgsString = 'Unknown';
-  if (event.affected_organizations) {
-    if (Array.isArray(event.affected_organizations)) {
-      affectedOrgsString = event.affected_organizations.join(', ');
-    } else if (typeof event.affected_organizations === 'object' && event.affected_organizations !== null) {
-      affectedOrgsString = Object.values(event.affected_organizations).filter(Boolean).join(', ');
-    } else if (typeof event.affected_organizations === 'string') {
-      affectedOrgsString = event.affected_organizations;
-    }
-  }
+  const affectedOrgsString = formatAffectedOrganizations(event.affected_organizations);
 
-  return `Analyze this event and provide a market impact analysis. Return ONLY a JSON object with these exact fields (no explanation, no markdown):
+  return `Analyze this event and provide a market impact analysis. Return ONLY the following JSON structure with NO additional text or markdown:
     {
       "affected_sectors": [],
       "market_impact": "",
@@ -132,8 +113,8 @@ function buildPrompt(event: any): string {
         "long_term": ""
       },
       "stock_predictions": {
-        "positive": ["Default Stock 1"],
-        "negative": ["Default Stock 1"],
+        "positive": [],
+        "negative": [],
         "confidence_scores": {
           "overall_prediction": 0.5,
           "sector_impact": 0.5,
@@ -153,114 +134,140 @@ function buildPrompt(event: any): string {
     Location: ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown'}
     Description: ${event.description || 'No description provided'}
     Affected Organizations: ${affectedOrgsString}
-    Severity: ${event.severity || 'Unknown'}
-
-    Remember: You must return between 1 and 3 stocks for both positive and negative impacts. Always return valid JSON with no additional text or markdown formatting.`;
+    Severity: ${event.severity || 'Unknown'}`;
 }
 
-function parseAndValidateAnalysis(content: string): ImpactAnalysis {
-  try {
-    const analysis = JSON.parse(content);
-    
-    // Validate required fields
-    const requiredFields = [
-      'affected_sectors',
-      'market_impact',
-      'supply_chain_impact',
-      'market_sentiment',
-      'stock_predictions',
-      'risk_level',
-      'analysis_metadata'
-    ];
+function formatAffectedOrganizations(organizations: any): string {
+  if (!organizations) return 'Unknown';
+  
+  if (Array.isArray(organizations)) {
+    return organizations.join(', ');
+  }
+  
+  if (typeof organizations === 'object') {
+    return Object.values(organizations).filter(Boolean).join(', ');
+  }
+  
+  if (typeof organizations === 'string') {
+    return organizations;
+  }
+  
+  return 'Unknown';
+}
 
-    for (const field of requiredFields) {
-      if (!(field in analysis)) {
-        throw new Error(`Missing required field: ${field}`);
-      }
-    }
+function validateAndNormalizeAnalysis(analysis: any): ImpactAnalysis {
+  // Ensure affected_sectors is an array
+  if (!Array.isArray(analysis.affected_sectors)) {
+    analysis.affected_sectors = [];
+  }
 
-    // Validate and enforce stock predictions
-    if (!analysis.stock_predictions.positive || !Array.isArray(analysis.stock_predictions.positive)) {
-      analysis.stock_predictions.positive = ['Default Stock 1'];
-    } else {
-      if (analysis.stock_predictions.positive.length === 0) {
-        analysis.stock_predictions.positive = ['Default Stock 1'];
-      } else if (analysis.stock_predictions.positive.length > 3) {
-        analysis.stock_predictions.positive = analysis.stock_predictions.positive.slice(0, 3);
-      }
-    }
-
-    if (!analysis.stock_predictions.negative || !Array.isArray(analysis.stock_predictions.negative)) {
-      analysis.stock_predictions.negative = ['Default Stock 1'];
-    } else {
-      if (analysis.stock_predictions.negative.length === 0) {
-        analysis.stock_predictions.negative = ['Default Stock 1'];
-      } else if (analysis.stock_predictions.negative.length > 3) {
-        analysis.stock_predictions.negative = analysis.stock_predictions.negative.slice(0, 3);
-      }
-    }
-
-    // Validate confidence scores
-    const confidenceScores = analysis.stock_predictions.confidence_scores;
-    for (const [key, value] of Object.entries(confidenceScores)) {
-      if (typeof value !== 'number' || value < 0 || value > 1) {
-        confidenceScores[key] = 0.5;
-      }
-    }
-
-    // Ensure arrays are actually arrays
-    if (!Array.isArray(analysis.affected_sectors)) {
-      analysis.affected_sectors = [];
-    }
-    if (!Array.isArray(analysis.analysis_metadata.confidence_factors)) {
-      analysis.analysis_metadata.confidence_factors = [];
-    }
-    if (!Array.isArray(analysis.analysis_metadata.uncertainty_factors)) {
-      analysis.analysis_metadata.uncertainty_factors = [];
-    }
-
-    // Validate risk level
-    if (!['low', 'medium', 'high', 'critical'].includes(analysis.risk_level)) {
-      analysis.risk_level = 'medium';
-    }
-
-    // Ensure data quality score is a number between 0 and 1
-    if (typeof analysis.analysis_metadata.data_quality_score !== 'number' || 
-        analysis.analysis_metadata.data_quality_score < 0 || 
-        analysis.analysis_metadata.data_quality_score > 1) {
-      analysis.analysis_metadata.data_quality_score = 0.5;
-    }
-
-    return analysis;
-  } catch (error) {
-    console.error("Error parsing JSON response:", error);
-    console.error("Content that failed to parse:", content);
-    
-    // Return a default valid structure instead of throwing
-    return {
-      affected_sectors: [],
-      market_impact: "Unable to analyze impact",
-      supply_chain_impact: "Unable to analyze supply chain impact",
-      market_sentiment: {
-        short_term: "Neutral",
-        long_term: "Neutral"
-      },
-      stock_predictions: {
-        positive: ["Default Stock 1"],
-        negative: ["Default Stock 1"],
-        confidence_scores: {
-          overall_prediction: 0.5,
-          sector_impact: 0.5,
-          market_direction: 0.5
-        }
-      },
-      risk_level: "medium",
-      analysis_metadata: {
-        confidence_factors: [],
-        uncertainty_factors: [],
-        data_quality_score: 0.5
+  // Validate and normalize stock predictions
+  if (!analysis.stock_predictions) {
+    analysis.stock_predictions = {
+      positive: ['Default Stock 1'],
+      negative: ['Default Stock 1'],
+      confidence_scores: {
+        overall_prediction: 0.5,
+        sector_impact: 0.5,
+        market_direction: 0.5
       }
     };
   }
+
+  // Ensure between 1 and 3 stocks for positive predictions
+  if (!Array.isArray(analysis.stock_predictions.positive) || 
+      analysis.stock_predictions.positive.length < 1 ||
+      analysis.stock_predictions.positive.length > 3) {
+    analysis.stock_predictions.positive = ['Default Stock 1'];
+  }
+
+  // Ensure between 1 and 3 stocks for negative predictions
+  if (!Array.isArray(analysis.stock_predictions.negative) || 
+      analysis.stock_predictions.negative.length < 1 ||
+      analysis.stock_predictions.negative.length > 3) {
+    analysis.stock_predictions.negative = ['Default Stock 1'];
+  }
+
+  // Validate confidence scores
+  if (!analysis.stock_predictions.confidence_scores) {
+    analysis.stock_predictions.confidence_scores = {
+      overall_prediction: 0.5,
+      sector_impact: 0.5,
+      market_direction: 0.5
+    };
+  }
+
+  // Ensure all confidence scores are numbers between 0 and 1
+  ['overall_prediction', 'sector_impact', 'market_direction'].forEach(key => {
+    const score = analysis.stock_predictions.confidence_scores[key];
+    if (typeof score !== 'number' || score < 0 || score > 1) {
+      analysis.stock_predictions.confidence_scores[key] = 0.5;
+    }
+  });
+
+  // Validate market sentiment
+  if (!analysis.market_sentiment || typeof analysis.market_sentiment !== 'object') {
+    analysis.market_sentiment = {
+      short_term: "Neutral",
+      long_term: "Neutral"
+    };
+  }
+
+  // Validate risk level
+  if (!['low', 'medium', 'high', 'critical'].includes(analysis.risk_level)) {
+    analysis.risk_level = 'medium';
+  }
+
+  // Validate and normalize analysis metadata
+  if (!analysis.analysis_metadata || typeof analysis.analysis_metadata !== 'object') {
+    analysis.analysis_metadata = {
+      confidence_factors: [],
+      uncertainty_factors: [],
+      data_quality_score: 0.5
+    };
+  }
+
+  // Ensure arrays exist
+  if (!Array.isArray(analysis.analysis_metadata.confidence_factors)) {
+    analysis.analysis_metadata.confidence_factors = [];
+  }
+  if (!Array.isArray(analysis.analysis_metadata.uncertainty_factors)) {
+    analysis.analysis_metadata.uncertainty_factors = [];
+  }
+
+  // Validate data quality score
+  if (typeof analysis.analysis_metadata.data_quality_score !== 'number' ||
+      analysis.analysis_metadata.data_quality_score < 0 ||
+      analysis.analysis_metadata.data_quality_score > 1) {
+    analysis.analysis_metadata.data_quality_score = 0.5;
+  }
+
+  return analysis;
 }
 
+function getDefaultAnalysis(): ImpactAnalysis {
+  return {
+    affected_sectors: [],
+    market_impact: "Unable to analyze impact",
+    supply_chain_impact: "Unable to analyze supply chain impact",
+    market_sentiment: {
+      short_term: "Neutral",
+      long_term: "Neutral"
+    },
+    stock_predictions: {
+      positive: ["Default Stock 1"],
+      negative: ["Default Stock 1"],
+      confidence_scores: {
+        overall_prediction: 0.5,
+        sector_impact: 0.5,
+        market_direction: 0.5
+      }
+    },
+    risk_level: "medium",
+    analysis_metadata: {
+      confidence_factors: [],
+      uncertainty_factors: [],
+      data_quality_score: 0.5
+    }
+  };
+}
