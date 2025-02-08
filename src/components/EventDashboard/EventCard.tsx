@@ -30,15 +30,25 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
           body: { event_id: event.id }
         });
         if (error) throw error;
-        return data.analysis as ImpactAnalysisType;
+        // Ensure the data matches our expected type structure
+        const analysisData = data?.analysis as unknown as ImpactAnalysisType;
+        if (!analysisData?.affected_sectors) {
+          throw new Error('Invalid analysis data structure');
+        }
+        return analysisData;
       }
-      return event.impact_analysis as ImpactAnalysisType;
+      // Ensure the stored impact_analysis matches our expected type structure
+      const storedAnalysis = event.impact_analysis as unknown as ImpactAnalysisType;
+      if (!storedAnalysis?.affected_sectors) {
+        throw new Error('Invalid stored analysis data structure');
+      }
+      return storedAnalysis;
     },
     enabled: !event.impact_analysis,
   });
 
   const impactAnalysis = event.impact_analysis 
-    ? (event.impact_analysis as ImpactAnalysisType) 
+    ? (event.impact_analysis as unknown as ImpactAnalysisType) 
     : analysis;
 
   const isRelevantToUser = () => {
@@ -106,3 +116,4 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
 };
 
 export default EventCard;
+
