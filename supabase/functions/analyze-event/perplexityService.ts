@@ -53,7 +53,7 @@ export async function generateAnalysis(event: any): Promise<ImpactAnalysis> {
       messages: [
         {
           role: 'system',
-          content: 'You are a financial analysis AI that specializes in market impact predictions. Always return valid JSON with detailed analysis and confidence metrics. Never include markdown or explanations outside the JSON structure.'
+          content: 'You are a financial analysis AI that specializes in market impact predictions. Always return valid JSON with detailed analysis and confidence metrics. Format your response as a single, complete JSON object without any additional text or markdown formatting.'
         },
         {
           role: 'user',
@@ -73,24 +73,40 @@ export async function generateAnalysis(event: any): Promise<ImpactAnalysis> {
   }
 
   const data = await response.json();
-  console.log("Raw Perplexity response:", data);
+  console.log("Raw Perplexity response:", JSON.stringify(data, null, 2));
 
   if (!data.choices?.[0]?.message?.content) {
+    console.error("Invalid response structure:", data);
     throw new Error("Invalid response format from Perplexity");
   }
 
-  // Clean and extract JSON from the response
   let cleanContent = data.choices[0].message.content.trim();
+  console.log("Raw content before cleaning:", cleanContent);
   
-  // Remove any markdown code block markers if present
+  // Remove any markdown code block markers
   cleanContent = cleanContent.replace(/```json\n?/g, '').replace(/```\n?/g, '');
   
-  // Remove any trailing commas in arrays and objects which can cause parsing errors
+  // Remove any trailing commas in arrays and objects
   cleanContent = cleanContent.replace(/,(\s*[}\]])/g, '$1');
+
+  // Remove any additional text before or after the JSON object
+  const jsonStart = cleanContent.indexOf('{');
+  const jsonEnd = cleanContent.lastIndexOf('}') + 1;
   
-  // Ensure we have valid JSON structure
-  if (!cleanContent.startsWith('{') || !cleanContent.endsWith('}')) {
-    console.error("Invalid JSON structure:", cleanContent);
+  if (jsonStart === -1 || jsonEnd === 0) {
+    console.error("No valid JSON object found in content:", cleanContent);
+    throw new Error("No valid JSON object found in response");
+  }
+  
+  cleanContent = cleanContent.slice(jsonStart, jsonEnd);
+  console.log("Cleaned content before parsing:", cleanContent);
+
+  try {
+    // Validate that it's parseable JSON before proceeding
+    JSON.parse(cleanContent);
+  } catch (error) {
+    console.error("Failed to validate JSON structure:", error);
+    console.error("Content that failed validation:", cleanContent);
     throw new Error("Invalid JSON structure in response");
   }
 
@@ -109,66 +125,44 @@ function buildPrompt(event: any): string {
     }
   }
 
-  return `You are a financial market analyst specializing in event impact analysis. Analyze this event thoroughly and provide a comprehensive market impact analysis in valid JSON format. Consider historical precedents, sector correlations, and macroeconomic conditions.
+  return `Analyze this event and provide a market impact analysis. Return ONLY a JSON object with these exact fields (no explanation, no markdown):
+    {
+      "affected_sectors": [],
+      "market_impact": "",
+      "supply_chain_impact": "",
+      "market_sentiment": {
+        "short_term": "",
+        "long_term": ""
+      },
+      "stock_predictions": {
+        "positive": [],
+        "negative": [],
+        "confidence_scores": {
+          "overall_prediction": 0.0,
+          "sector_impact": 0.0,
+          "market_direction": 0.0
+        }
+      },
+      "risk_level": "low",
+      "analysis_metadata": {
+        "confidence_factors": [],
+        "uncertainty_factors": [],
+        "data_quality_score": 0.0
+      }
+    }
 
     Event Details:
-    Event Type: ${event.event_type || 'Unknown'}
+    Type: ${event.event_type || 'Unknown'}
     Location: ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown'}
     Description: ${event.description || 'No description provided'}
     Affected Organizations: ${affectedOrgsString}
     Severity: ${event.severity || 'Unknown'}
 
-    Consider and analyze:
-    1. Regional vs Global Impact:
-       - Direct impact on the specified region
-       - Potential ripple effects to connected regions
-       - Supply chain dependencies across regions
-    
-    2. Industry-Specific Analysis:
-       - Primary affected industry sectors
-       - Secondary/tertiary effects on related industries
-       - Historical patterns in similar industry events
-    
-    3. Company-Level Impact:
-       - Directly affected companies
-       - Competitors who might benefit/suffer
-       - Supply chain partners
-    
-    4. Market Sentiment Factors:
-       - Previous market reactions to similar events
-       - Current market conditions and sentiment
-       - Regional vs global investor perspective
-
-    Return ONLY a JSON object with these exact fields (no explanation, no markdown, just pure JSON):
-    {
-      "affected_sectors": string[],
-      "market_impact": string,
-      "supply_chain_impact": string,
-      "market_sentiment": {
-        "short_term": string,
-        "long_term": string
-      },
-      "stock_predictions": {
-        "positive": string[],
-        "negative": string[],
-        "confidence_scores": {
-          "overall_prediction": number,
-          "sector_impact": number,
-          "market_direction": number
-        }
-      },
-      "risk_level": "low" | "medium" | "high" | "critical",
-      "analysis_metadata": {
-        "confidence_factors": string[],
-        "uncertainty_factors": string[],
-        "data_quality_score": number
-      }
-    }`;
+    Consider regional vs global impact, industry-specific effects, company-level impact, and market sentiment factors. Be specific and concise.`;
 }
 
 function parseAndValidateAnalysis(content: string): ImpactAnalysis {
   try {
-    // Attempt to parse the JSON string
     const analysis = JSON.parse(content);
     
     // Validate required fields
@@ -196,7 +190,7 @@ function parseAndValidateAnalysis(content: string): ImpactAnalysis {
       }
     }
 
-    // Ensure arrays are actually arrays
+    // Ensure arrays are actually arrays and initialize if missing
     if (!Array.isArray(analysis.affected_sectors)) {
       analysis.affected_sectors = [];
     }
@@ -211,6 +205,18 @@ function parseAndValidateAnalysis(content: string): ImpactAnalysis {
     }
     if (!Array.isArray(analysis.analysis_metadata.uncertainty_factors)) {
       analysis.analysis_metadata.uncertainty_factors = [];
+    }
+
+    // Validate risk level
+    if (!['low', 'medium', 'high', 'critical'].includes(analysis.risk_level)) {
+      analysis.risk_level = 'medium';
+    }
+
+    // Ensure data quality score is a number between 0 and 1
+    if (typeof analysis.analysis_metadata.data_quality_score !== 'number' || 
+        analysis.analysis_metadata.data_quality_score < 0 || 
+        analysis.analysis_metadata.data_quality_score > 1) {
+      analysis.analysis_metadata.data_quality_score = 0.5;
     }
 
     return analysis;
