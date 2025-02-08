@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
-const openAIApiKey = Deno.env.get('OPENAI_API_KEY');
+const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
@@ -56,45 +56,48 @@ async function generateImpactAnalysis(event: any) {
       "risk_level": "low" | "medium" | "high" | "critical"
     }`;
 
-    if (!openAIApiKey) {
-      throw new Error('OpenAI API key is not configured');
+    if (!perplexityApiKey) {
+      throw new Error('Perplexity API key is not configured');
     }
 
-    console.log("Sending request to OpenAI with prompt:", prompt);
+    console.log("Sending request to Perplexity with prompt:", prompt);
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
+    const response = await fetch('https://api.perplexity.ai/chat/completions', {
+      method: 'POST',
       headers: {
-        "Authorization": `Bearer ${openAIApiKey}`,
-        "Content-Type": "application/json",
+        'Authorization': `Bearer ${perplexityApiKey}`,
+        'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
+        model: 'llama-3.1-sonar-small-128k-online',
         messages: [
           {
-            role: "system",
-            content: "You are a financial analyst expert that provides market impact analysis for global events. Always provide detailed, well-researched analysis in the specified JSON format."
+            role: 'system',
+            content: 'You are a financial analyst expert that provides market impact analysis for global events. Always provide detailed, well-researched analysis in the specified JSON format.'
           },
           {
-            role: "user",
+            role: 'user',
             content: prompt
           }
         ],
-        response_format: { type: "json_object" }
+        temperature: 0.2,
+        max_tokens: 1000,
+        presence_penalty: 0,
+        frequency_penalty: 1
       }),
     });
 
     if (!response.ok) {
       const errorData = await response.text();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(`OpenAI API error: ${errorData}`);
+      console.error("Perplexity API error:", errorData);
+      throw new Error(`Perplexity API error: ${errorData}`);
     }
 
     const data = await response.json();
-    console.log("OpenAI response:", data);
+    console.log("Perplexity response:", data);
 
     if (!data.choices?.[0]?.message?.content) {
-      throw new Error("Invalid response format from OpenAI");
+      throw new Error("Invalid response format from Perplexity");
     }
 
     const analysis = JSON.parse(data.choices[0].message.content);
