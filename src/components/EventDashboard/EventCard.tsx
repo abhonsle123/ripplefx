@@ -1,3 +1,4 @@
+
 import { Card, CardContent, CardHeader, CardFooter } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,22 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
+
+interface ImpactAnalysis {
+  affected_sectors: string[];
+  stock_predictions?: {
+    positive?: string[];
+    negative?: string[];
+    confidence_scores?: {
+      overall_prediction: number;
+      sector_impact: number;
+      market_direction: number;
+    };
+  };
+  analysis_metadata?: {
+    data_quality_score: number;
+  };
+}
 
 interface EventCardProps {
   event: Event;
@@ -26,9 +43,9 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
           body: { event_id: event.id }
         });
         if (error) throw error;
-        return data.analysis;
+        return data.analysis as ImpactAnalysis;
       }
-      return event.impact_analysis;
+      return event.impact_analysis as ImpactAnalysis;
     },
     enabled: !event.impact_analysis,
   });
@@ -71,7 +88,7 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
     return 'text-red-600';
   };
 
-  const impactAnalysis = event.impact_analysis || analysis;
+  const impactAnalysis = event.impact_analysis ? event.impact_analysis as ImpactAnalysis : analysis;
 
   const isRelevantToUser = () => {
     if (!userPreferences) return false;
@@ -86,14 +103,13 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
           ? Object.values(event.affected_organizations)
           : [];
       return orgs.some(org => 
-        org.toLowerCase().includes(company.toLowerCase())
+        typeof org === 'string' && org.toLowerCase().includes(company.toLowerCase())
       );
     });
 
     const industriesMatch = userPreferences.industries?.some(industry => {
-      const analysis = event.impact_analysis;
-      if (!analysis?.affected_sectors) return false;
-      return analysis.affected_sectors.some((sector: string) =>
+      if (!impactAnalysis?.affected_sectors) return false;
+      return impactAnalysis.affected_sectors.some(sector =>
         sector.toLowerCase().includes(industry.toLowerCase())
       );
     });

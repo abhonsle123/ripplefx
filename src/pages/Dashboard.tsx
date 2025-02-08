@@ -21,6 +21,29 @@ type Event = Database["public"]["Tables"]["events"]["Row"];
 type EventType = Database["public"]["Enums"]["event_type"];
 type SeverityLevel = Database["public"]["Enums"]["severity_level"];
 
+interface UserPreferences {
+  notifications?: {
+    email?: {
+      enabled: boolean;
+      highSeverity: boolean;
+      mediumSeverity: boolean;
+      lowSeverity: boolean;
+    };
+    sms?: {
+      enabled: boolean;
+      phoneNumber: string | null;
+      highSeverity: boolean;
+      mediumSeverity: boolean;
+      lowSeverity: boolean;
+    };
+  };
+  tracking?: {
+    industries: string[];
+    companies: string[];
+    event_types: string[];
+  };
+}
+
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -37,7 +60,7 @@ const Dashboard = () => {
     city: "",
     country: "",
   });
-  const [userPreferences, setUserPreferences] = useState(null);
+  const [userPreferences, setUserPreferences] = useState<UserPreferences | null>(null);
 
   // Check authentication
   useEffect(() => {
@@ -166,8 +189,11 @@ const Dashboard = () => {
           .eq("id", session.user.id)
           .single();
         
-        if (!error && data?.preferences?.tracking) {
-          setUserPreferences(data.preferences.tracking);
+        if (!error && data?.preferences) {
+          const prefs = data.preferences as UserPreferences;
+          if (prefs.tracking) {
+            setUserPreferences(prefs.tracking);
+          }
         }
       }
     };
