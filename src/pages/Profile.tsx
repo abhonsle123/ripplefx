@@ -1,14 +1,15 @@
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { BasicProfileInfo } from "@/components/profile/BasicProfileInfo";
+import { EmailNotificationPreferences } from "@/components/profile/EmailNotificationPreferences";
+import { SMSNotificationPreferences } from "@/components/profile/SMSNotificationPreferences";
 
 type Profile = {
   id: string;
@@ -79,7 +80,6 @@ const Profile = () => {
 
       if (error) throw error;
       
-      // Safely parse preferences data
       let parsedPreferences = defaultPreferences;
       
       if (data.preferences && typeof data.preferences === 'object' && !Array.isArray(data.preferences)) {
@@ -179,224 +179,42 @@ const Profile = () => {
     );
   }
 
+  if (!profile) return null;
+
   return (
     <div className="container px-4 pt-24 pb-20">
       <h1 className="text-3xl font-bold mb-8">Profile Settings</h1>
       <div className="max-w-2xl mx-auto space-y-6">
         <Card className="p-6">
           <form onSubmit={updateProfile} className="space-y-6">
-            <div className="space-y-4">
-              <Label htmlFor="email">Account Email (Login)</Label>
-              <Input
-                id="email"
-                type="email"
-                value={profile?.email || ""}
-                disabled
-                className="bg-muted"
-              />
-            </div>
-
-            <div className="space-y-4">
-              <Label htmlFor="username">Username</Label>
-              <Input
-                id="username"
-                value={profile?.username || ""}
-                onChange={(e) =>
-                  setProfile(profile ? { ...profile, username: e.target.value } : null)
-                }
-              />
-            </div>
-
-            <div className="space-y-4">
-              <Label htmlFor="fullName">Full Name</Label>
-              <Input
-                id="fullName"
-                value={profile?.full_name || ""}
-                onChange={(e) =>
-                  setProfile(profile ? { ...profile, full_name: e.target.value } : null)
-                }
-              />
-            </div>
+            <BasicProfileInfo
+              email={profile.email}
+              username={profile.username}
+              fullName={profile.full_name}
+              onUsernameChange={(username) => setProfile({ ...profile, username })}
+              onFullNameChange={(full_name) => setProfile({ ...profile, full_name })}
+            />
 
             <Separator className="my-6" />
 
             <div className="space-y-6">
               <h2 className="text-xl font-semibold">Notification Preferences</h2>
               
-              <div className="space-y-4">
-                <div className="space-y-4">
-                  <Label htmlFor="notificationEmail">Notification Email</Label>
-                  <Input
-                    id="notificationEmail"
-                    type="email"
-                    value={notificationEmail}
-                    onChange={(e) => setNotificationEmail(e.target.value)}
-                    placeholder="Email for notifications"
-                  />
-                </div>
+              <EmailNotificationPreferences
+                notificationEmail={notificationEmail}
+                preferences={profile.preferences.notifications.email}
+                onEmailChange={setNotificationEmail}
+                onPreferenceChange={(field, value) =>
+                  updateNotificationPreference("email", field, value)
+                }
+              />
 
-                <div className="space-y-4">
-                  <Label className="text-base">Email Notifications</Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="emailEnabled"
-                        checked={profile?.preferences.notifications.email.enabled}
-                        onCheckedChange={(checked) =>
-                          updateNotificationPreference("email", "enabled", checked as boolean)
-                        }
-                      />
-                      <label
-                        htmlFor="emailEnabled"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Enable email notifications
-                      </label>
-                    </div>
-
-                    <div className="ml-6 space-y-2">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="emailHighSeverity"
-                          checked={profile?.preferences.notifications.email.highSeverity}
-                          onCheckedChange={(checked) =>
-                            updateNotificationPreference("email", "highSeverity", checked as boolean)
-                          }
-                          disabled={!profile?.preferences.notifications.email.enabled}
-                        />
-                        <label
-                          htmlFor="emailHighSeverity"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          High severity events
-                        </label>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="emailMediumSeverity"
-                          checked={profile?.preferences.notifications.email.mediumSeverity}
-                          onCheckedChange={(checked) =>
-                            updateNotificationPreference("email", "mediumSeverity", checked as boolean)
-                          }
-                          disabled={!profile?.preferences.notifications.email.enabled}
-                        />
-                        <label
-                          htmlFor="emailMediumSeverity"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Medium severity events
-                        </label>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="emailLowSeverity"
-                          checked={profile?.preferences.notifications.email.lowSeverity}
-                          onCheckedChange={(checked) =>
-                            updateNotificationPreference("email", "lowSeverity", checked as boolean)
-                          }
-                          disabled={!profile?.preferences.notifications.email.enabled}
-                        />
-                        <label
-                          htmlFor="emailLowSeverity"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Low severity events
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-4">
-                  <Label className="text-base">SMS Notifications</Label>
-                  <div className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                      <Checkbox
-                        id="smsEnabled"
-                        checked={profile?.preferences.notifications.sms.enabled}
-                        onCheckedChange={(checked) =>
-                          updateNotificationPreference("sms", "enabled", checked as boolean)
-                        }
-                      />
-                      <label
-                        htmlFor="smsEnabled"
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
-                        Enable SMS notifications
-                      </label>
-                    </div>
-
-                    <div className="ml-6 space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="phoneNumber">Phone Number</Label>
-                        <Input
-                          id="phoneNumber"
-                          type="tel"
-                          value={profile?.preferences.notifications.sms.phoneNumber || ""}
-                          onChange={(e) =>
-                            updateNotificationPreference("sms", "phoneNumber", e.target.value)
-                          }
-                          placeholder="+1234567890"
-                          disabled={!profile?.preferences.notifications.sms.enabled}
-                        />
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="smsHighSeverity"
-                          checked={profile?.preferences.notifications.sms.highSeverity}
-                          onCheckedChange={(checked) =>
-                            updateNotificationPreference("sms", "highSeverity", checked as boolean)
-                          }
-                          disabled={!profile?.preferences.notifications.sms.enabled}
-                        />
-                        <label
-                          htmlFor="smsHighSeverity"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          High severity events
-                        </label>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="smsMediumSeverity"
-                          checked={profile?.preferences.notifications.sms.mediumSeverity}
-                          onCheckedChange={(checked) =>
-                            updateNotificationPreference("sms", "mediumSeverity", checked as boolean)
-                          }
-                          disabled={!profile?.preferences.notifications.sms.enabled}
-                        />
-                        <label
-                          htmlFor="smsMediumSeverity"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Medium severity events
-                        </label>
-                      </div>
-
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id="smsLowSeverity"
-                          checked={profile?.preferences.notifications.sms.lowSeverity}
-                          onCheckedChange={(checked) =>
-                            updateNotificationPreference("sms", "lowSeverity", checked as boolean)
-                          }
-                          disabled={!profile?.preferences.notifications.sms.enabled}
-                        />
-                        <label
-                          htmlFor="smsLowSeverity"
-                          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                        >
-                          Low severity events
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <SMSNotificationPreferences
+                preferences={profile.preferences.notifications.sms}
+                onPreferenceChange={(field, value) =>
+                  updateNotificationPreference("sms", field, value)
+                }
+              />
             </div>
 
             <Button type="submit" disabled={updating} className="w-full">
