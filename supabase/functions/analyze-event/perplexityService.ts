@@ -1,4 +1,3 @@
-
 const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
 
 interface ConfidenceScores {
@@ -62,8 +61,8 @@ export async function generateAnalysis(event: any): Promise<ImpactAnalysis> {
       ],
       temperature: 0.1,
       max_tokens: 1000,
-      presence_penalty: 0,
-      frequency_penalty: 0
+      presence_penalty: 0.1,
+      frequency_penalty: 0.1
     }),
   });
 
