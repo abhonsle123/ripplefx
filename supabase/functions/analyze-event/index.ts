@@ -34,19 +34,14 @@ async function generateImpactAnalysis(event: any) {
       }
     }
     
-    const prompt = `Analyze this event and provide market impact analysis:
+    const prompt = `Analyze this event and provide a market impact analysis in VALID JSON format without any markdown formatting:
     Event Type: ${event.event_type || 'Unknown'}
     Location: ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown'}
     Description: ${event.description || 'No description provided'}
     Affected Organizations: ${affectedOrgsString}
     Severity: ${event.severity || 'Unknown'}
 
-    Please provide a detailed analysis including:
-    1. Key affected sectors and businesses
-    2. Potential market movements and stock price impacts
-    3. Supply chain implications
-    4. Short-term and long-term market sentiment
-    Format the response as a JSON object with these fields: 
+    Return ONLY a JSON object with these exact fields (no explanation, no markdown, just the JSON):
     {
       "affected_sectors": string[],
       "market_impact": string,
@@ -73,17 +68,17 @@ async function generateImpactAnalysis(event: any) {
         messages: [
           {
             role: 'system',
-            content: 'You are a financial analyst expert that provides market impact analysis for global events. Always provide detailed, well-researched analysis in the specified JSON format. Do not include any markdown formatting or code blocks in your response.'
+            content: 'You are a JSON-only response bot. Only return valid JSON objects without any markdown, explanation, or formatting. Your response must be a single, parseable JSON object.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.2,
+        temperature: 0.1,
         max_tokens: 1000,
         presence_penalty: 0,
-        frequency_penalty: 1
+        frequency_penalty: 0
       }),
     });
 
@@ -94,24 +89,26 @@ async function generateImpactAnalysis(event: any) {
     }
 
     const data = await response.json();
-    console.log("Perplexity response:", data);
+    console.log("Raw Perplexity response:", data);
 
     if (!data.choices?.[0]?.message?.content) {
       throw new Error("Invalid response format from Perplexity");
     }
 
-    // Clean the response content by removing any markdown code blocks
-    let cleanContent = data.choices[0].message.content
-      .replace(/```json\n/g, '')
-      .replace(/```\n/g, '')
-      .replace(/```/g, '')
-      .trim();
-
-    console.log("Cleaned content:", cleanContent);
+    let cleanContent = data.choices[0].message.content.trim();
+    console.log("Content to parse:", cleanContent);
 
     try {
       const analysis = JSON.parse(cleanContent);
-      console.log("Parsed analysis:", analysis);
+      console.log("Successfully parsed analysis:", analysis);
+
+      // Validate required fields
+      const requiredFields = ['affected_sectors', 'market_impact', 'supply_chain_impact', 'market_sentiment', 'stock_predictions', 'risk_level'];
+      for (const field of requiredFields) {
+        if (!(field in analysis)) {
+          throw new Error(`Missing required field: ${field}`);
+        }
+      }
 
       // Update the event with the impact analysis
       const { error: updateError } = await supabase
@@ -131,7 +128,7 @@ async function generateImpactAnalysis(event: any) {
     } catch (parseError) {
       console.error("Error parsing JSON response:", parseError);
       console.error("Content that failed to parse:", cleanContent);
-      throw new Error("Failed to parse analysis response");
+      throw new Error(`Failed to parse analysis response: ${parseError.message}`);
     }
   } catch (error) {
     console.error("Error in generateImpactAnalysis:", error);
