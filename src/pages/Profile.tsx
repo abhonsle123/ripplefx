@@ -35,6 +35,24 @@ type Profile = {
   };
 };
 
+const defaultPreferences = {
+  notifications: {
+    email: {
+      enabled: false,
+      highSeverity: true,
+      mediumSeverity: false,
+      lowSeverity: false,
+    },
+    sms: {
+      enabled: false,
+      phoneNumber: null,
+      highSeverity: false,
+      mediumSeverity: false,
+      lowSeverity: false,
+    },
+  },
+};
+
 const Profile = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -63,20 +81,27 @@ const Profile = () => {
       if (error) throw error;
       
       // Ensure the preferences structure exists with defaults
-      const preferences = data.preferences || {
+      const preferences = data.preferences 
+        ? (typeof data.preferences === 'object' 
+            ? data.preferences 
+            : defaultPreferences)
+        : defaultPreferences;
+      
+      // Ensure the preferences match our expected structure
+      const validatedPreferences = {
         notifications: {
           email: {
-            enabled: false,
-            highSeverity: true,
-            mediumSeverity: false,
-            lowSeverity: false,
+            enabled: Boolean(preferences?.notifications?.email?.enabled ?? false),
+            highSeverity: Boolean(preferences?.notifications?.email?.highSeverity ?? true),
+            mediumSeverity: Boolean(preferences?.notifications?.email?.mediumSeverity ?? false),
+            lowSeverity: Boolean(preferences?.notifications?.email?.lowSeverity ?? false),
           },
           sms: {
-            enabled: false,
-            phoneNumber: null,
-            highSeverity: false,
-            mediumSeverity: false,
-            lowSeverity: false,
+            enabled: Boolean(preferences?.notifications?.sms?.enabled ?? false),
+            phoneNumber: preferences?.notifications?.sms?.phoneNumber ?? null,
+            highSeverity: Boolean(preferences?.notifications?.sms?.highSeverity ?? false),
+            mediumSeverity: Boolean(preferences?.notifications?.sms?.mediumSeverity ?? false),
+            lowSeverity: Boolean(preferences?.notifications?.sms?.lowSeverity ?? false),
           },
         },
       };
@@ -86,7 +111,7 @@ const Profile = () => {
         username: data.username,
         email: data.email,
         full_name: data.full_name,
-        preferences,
+        preferences: validatedPreferences,
       };
       
       setProfile(transformedProfile);
