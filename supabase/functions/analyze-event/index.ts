@@ -73,7 +73,7 @@ async function generateImpactAnalysis(event: any) {
         messages: [
           {
             role: 'system',
-            content: 'You are a financial analyst expert that provides market impact analysis for global events. Always provide detailed, well-researched analysis in the specified JSON format.'
+            content: 'You are a financial analyst expert that provides market impact analysis for global events. Always provide detailed, well-researched analysis in the specified JSON format. Do not include any markdown formatting or code blocks in your response.'
           },
           {
             role: 'user',
@@ -100,23 +100,39 @@ async function generateImpactAnalysis(event: any) {
       throw new Error("Invalid response format from Perplexity");
     }
 
-    const analysis = JSON.parse(data.choices[0].message.content);
-    console.log("Parsed analysis:", analysis);
+    // Clean the response content by removing any markdown code blocks
+    let cleanContent = data.choices[0].message.content
+      .replace(/```json\n/g, '')
+      .replace(/```\n/g, '')
+      .replace(/```/g, '')
+      .trim();
 
-    // Update the event with the impact analysis
-    const { error: updateError } = await supabase
-      .from('events')
-      .update({ 
-        impact_analysis: analysis
-      })
-      .eq('id', event.id);
+    console.log("Cleaned content:", cleanContent);
 
-    if (updateError) {
-      console.error("Error updating event:", updateError);
-      throw updateError;
+    try {
+      const analysis = JSON.parse(cleanContent);
+      console.log("Parsed analysis:", analysis);
+
+      // Update the event with the impact analysis
+      const { error: updateError } = await supabase
+        .from('events')
+        .update({ 
+          impact_analysis: analysis,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', event.id);
+
+      if (updateError) {
+        console.error("Error updating event:", updateError);
+        throw updateError;
+      }
+
+      return analysis;
+    } catch (parseError) {
+      console.error("Error parsing JSON response:", parseError);
+      console.error("Content that failed to parse:", cleanContent);
+      throw new Error("Failed to parse analysis response");
     }
-
-    return analysis;
   } catch (error) {
     console.error("Error in generateImpactAnalysis:", error);
     throw error;
