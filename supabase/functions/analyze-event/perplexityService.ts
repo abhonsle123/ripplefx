@@ -1,4 +1,3 @@
-
 const perplexityApiKey = Deno.env.get('PERPLEXITY_API_KEY');
 
 interface ConfidenceScores {
@@ -53,7 +52,7 @@ export async function generateAnalysis(event: any): Promise<ImpactAnalysis> {
       messages: [
         {
           role: 'system',
-          content: 'You are a financial analysis AI that specializes in market impact predictions. Always return valid JSON with detailed analysis and confidence metrics. Format your response as a single, complete JSON object without any additional text or markdown formatting.'
+          content: 'You are a financial analysis AI that specializes in market impact predictions. For stock predictions, always return between 1 and 3 stocks for both positive and negative impacts. Always return valid JSON with detailed analysis and confidence metrics. Format your response as a single, complete JSON object without any additional text or markdown formatting.'
         },
         {
           role: 'user',
@@ -102,8 +101,28 @@ export async function generateAnalysis(event: any): Promise<ImpactAnalysis> {
   console.log("Cleaned content before parsing:", cleanContent);
 
   try {
-    // Validate that it's parseable JSON before proceeding
-    JSON.parse(cleanContent);
+    const parsedContent = JSON.parse(cleanContent);
+
+    // Validate and enforce stock limits
+    if (parsedContent.stock_predictions) {
+      if (parsedContent.stock_predictions.positive) {
+        if (parsedContent.stock_predictions.positive.length === 0) {
+          parsedContent.stock_predictions.positive = ['Default Stock'];
+        } else if (parsedContent.stock_predictions.positive.length > 3) {
+          parsedContent.stock_predictions.positive = parsedContent.stock_predictions.positive.slice(0, 3);
+        }
+      }
+
+      if (parsedContent.stock_predictions.negative) {
+        if (parsedContent.stock_predictions.negative.length === 0) {
+          parsedContent.stock_predictions.negative = ['Default Stock'];
+        } else if (parsedContent.stock_predictions.negative.length > 3) {
+          parsedContent.stock_predictions.negative = parsedContent.stock_predictions.negative.slice(0, 3);
+        }
+      }
+    }
+
+    cleanContent = JSON.stringify(parsedContent);
   } catch (error) {
     console.error("Failed to validate JSON structure:", error);
     console.error("Content that failed validation:", cleanContent);
