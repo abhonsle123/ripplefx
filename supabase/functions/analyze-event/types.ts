@@ -10,9 +10,14 @@ export interface MarketSentiment {
   long_term: string;
 }
 
+export interface StockPrediction {
+  symbol: string;
+  rationale: string;
+}
+
 export interface StockPredictions {
-  positive: string[];
-  negative: string[];
+  positive: StockPrediction[];
+  negative: StockPrediction[];
   confidence_scores: ConfidenceScores;
 }
 
@@ -31,3 +36,4 @@ export interface ImpactAnalysis {
   risk_level: "low" | "medium" | "high" | "critical";
   analysis_metadata: AnalysisMetadata;
 }
+

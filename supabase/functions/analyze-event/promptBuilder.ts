@@ -30,8 +30,18 @@ export function buildPrompt(event: any): string {
         "long_term": ""
       },
       "stock_predictions": {
-        "positive": [],
-        "negative": [],
+        "positive": [
+          {
+            "symbol": "",
+            "rationale": ""
+          }
+        ],
+        "negative": [
+          {
+            "symbol": "",
+            "rationale": ""
+          }
+        ],
         "confidence_scores": {
           "overall_prediction": 0.5,
           "sector_impact": 0.5,
@@ -75,3 +85,4 @@ export function buildPrompt(event: any): string {
       * Labor market impacts
       * Environmental remediation needs`;
 }
+

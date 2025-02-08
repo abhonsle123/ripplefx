@@ -1,13 +1,26 @@
 
 import { Badge } from "@/components/ui/badge";
 import { TrendingUp, TrendingDown } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+
+interface StockPrediction {
+  symbol: string;
+  rationale: string;
+}
 
 interface ImpactAnalysisProps {
   analysis: {
     affected_sectors: string[];
     stock_predictions?: {
-      positive?: string[];
-      negative?: string[];
+      positive?: StockPrediction[];
+      negative?: StockPrediction[];
       confidence_scores?: {
         overall_prediction: number;
         sector_impact: number;
@@ -20,7 +33,38 @@ interface ImpactAnalysisProps {
   };
 }
 
+interface StockDialogProps {
+  stock: StockPrediction;
+  isPositive: boolean;
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const StockDialog = ({ stock, isPositive, isOpen, onClose }: StockDialogProps) => (
+  <Dialog open={isOpen} onOpenChange={onClose}>
+    <DialogContent>
+      <DialogHeader>
+        <DialogTitle className="flex items-center gap-2">
+          {isPositive ? (
+            <TrendingUp className="h-5 w-5 text-green-600" />
+          ) : (
+            <TrendingDown className="h-5 w-5 text-red-600" />
+          )}
+          {stock.symbol}
+        </DialogTitle>
+      </DialogHeader>
+      <div className="mt-4">
+        <h4 className="font-medium mb-2">Analysis Rationale:</h4>
+        <p className="text-sm text-muted-foreground">{stock.rationale}</p>
+      </div>
+    </DialogContent>
+  </Dialog>
+);
+
 const ImpactAnalysis = ({ analysis }: ImpactAnalysisProps) => {
+  const [selectedStock, setSelectedStock] = useState<StockPrediction | null>(null);
+  const [isPositive, setIsPositive] = useState(false);
+
   const formatConfidence = (score: number) => {
     return `${Math.round(score * 100)}%`;
   };
@@ -29,6 +73,11 @@ const ImpactAnalysis = ({ analysis }: ImpactAnalysisProps) => {
     if (score >= 0.8) return 'text-green-600';
     if (score >= 0.6) return 'text-yellow-600';
     return 'text-red-600';
+  };
+
+  const handleStockClick = (stock: StockPrediction, positive: boolean) => {
+    setSelectedStock(stock);
+    setIsPositive(positive);
   };
 
   return (
@@ -57,11 +106,19 @@ const ImpactAnalysis = ({ analysis }: ImpactAnalysisProps) => {
                   <TrendingUp className="h-4 w-4" />
                   <span className="font-medium">Positive Impact</span>
                 </div>
-                <ul className="text-xs mt-1 list-disc list-inside">
-                  {analysis.stock_predictions.positive.slice(0, 3).map((stock: string) => (
-                    <li key={stock}>{stock}</li>
+                <div className="mt-1 space-y-2">
+                  {analysis.stock_predictions.positive.slice(0, 3).map((stock: StockPrediction) => (
+                    <Button
+                      key={stock.symbol}
+                      variant="outline"
+                      className="w-full text-left justify-start text-xs hover:bg-green-50"
+                      onClick={() => handleStockClick(stock, true)}
+                    >
+                      <TrendingUp className="h-3 w-3 mr-2 text-green-600" />
+                      {stock.symbol}
+                    </Button>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
             
@@ -71,11 +128,19 @@ const ImpactAnalysis = ({ analysis }: ImpactAnalysisProps) => {
                   <TrendingDown className="h-4 w-4" />
                   <span className="font-medium">Negative Impact</span>
                 </div>
-                <ul className="text-xs mt-1 list-disc list-inside">
-                  {analysis.stock_predictions.negative.slice(0, 3).map((stock: string) => (
-                    <li key={stock}>{stock}</li>
+                <div className="mt-1 space-y-2">
+                  {analysis.stock_predictions.negative.slice(0, 3).map((stock: StockPrediction) => (
+                    <Button
+                      key={stock.symbol}
+                      variant="outline"
+                      className="w-full text-left justify-start text-xs hover:bg-red-50"
+                      onClick={() => handleStockClick(stock, false)}
+                    >
+                      <TrendingDown className="h-3 w-3 mr-2 text-red-600" />
+                      {stock.symbol}
+                    </Button>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
           </div>
@@ -118,8 +183,18 @@ const ImpactAnalysis = ({ analysis }: ImpactAnalysisProps) => {
           )}
         </>
       )}
+
+      {selectedStock && (
+        <StockDialog
+          stock={selectedStock}
+          isPositive={isPositive}
+          isOpen={!!selectedStock}
+          onClose={() => setSelectedStock(null)}
+        />
+      )}
     </div>
   );
 };
 
 export default ImpactAnalysis;
+
