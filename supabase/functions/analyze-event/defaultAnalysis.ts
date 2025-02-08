@@ -11,34 +11,8 @@ export function getDefaultAnalysis(): ImpactAnalysis {
       long_term: "Neutral"
     },
     stock_predictions: {
-      positive: [
-        {
-          symbol: "NEE",
-          rationale: "NextEra Energy - Strong renewable energy portfolio and grid modernization initiatives"
-        },
-        {
-          symbol: "PCG",
-          rationale: "PG&E Corporation - Infrastructure hardening and wildfire mitigation investments"
-        },
-        {
-          symbol: "DUK",
-          rationale: "Duke Energy - Diversified utility with strong emergency response capabilities"
-        }
-      ],
-      negative: [
-        {
-          symbol: "SO",
-          rationale: "Southern Company - Exposure to severe weather risks in southeastern markets"
-        },
-        {
-          symbol: "ED",
-          rationale: "Consolidated Edison - Urban infrastructure vulnerability to extreme events"
-        },
-        {
-          symbol: "EXC",
-          rationale: "Exelon - Nuclear fleet exposure to environmental regulations"
-        }
-      ],
+      positive: ["Default Stock 1"],
+      negative: ["Default Stock 1"],
       confidence_scores: {
         overall_prediction: 0.5,
         sector_impact: 0.5,
