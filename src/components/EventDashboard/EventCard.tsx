@@ -57,6 +57,16 @@ const EventCard = ({ event }: EventCardProps) => {
     });
   };
 
+  const formatConfidence = (score: number) => {
+    return `${Math.round(score * 100)}%`;
+  };
+
+  const getConfidenceColor = (score: number) => {
+    if (score >= 0.8) return 'text-green-600';
+    if (score >= 0.6) return 'text-yellow-600';
+    return 'text-red-600';
+  };
+
   const impactAnalysis = event.impact_analysis || analysis;
 
   return (
@@ -123,35 +133,74 @@ const EventCard = ({ event }: EventCardProps) => {
               )}
 
               {impactAnalysis.stock_predictions && (
-                <div className="flex gap-4 mt-2">
-                  {impactAnalysis.stock_predictions.positive && (
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1 text-sm text-green-600">
-                        <TrendingUp className="h-4 w-4" />
-                        <span className="font-medium">Positive Impact</span>
+                <>
+                  <div className="flex gap-4 mt-2">
+                    {impactAnalysis.stock_predictions.positive && (
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1 text-sm text-green-600">
+                          <TrendingUp className="h-4 w-4" />
+                          <span className="font-medium">Positive Impact</span>
+                        </div>
+                        <ul className="text-xs mt-1 list-disc list-inside">
+                          {impactAnalysis.stock_predictions.positive.slice(0, 3).map((stock: string) => (
+                            <li key={stock}>{stock}</li>
+                          ))}
+                        </ul>
                       </div>
-                      <ul className="text-xs mt-1 list-disc list-inside">
-                        {impactAnalysis.stock_predictions.positive.slice(0, 3).map((stock: string) => (
-                          <li key={stock}>{stock}</li>
-                        ))}
-                      </ul>
+                    )}
+                    
+                    {impactAnalysis.stock_predictions.negative && (
+                      <div className="flex-1">
+                        <div className="flex items-center gap-1 text-sm text-red-600">
+                          <TrendingDown className="h-4 w-4" />
+                          <span className="font-medium">Negative Impact</span>
+                        </div>
+                        <ul className="text-xs mt-1 list-disc list-inside">
+                          {impactAnalysis.stock_predictions.negative.slice(0, 3).map((stock: string) => (
+                            <li key={stock}>{stock}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {impactAnalysis.stock_predictions.confidence_scores && (
+                    <div className="mt-4 border-t pt-4">
+                      <h5 className="text-sm font-medium mb-2">Prediction Confidence</h5>
+                      <div className="grid grid-cols-3 gap-2 text-xs">
+                        <div>
+                          <span className="block text-muted-foreground">Overall</span>
+                          <span className={getConfidenceColor(impactAnalysis.stock_predictions.confidence_scores.overall_prediction)}>
+                            {formatConfidence(impactAnalysis.stock_predictions.confidence_scores.overall_prediction)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-muted-foreground">Sector Impact</span>
+                          <span className={getConfidenceColor(impactAnalysis.stock_predictions.confidence_scores.sector_impact)}>
+                            {formatConfidence(impactAnalysis.stock_predictions.confidence_scores.sector_impact)}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-muted-foreground">Market Direction</span>
+                          <span className={getConfidenceColor(impactAnalysis.stock_predictions.confidence_scores.market_direction)}>
+                            {formatConfidence(impactAnalysis.stock_predictions.confidence_scores.market_direction)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   )}
-                  
-                  {impactAnalysis.stock_predictions.negative && (
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1 text-sm text-red-600">
-                        <TrendingDown className="h-4 w-4" />
-                        <span className="font-medium">Negative Impact</span>
+
+                  {impactAnalysis.analysis_metadata && (
+                    <div className="mt-4 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1">
+                        <span>Data Quality Score:</span>
+                        <span className={getConfidenceColor(impactAnalysis.analysis_metadata.data_quality_score)}>
+                          {formatConfidence(impactAnalysis.analysis_metadata.data_quality_score)}
+                        </span>
                       </div>
-                      <ul className="text-xs mt-1 list-disc list-inside">
-                        {impactAnalysis.stock_predictions.negative.slice(0, 3).map((stock: string) => (
-                          <li key={stock}>{stock}</li>
-                        ))}
-                      </ul>
                     </div>
                   )}
-                </div>
+                </>
               )}
             </div>
           )}

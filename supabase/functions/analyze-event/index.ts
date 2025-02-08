@@ -34,22 +34,47 @@ async function generateImpactAnalysis(event: any) {
       }
     }
     
-    const prompt = `Analyze this event and provide a market impact analysis in VALID JSON format without any markdown formatting:
+    const prompt = `You are a financial market analyst specializing in event impact analysis. Analyze this event thoroughly and provide a comprehensive market impact analysis in valid JSON format. Consider historical precedents, sector correlations, and macroeconomic conditions.
+
+    Event Details:
     Event Type: ${event.event_type || 'Unknown'}
     Location: ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown'}
     Description: ${event.description || 'No description provided'}
     Affected Organizations: ${affectedOrgsString}
     Severity: ${event.severity || 'Unknown'}
 
-    Return ONLY a JSON object with these exact fields (no explanation, no markdown, just the JSON):
+    Return ONLY a JSON object with these exact fields (no explanation, no markdown, just pure JSON):
     {
       "affected_sectors": string[],
       "market_impact": string,
       "supply_chain_impact": string,
-      "market_sentiment": {"short_term": string, "long_term": string},
-      "stock_predictions": {"positive": string[], "negative": string[]},
-      "risk_level": "low" | "medium" | "high" | "critical"
-    }`;
+      "market_sentiment": {
+        "short_term": string,
+        "long_term": string
+      },
+      "stock_predictions": {
+        "positive": string[],
+        "negative": string[],
+        "confidence_scores": {
+          "overall_prediction": number,
+          "sector_impact": number,
+          "market_direction": number
+        }
+      },
+      "risk_level": "low" | "medium" | "high" | "critical",
+      "analysis_metadata": {
+        "confidence_factors": string[],
+        "uncertainty_factors": string[],
+        "data_quality_score": number
+      }
+    }
+
+    For confidence scores:
+    - Use numbers between 0 and 1 (e.g., 0.85 for 85% confidence)
+    - Base scores on historical precedents and data reliability
+    - Consider market volatility and uncertainty factors
+    - Account for geographical and sector-specific variables
+    - Weight recent similar events more heavily`;
 
     if (!perplexityApiKey) {
       throw new Error('Perplexity API key is not configured');
@@ -68,7 +93,7 @@ async function generateImpactAnalysis(event: any) {
         messages: [
           {
             role: 'system',
-            content: 'You are a JSON-only response bot. Only return valid JSON objects without any markdown, explanation, or formatting. Your response must be a single, parseable JSON object.'
+            content: 'You are a financial analysis AI that specializes in market impact predictions. Always return valid JSON with detailed analysis and confidence metrics. Never include markdown or explanations outside the JSON structure.'
           },
           {
             role: 'user',
@@ -102,11 +127,28 @@ async function generateImpactAnalysis(event: any) {
       const analysis = JSON.parse(cleanContent);
       console.log("Successfully parsed analysis:", analysis);
 
-      // Validate required fields
-      const requiredFields = ['affected_sectors', 'market_impact', 'supply_chain_impact', 'market_sentiment', 'stock_predictions', 'risk_level'];
+      // Validate required fields and structure
+      const requiredFields = [
+        'affected_sectors',
+        'market_impact',
+        'supply_chain_impact',
+        'market_sentiment',
+        'stock_predictions',
+        'risk_level',
+        'analysis_metadata'
+      ];
+
       for (const field of requiredFields) {
         if (!(field in analysis)) {
           throw new Error(`Missing required field: ${field}`);
+        }
+      }
+
+      // Validate confidence scores are between 0 and 1
+      const confidenceScores = analysis.stock_predictions.confidence_scores;
+      for (const [key, value] of Object.entries(confidenceScores)) {
+        if (typeof value !== 'number' || value < 0 || value > 1) {
+          throw new Error(`Invalid confidence score for ${key}: must be between 0 and 1`);
         }
       }
 
