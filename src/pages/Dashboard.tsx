@@ -145,28 +145,36 @@ const Dashboard = () => {
   const allEvents = [...realTimeEvents, ...(events || [])];
 
   return (
-    <div className="container px-4 pt-24 pb-20">
-      <DashboardHeader
-        isCreating={isCreating}
-        onOpenChange={setIsCreating}
-        view={view}
-        onViewChange={(v) => setView(v)}
-      />
-      
-      <EventFilters
-        eventType={eventType}
-        setEventType={setEventType}
-        severity={severity}
-        setSeverity={setSeverity}
-      />
+    <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90">
+      <div className="container px-4 pt-24 pb-20">
+        <div className="space-y-8 animate-fadeIn">
+          <DashboardHeader
+            isCreating={isCreating}
+            onOpenChange={setIsCreating}
+            view={view}
+            onViewChange={(v) => setView(v)}
+          />
+          
+          <div className="bg-card/40 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-accent/10 animate-slideUp [animation-delay:200ms]">
+            <EventFilters
+              eventType={eventType}
+              setEventType={setEventType}
+              severity={severity}
+              setSeverity={setSeverity}
+            />
+          </div>
 
-      <DashboardContent
-        view={view}
-        isLoading={isLoading}
-        events={allEvents}
-        userId={userId}
-        userPreferences={userPreferences}
-      />
+          <div className="animate-slideUp [animation-delay:400ms]">
+            <DashboardContent
+              view={view}
+              isLoading={isLoading}
+              events={allEvents}
+              userId={userId}
+              userPreferences={userPreferences}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

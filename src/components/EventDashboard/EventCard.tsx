@@ -81,14 +81,16 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
   const isRelevant = isRelevantToUser();
 
   return (
-    <Card className={`h-full hover:shadow-lg transition-shadow ${isRelevant ? 'ring-2 ring-primary' : ''}`}>
+    <Card className={`h-full hover:shadow-lg transition-all duration-300 ${
+      isRelevant ? 'ring-2 ring-primary' : ''
+    } bg-card/40 backdrop-blur-sm border-accent/10 hover:scale-[1.02] group`}>
       <EventCardHeader
         title={event.title}
         severity={event.severity}
         eventType={event.event_type}
         isRelevant={isRelevant}
       />
-      <CardContent>
+      <CardContent className="space-y-4">
         <EventCardDetails
           description={event.description}
           city={event.city}
@@ -97,13 +99,17 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
           affectedOrganizations={event.affected_organizations}
         />
         
-        {impactAnalysis && <ImpactAnalysis analysis={impactAnalysis} eventId={event.id} />}
+        {impactAnalysis && (
+          <div className="pt-2">
+            <ImpactAnalysis analysis={impactAnalysis} eventId={event.id} />
+          </div>
+        )}
       </CardContent>
       {event.source_url && (
         <CardFooter>
           <Button 
             variant="outline" 
-            className="w-full"
+            className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
             onClick={() => window.open(event.source_url, '_blank')}
           >
             <ExternalLink className="h-4 w-4 mr-2" />
