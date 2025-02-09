@@ -21,10 +21,18 @@ const Watchlist = ({ userId }: WatchlistProps) => {
       const { data: watches, error } = await supabase
         .from('user_stock_watches')
         .select(`
-          *,
+          id,
+          created_at,
+          status,
+          entry_price,
           stock_prediction:stock_predictions!stock_prediction_id (
-            *,
+            id,
+            symbol,
+            rationale,
+            is_positive,
+            target_price,
             event:events!event_id (
+              id,
               title,
               description,
               event_type,
@@ -38,7 +46,11 @@ const Watchlist = ({ userId }: WatchlistProps) => {
         .eq('status', 'WATCHING')
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching watches:', error);
+        throw error;
+      }
+      
       return watches;
     },
   });
@@ -52,7 +64,6 @@ const Watchlist = ({ userId }: WatchlistProps) => {
 
       if (error) throw error;
 
-      // Invalidate and refetch the watches query
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
 
       toast({
