@@ -5,45 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import EventFilters from "@/components/EventDashboard/EventFilters";
 import { RealtimeChannel } from "@supabase/supabase-js";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { Database } from "@/integrations/supabase/types";
-import CreateEventDialog from "@/components/EventDashboard/CreateEventDialog";
-import Watchlist from "@/components/EventDashboard/Watchlist";
-import EventsGrid from "@/components/EventDashboard/EventsGrid";
+import type { Event, EventType, SeverityLevel, TrackingPreferences } from "@/types/event";
 import { useToast } from "@/components/ui/use-toast";
-
-type Event = Database["public"]["Tables"]["events"]["Row"];
-type EventType = Database["public"]["Enums"]["event_type"];
-type SeverityLevel = Database["public"]["Enums"]["severity_level"];
-
-interface UserPreferences {
-  notifications?: {
-    email?: {
-      enabled: boolean;
-      highSeverity: boolean;
-      mediumSeverity: boolean;
-      lowSeverity: boolean;
-    };
-    sms?: {
-      enabled: boolean;
-      phoneNumber: string | null;
-      highSeverity: boolean;
-      mediumSeverity: boolean;
-      lowSeverity: boolean;
-    };
-  };
-  tracking?: {
-    industries: string[];
-    companies: string[];
-    event_types: string[];
-  };
-}
-
-interface TrackingPreferences {
-  industries?: string[];
-  companies?: string[];
-  event_types?: string[];
-}
+import DashboardHeader from "@/components/EventDashboard/DashboardHeader";
+import DashboardContent from "@/components/EventDashboard/DashboardContent";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -107,7 +72,6 @@ const Dashboard = () => {
             if (payload.eventType === "INSERT") {
               const newEvent = payload.new as Event;
               
-              // Trigger immediate analysis
               try {
                 const { data: analysis, error: analysisError } = await supabase.functions.invoke('analyze-event', {
                   body: { event_id: newEvent.id }
@@ -121,7 +85,6 @@ const Dashboard = () => {
                     variant: "destructive",
                   });
                 } else {
-                  // Update event with analysis
                   const updatedEvent = {
                     ...newEvent,
                     impact_analysis: analysis,
@@ -135,7 +98,6 @@ const Dashboard = () => {
                 }
               } catch (error) {
                 console.error("Error processing event:", error);
-                // Still show the event even if analysis fails
                 setRealTimeEvents((current) => [newEvent, ...current]);
               }
             }
@@ -153,7 +115,7 @@ const Dashboard = () => {
     };
   }, [toast]);
 
-  // Add this useEffect to fetch user preferences
+  // Fetch user preferences
   useEffect(() => {
     const fetchUserPreferences = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -165,7 +127,7 @@ const Dashboard = () => {
           .single();
         
         if (!error && data?.preferences) {
-          const prefs = data.preferences as UserPreferences;
+          const prefs = data.preferences;
           if (prefs.tracking) {
             setUserPreferences({
               industries: prefs.tracking.industries,
@@ -180,26 +142,16 @@ const Dashboard = () => {
     fetchUserPreferences();
   }, []);
 
-  // Combine fetched and real-time events
   const allEvents = [...realTimeEvents, ...(events || [])];
 
   return (
     <div className="container px-4 pt-24 pb-20">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8">
-        <h1 className="text-3xl font-bold">Event Dashboard</h1>
-        <div className="flex items-center gap-4">
-          <CreateEventDialog
-            isOpen={isCreating}
-            onOpenChange={setIsCreating}
-          />
-          <Tabs defaultValue={view} onValueChange={(v) => setView(v as "grid" | "watchlist")}>
-            <TabsList>
-              <TabsTrigger value="grid">Grid View</TabsTrigger>
-              <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
-            </TabsList>
-          </Tabs>
-        </div>
-      </div>
+      <DashboardHeader
+        isCreating={isCreating}
+        onOpenChange={setIsCreating}
+        view={view}
+        onViewChange={(v) => setView(v)}
+      />
       
       <EventFilters
         eventType={eventType}
@@ -208,28 +160,13 @@ const Dashboard = () => {
         setSeverity={setSeverity}
       />
 
-      {isLoading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-48 bg-muted animate-pulse rounded-lg"
-            />
-          ))}
-        </div>
-      ) : (
-        <Tabs defaultValue={view}>
-          <TabsContent value="grid">
-            <EventsGrid 
-              events={allEvents}
-              userPreferences={userPreferences}
-            />
-          </TabsContent>
-          <TabsContent value="watchlist">
-            {userId && <Watchlist userId={userId} />}
-          </TabsContent>
-        </Tabs>
-      )}
+      <DashboardContent
+        view={view}
+        isLoading={isLoading}
+        events={allEvents}
+        userId={userId}
+        userPreferences={userPreferences}
+      />
     </div>
   );
 };
