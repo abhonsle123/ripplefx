@@ -9,6 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useQueryClient } from "@tanstack/react-query";
 
 type EventType = Database["public"]["Enums"]["event_type"];
 type SeverityLevel = Database["public"]["Enums"]["severity_level"];
@@ -20,6 +21,8 @@ interface CreateEventDialogProps {
 
 const CreateEventDialog = ({ isOpen, onOpenChange }: CreateEventDialogProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [isProcessing, setIsProcessing] = useState(false);
   const [newEvent, setNewEvent] = useState({
     title: "",
     description: "",
@@ -31,14 +34,38 @@ const CreateEventDialog = ({ isOpen, onOpenChange }: CreateEventDialogProps) => 
 
   const handleCreateEvent = async () => {
     try {
-      const { error } = await supabase.from("events").insert([newEvent]);
+      setIsProcessing(true);
       
-      if (error) throw error;
+      // First, create the event
+      const { data: createdEvent, error: createError } = await supabase
+        .from("events")
+        .insert([newEvent])
+        .select()
+        .single();
+      
+      if (createError) throw createError;
 
-      toast({
-        title: "Event created successfully",
-        description: "The new event has been added to the dashboard.",
+      // Then trigger the analysis
+      const { error: analysisError } = await supabase.functions.invoke('analyze-event', {
+        body: { event_id: createdEvent.id }
       });
+
+      if (analysisError) {
+        console.error("Analysis error:", analysisError);
+        toast({
+          title: "Event created",
+          description: "Event was created but analysis failed. Please try refreshing.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Event created",
+          description: "Event has been created and analyzed successfully.",
+        });
+      }
+
+      // Invalidate the events query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["events"] });
 
       onOpenChange(false);
       setNewEvent({
@@ -56,6 +83,8 @@ const CreateEventDialog = ({ isOpen, onOpenChange }: CreateEventDialogProps) => 
         description: "There was an error creating the event. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -136,8 +165,12 @@ const CreateEventDialog = ({ isOpen, onOpenChange }: CreateEventDialogProps) => 
               placeholder="Country"
             />
           </div>
-          <Button onClick={handleCreateEvent} className="mt-2">
-            Create Event
+          <Button 
+            onClick={handleCreateEvent} 
+            className="mt-2"
+            disabled={isProcessing}
+          >
+            {isProcessing ? "Creating Event..." : "Create Event"}
           </Button>
         </div>
       </DialogContent>
@@ -146,3 +179,4 @@ const CreateEventDialog = ({ isOpen, onOpenChange }: CreateEventDialogProps) => 
 };
 
 export default CreateEventDialog;
+
