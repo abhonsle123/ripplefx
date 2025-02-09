@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import EventFilters from "@/components/EventDashboard/EventFilters";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import type { Event, EventType, SeverityLevel, TrackingPreferences } from "@/types/event";
@@ -13,6 +13,7 @@ import DashboardContent from "@/components/EventDashboard/DashboardContent";
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
   const [severity, setSeverity] = useState<SeverityLevel | "ALL">("ALL");
   const [view, setView] = useState<"grid" | "watchlist">("grid");
@@ -90,7 +91,7 @@ const Dashboard = () => {
         supabase.removeChannel(channel);
       }
     };
-  }, [events]);
+  }, [events, queryClient]);
 
   // Fetch user preferences
   useEffect(() => {
@@ -155,3 +156,4 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
+
