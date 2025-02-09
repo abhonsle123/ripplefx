@@ -53,13 +53,13 @@ serve(async (req) => {
       2. Detailed impact analysis considering market trends and sentiment
       3. Confidence score (between 0 and 1)
       
-      Format your response as a JSON object with these exact keys:
+      Format your response exactly like this JSON:
       {
         "price_change_percentage": number,
         "price_impact_analysis": {
-          "summary": string,
-          "factors": string[],
-          "risks": string[]
+          "summary": "string",
+          "factors": ["string"],
+          "risks": ["string"]
         },
         "confidence_score": number
       }`;
@@ -75,7 +75,7 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a financial analyst specializing in predicting stock price movements based on events. Provide specific numerical predictions and detailed analysis.'
+            content: 'You are a financial analyst specializing in predicting stock price movements based on events. Always respond with valid JSON.'
           },
           {
             role: 'user',
@@ -86,8 +86,31 @@ serve(async (req) => {
       }),
     });
 
+    if (!response.ok) {
+      throw new Error(`Perplexity API returned ${response.status}`);
+    }
+
     const data = await response.json();
-    const analysis = JSON.parse(data.choices[0].message.content);
+    
+    // Ensure we're getting a string response
+    const content = data.choices[0].message.content.trim();
+    console.log('Raw Perplexity response:', content);
+    
+    // Safely parse the JSON response
+    let analysis;
+    try {
+      // If the response contains markdown backticks, remove them
+      const cleanContent = content.replace(/```json\n|\n```|```/g, '');
+      analysis = JSON.parse(cleanContent);
+    } catch (e) {
+      console.error('JSON parsing error:', e);
+      throw new Error('Failed to parse Perplexity response as JSON');
+    }
+
+    // Validate the analysis structure
+    if (!analysis.price_change_percentage || !analysis.price_impact_analysis || !analysis.confidence_score) {
+      throw new Error('Invalid analysis structure from Perplexity');
+    }
 
     // Update stock prediction with the analysis
     const { error: updateError } = await supabase
