@@ -130,30 +130,42 @@ export type Database = {
       }
       stock_predictions: {
         Row: {
+          confidence_score: number | null
           created_at: string
           event_id: string | null
           id: string
           is_positive: boolean
+          last_analysis_date: string | null
+          price_change_percentage: number | null
+          price_impact_analysis: Json | null
           rationale: string
           symbol: string
           target_price: number | null
           updated_at: string
         }
         Insert: {
+          confidence_score?: number | null
           created_at?: string
           event_id?: string | null
           id?: string
           is_positive: boolean
+          last_analysis_date?: string | null
+          price_change_percentage?: number | null
+          price_impact_analysis?: Json | null
           rationale: string
           symbol: string
           target_price?: number | null
           updated_at?: string
         }
         Update: {
+          confidence_score?: number | null
           created_at?: string
           event_id?: string | null
           id?: string
           is_positive?: boolean
+          last_analysis_date?: string | null
+          price_change_percentage?: number | null
+          price_impact_analysis?: Json | null
           rationale?: string
           symbol?: string
           target_price?: number | null

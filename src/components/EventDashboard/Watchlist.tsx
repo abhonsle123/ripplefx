@@ -1,7 +1,7 @@
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight } from "lucide-react";
+import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,6 +31,10 @@ const Watchlist = ({ userId }: WatchlistProps) => {
             rationale,
             is_positive,
             target_price,
+            price_change_percentage,
+            price_impact_analysis,
+            confidence_score,
+            last_analysis_date,
             event:events!stock_predictions_event_id_fkey (
               id,
               title,
@@ -52,6 +56,33 @@ const Watchlist = ({ userId }: WatchlistProps) => {
       }
       
       return watches;
+    },
+  });
+
+  const analyzePriceMutation = useMutation({
+    mutationFn: async (stockPredictionId: string) => {
+      const response = await fetch('/api/analyze-stock-price', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stock_prediction_id: stockPredictionId }),
+      });
+      if (!response.ok) throw new Error('Failed to analyze stock price');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
+      toast({
+        title: "Analysis Updated",
+        description: "The stock price prediction has been updated.",
+      });
+    },
+    onError: (error) => {
+      console.error('Error analyzing stock:', error);
+      toast({
+        title: "Error",
+        description: "Failed to analyze stock price. Please try again.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -117,6 +148,12 @@ const Watchlist = ({ userId }: WatchlistProps) => {
             ).join(', ')
           : 'No organizations listed';
 
+        const priceChangeColor = stock.price_change_percentage
+          ? stock.price_change_percentage > 0
+            ? 'text-green-600'
+            : 'text-red-600'
+          : 'text-muted-foreground';
+
         return (
           <Card key={watch.id} className="border-l-4 hover:shadow-lg transition-shadow duration-200"
                 style={{ borderLeftColor: stock.is_positive ? '#22c55e' : '#ef4444' }}>
@@ -129,14 +166,25 @@ const Watchlist = ({ userId }: WatchlistProps) => {
                 )}
                 {stock.symbol}
               </CardTitle>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => handleUnwatch(watch.id)}
-                className="hover:bg-red-100 hover:text-red-600"
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => analyzePriceMutation.mutate(stock.id)}
+                  disabled={analyzePriceMutation.isPending}
+                  className="hover:bg-blue-100 hover:text-blue-600"
+                >
+                  <RefreshCw className={`h-4 w-4 ${analyzePriceMutation.isPending ? 'animate-spin' : ''}`} />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleUnwatch(watch.id)}
+                  className="hover:bg-red-100 hover:text-red-600"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+              </div>
             </CardHeader>
             
             <CardContent className="space-y-4">
@@ -144,10 +192,17 @@ const Watchlist = ({ userId }: WatchlistProps) => {
                 <div className="space-y-2">
                   <h3 className="text-sm font-medium text-muted-foreground">Prediction Details</h3>
                   <p className="text-sm">{stock.rationale}</p>
-                  {stock.target_price && (
-                    <p className="text-sm font-medium">
-                      Target Price: ${stock.target_price}
-                    </p>
+                  {stock.price_change_percentage && (
+                    <div className="space-y-1">
+                      <p className={`text-sm font-medium ${priceChangeColor}`}>
+                        Expected Price Change: {stock.price_change_percentage > 0 ? '+' : ''}{stock.price_change_percentage.toFixed(2)}%
+                      </p>
+                      {stock.confidence_score && (
+                        <p className="text-sm text-muted-foreground">
+                          Confidence: {(stock.confidence_score * 100).toFixed(1)}%
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
                 
@@ -155,6 +210,18 @@ const Watchlist = ({ userId }: WatchlistProps) => {
                   <h3 className="text-sm font-medium text-muted-foreground">Event Information</h3>
                   <p className="text-sm font-medium">{event.title}</p>
                   <p className="text-sm">{event.description}</p>
+                  {stock.price_impact_analysis && (
+                    <div className="mt-2 space-y-1">
+                      <p className="text-sm">{stock.price_impact_analysis.summary}</p>
+                      {stock.price_impact_analysis.factors && (
+                        <ul className="text-sm list-disc list-inside">
+                          {stock.price_impact_analysis.factors.slice(0, 2).map((factor, i) => (
+                            <li key={i} className="text-muted-foreground">{factor}</li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
