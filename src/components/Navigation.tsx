@@ -9,14 +9,22 @@ const Navigation = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
+  const [scrolled, setScrolled] = useState(false);
   
   useEffect(() => {
-    // Get initial session
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 10);
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
     });
 
-    // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
@@ -36,7 +44,9 @@ const Navigation = () => {
   };
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 bg-secondary/95 backdrop-blur-sm border-b border-border">
+    <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      scrolled ? 'bg-background/95 backdrop-blur-sm shadow-lg' : 'bg-transparent'
+    }`}>
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-8">
@@ -109,10 +119,10 @@ const Navigation = () => {
           <div className="flex items-center gap-4">
             {user ? (
               <>
-                <Button onClick={() => navigate("/profile")} variant="outline" className="hidden md:inline-flex">
+                <Button onClick={() => navigate("/profile")} variant="outline" className="hidden md:inline-flex hover:bg-primary hover:text-primary-foreground">
                   Profile
                 </Button>
-                <Button onClick={handleSignOut} variant="outline" className="hidden md:inline-flex">
+                <Button onClick={handleSignOut} variant="outline" className="hidden md:inline-flex hover:bg-primary hover:text-primary-foreground">
                   Sign Out
                 </Button>
               </>
@@ -120,15 +130,18 @@ const Navigation = () => {
               <>
                 <Button
                   variant="outline"
-                  className="hidden md:inline-flex"
+                  className="hidden md:inline-flex hover:bg-primary hover:text-primary-foreground"
                   onClick={() => navigate("/auth")}
                 >
                   Sign In
                 </Button>
-                <Button onClick={() => {
-                  navigate("/auth");
-                  localStorage.setItem("authMode", "signup");
-                }}>
+                <Button 
+                  className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  onClick={() => {
+                    navigate("/auth");
+                    localStorage.setItem("authMode", "signup");
+                  }}
+                >
                   Get Started
                 </Button>
               </>
