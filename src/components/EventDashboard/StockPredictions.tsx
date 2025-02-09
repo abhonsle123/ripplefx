@@ -23,7 +23,21 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
 
   const handleWatchStock = async (stock: StockPrediction, isPositive: boolean, index: number) => {
     try {
-      // First get the stock prediction ID
+      // First get the current user
+      const { data: { session }, error: authError } = await supabase.auth.getSession();
+      if (authError) throw authError;
+      if (!session?.user) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to watch stocks.",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Fetching prediction for:', { eventId, symbol: stock.symbol, isPositive });
+
+      // Get the stock prediction ID
       const { data: predictions, error: fetchError } = await supabase
         .from('stock_predictions')
         .select('id')
@@ -50,6 +64,7 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
         .from('user_stock_watches')
         .insert([{ 
           stock_prediction_id: predictionId,
+          user_id: session.user.id,
           status: 'WATCHING'
         }]);
 
@@ -149,4 +164,3 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
 };
 
 export default StockPredictions;
-
