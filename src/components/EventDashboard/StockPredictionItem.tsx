@@ -27,7 +27,8 @@ const StockPredictionItem = ({
   const hoverClass = isPositive ? "hover:bg-green-50" : "hover:bg-red-50";
 
   // Extract just the ticker symbol from any potential company name
-  const tickerSymbol = stock.symbol.split(' ')[0]; // Take first word which should be the ticker
+  // Add null check and provide a fallback empty string
+  const tickerSymbol = stock.symbol ? stock.symbol.split(' ')[0] : '';
 
   return (
     <div className="flex gap-2">
@@ -56,4 +57,3 @@ const StockPredictionItem = ({
 };
 
 export default StockPredictionItem;
-
