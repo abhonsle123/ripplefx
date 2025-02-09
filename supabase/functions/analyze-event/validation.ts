@@ -10,8 +10,8 @@ export function validateAndNormalizeAnalysis(analysis: any): ImpactAnalysis {
   // Validate and normalize stock predictions
   if (!analysis.stock_predictions) {
     analysis.stock_predictions = {
-      positive: ['Default Stock 1'],
-      negative: ['Default Stock 1'],
+      positive: [{ symbol: 'SPY', rationale: 'Default prediction' }],
+      negative: [{ symbol: 'VIX', rationale: 'Default prediction' }],
       confidence_scores: {
         overall_prediction: 0.5,
         sector_impact: 0.5,
@@ -20,18 +20,39 @@ export function validateAndNormalizeAnalysis(analysis: any): ImpactAnalysis {
     };
   }
 
-  // Ensure between 1 and 3 stocks for positive predictions
-  if (!Array.isArray(analysis.stock_predictions.positive) || 
-      analysis.stock_predictions.positive.length < 1 ||
-      analysis.stock_predictions.positive.length > 3) {
-    analysis.stock_predictions.positive = ['Default Stock 1'];
+  // Ensure proper stock predictions format and normalize symbols
+  const normalizeStockPredictions = (predictions: any[]) => {
+    if (!Array.isArray(predictions)) return [];
+    return predictions
+      .filter(p => p && typeof p.symbol === 'string' && p.symbol.trim() !== '')
+      .map(p => ({
+        ...p,
+        symbol: p.symbol.split(' ')[0].toUpperCase(), // Extract and uppercase the ticker
+        rationale: typeof p.rationale === 'string' ? p.rationale : 'No rationale provided'
+      }))
+      .slice(0, 3); // Limit to max 3 predictions
+  };
+
+  // Normalize positive predictions
+  analysis.stock_predictions.positive = normalizeStockPredictions(
+    analysis.stock_predictions.positive
+  );
+  if (analysis.stock_predictions.positive.length === 0) {
+    analysis.stock_predictions.positive = [{ 
+      symbol: 'SPY',
+      rationale: 'Default positive prediction'
+    }];
   }
 
-  // Ensure between 1 and 3 stocks for negative predictions
-  if (!Array.isArray(analysis.stock_predictions.negative) || 
-      analysis.stock_predictions.negative.length < 1 ||
-      analysis.stock_predictions.negative.length > 3) {
-    analysis.stock_predictions.negative = ['Default Stock 1'];
+  // Normalize negative predictions
+  analysis.stock_predictions.negative = normalizeStockPredictions(
+    analysis.stock_predictions.negative
+  );
+  if (analysis.stock_predictions.negative.length === 0) {
+    analysis.stock_predictions.negative = [{
+      symbol: 'VIX',
+      rationale: 'Default negative prediction'
+    }];
   }
 
   // Validate confidence scores

@@ -20,7 +20,13 @@ export function formatAffectedOrganizations(organizations: any): string {
 export function buildPrompt(event: any): string {
   const affectedOrgsString = formatAffectedOrganizations(event.affected_organizations);
 
-  return `Analyze this event and provide a comprehensive market impact analysis. Consider all of the following factors when predicting stock movements and market impact:
+  return `Analyze this event and provide a comprehensive market impact analysis. For stock predictions, you MUST:
+    1. Use only official stock ticker symbols (e.g., 'AAPL' not 'Apple Inc.')
+    2. Ensure each prediction is backed by specific market impact factors
+    3. Focus on stocks with direct exposure to the event
+    4. Consider both primary and secondary effects on stock prices
+
+    Consider all of the following factors when predicting stock movements and market impact:
 
     1. Event-Specific Factors:
        - Event type and characteristics
@@ -70,14 +76,14 @@ export function buildPrompt(event: any): string {
       "stock_predictions": {
         "positive": [
           {
-            "symbol": "",
-            "rationale": ""
+            "symbol": "TICKER",
+            "rationale": "Clear explanation of positive impact"
           }
         ],
         "negative": [
           {
-            "symbol": "",
-            "rationale": ""
+            "symbol": "TICKER",
+            "rationale": "Clear explanation of negative impact"
           }
         ],
         "confidence_scores": {
@@ -101,19 +107,13 @@ export function buildPrompt(event: any): string {
     Affected Organizations: ${affectedOrgsString}
     Severity: ${event.severity || 'Unknown'}
     
-    Analysis Guidelines:
-    - For each stock prediction:
-      * Consider market liquidity and trading volumes
-      * Evaluate short interest and potential squeeze scenarios
-      * Account for upcoming earnings or corporate events
-      * Assess technical analysis indicators
-      * Factor in institutional positioning
-    
-    - For sentiment assessment:
-      * Analyze news and social media sentiment
-      * Consider regulatory and policy implications
-      * Evaluate interest rate and inflation impacts
-      * Monitor institutional money flows
-      * Track market risk appetite indicators
-      * Assess broader market technical factors`;
+    IMPORTANT GUIDELINES FOR STOCK PREDICTIONS:
+    - Use ONLY official exchange ticker symbols (e.g., 'TSLA', 'AAPL', 'MSFT')
+    - Never include company names in the symbol field
+    - Provide detailed rationale explaining direct causation between event and stock impact
+    - Consider market liquidity and trading volumes
+    - Evaluate short interest and potential squeeze scenarios
+    - Account for upcoming earnings or corporate events
+    - Assess technical analysis indicators
+    - Factor in institutional positioning`;
 }
