@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw } from "lucide-react";
@@ -90,7 +89,16 @@ const Watchlist = ({ userId }: WatchlistProps) => {
         throw error;
       }
       
-      return watches as StockWatch[];
+      // Transform the data to ensure proper typing of JSON fields
+      const typedWatches = watches?.map(watch => ({
+        ...watch,
+        stock_prediction: {
+          ...watch.stock_prediction,
+          price_impact_analysis: watch.stock_prediction.price_impact_analysis as PriceImpactAnalysis
+        }
+      })) as StockWatch[];
+      
+      return typedWatches;
     },
   });
 
