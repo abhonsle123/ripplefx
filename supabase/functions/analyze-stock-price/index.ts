@@ -40,29 +40,29 @@ serve(async (req) => {
     if (!prediction) throw new Error('Stock prediction not found');
 
     const event = prediction.events;
-    const prompt = `Analyze the potential stock price impact for ${prediction.symbol} based on this event:
-      Event: ${event.title}
-      Description: ${event.description}
-      Type: ${event.event_type}
-      Severity: ${event.severity}
-      Current Prediction: ${prediction.is_positive ? 'Positive' : 'Negative'} impact expected
-      Rationale: ${prediction.rationale}
+    const prompt = `Analyze the stock price impact for ${prediction.symbol} based on this event:
 
-      Please provide:
-      1. Expected percentage change in stock price (a specific number)
-      2. Detailed impact analysis considering market trends and sentiment
-      3. Confidence score (between 0 and 1)
-      
-      Format your response exactly like this JSON:
-      {
-        "price_change_percentage": number,
-        "price_impact_analysis": {
-          "summary": "string",
-          "factors": ["string"],
-          "risks": ["string"]
-        },
-        "confidence_score": number
-      }`;
+Event: ${event.title}
+Description: ${event.description}
+Type: ${event.event_type}
+Severity: ${event.severity}
+Current Prediction: ${prediction.is_positive ? 'Positive' : 'Negative'} impact expected
+Rationale: ${prediction.rationale}
+
+Return a JSON object with these exact fields:
+{
+  "price_change_percentage": (a number between -100 and 100),
+  "price_impact_analysis": {
+    "summary": "a brief analysis summary",
+    "factors": ["list", "of", "key", "factors"],
+    "risks": ["list", "of", "key", "risks"]
+  },
+  "confidence_score": (a number between 0 and 1)
+}
+
+Only return the JSON object, no other text or formatting.`;
+
+    console.log('Sending prompt to Perplexity:', prompt);
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -75,42 +75,65 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: 'You are a financial analyst specializing in predicting stock price movements based on events. Always respond with valid JSON.'
+            content: 'You are a financial analyst. Always respond with only a valid JSON object, no markdown formatting or additional text.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.2
+        temperature: 0.1,
+        max_tokens: 1000,
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Perplexity API returned ${response.status}`);
+      console.error('Perplexity API error:', await response.text());
+      throw new Error(`Perplexity API error: ${response.status}`);
     }
 
     const data = await response.json();
-    
-    // Ensure we're getting a string response
-    const content = data.choices[0].message.content.trim();
-    console.log('Raw Perplexity response:', content);
-    
-    // Safely parse the JSON response
+    console.log('Raw Perplexity response:', JSON.stringify(data.choices[0].message.content, null, 2));
+
     let analysis;
     try {
-      // If the response contains markdown backticks, remove them
+      const content = data.choices[0].message.content.trim();
+      // Remove any potential JSON code block markers
       const cleanContent = content.replace(/```json\n|\n```|```/g, '');
       analysis = JSON.parse(cleanContent);
     } catch (e) {
-      console.error('JSON parsing error:', e);
+      console.error('JSON parsing error:', e, 'Content:', data.choices[0].message.content);
       throw new Error('Failed to parse Perplexity response as JSON');
     }
 
-    // Validate the analysis structure
-    if (!analysis.price_change_percentage || !analysis.price_impact_analysis || !analysis.confidence_score) {
-      throw new Error('Invalid analysis structure from Perplexity');
+    // Validate and normalize the analysis structure
+    if (!analysis || typeof analysis !== 'object') {
+      throw new Error('Invalid analysis: not an object');
     }
+
+    // Ensure all required fields exist and are of correct type
+    if (typeof analysis.price_change_percentage !== 'number') {
+      throw new Error('Invalid price_change_percentage: must be a number');
+    }
+    if (typeof analysis.confidence_score !== 'number') {
+      throw new Error('Invalid confidence_score: must be a number');
+    }
+    if (!analysis.price_impact_analysis || typeof analysis.price_impact_analysis !== 'object') {
+      throw new Error('Invalid price_impact_analysis: must be an object');
+    }
+    if (typeof analysis.price_impact_analysis.summary !== 'string') {
+      throw new Error('Invalid summary: must be a string');
+    }
+    if (!Array.isArray(analysis.price_impact_analysis.factors)) {
+      throw new Error('Invalid factors: must be an array');
+    }
+    if (!Array.isArray(analysis.price_impact_analysis.risks)) {
+      throw new Error('Invalid risks: must be an array');
+    }
+
+    // Normalize values
+    analysis.price_change_percentage = Math.max(-100, Math.min(100, analysis.price_change_percentage));
+    analysis.confidence_score = Math.max(0, Math.min(1, analysis.confidence_score));
 
     // Update stock prediction with the analysis
     const { error: updateError } = await supabase
