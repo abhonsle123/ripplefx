@@ -31,7 +31,7 @@ const Watchlist = ({ userId }: WatchlistProps) => {
             rationale,
             is_positive,
             target_price,
-            event:events!event_id (
+            event:events!stock_predictions_event_id_fkey (
               id,
               title,
               description,
