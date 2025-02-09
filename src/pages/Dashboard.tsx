@@ -127,7 +127,7 @@ const Dashboard = () => {
           .single();
         
         if (!error && data?.preferences) {
-          const prefs = data.preferences;
+          const prefs = data.preferences as { tracking?: { industries: string[]; companies: string[]; event_types: string[]; } };
           if (prefs.tracking) {
             setUserPreferences({
               industries: prefs.tracking.industries,

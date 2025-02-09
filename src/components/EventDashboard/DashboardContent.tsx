@@ -1,6 +1,6 @@
 
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import type { Event } from "@/types/event";
+import type { Event, TrackingPreferences } from "@/types/event";
 import EventsGrid from "./EventsGrid";
 import Watchlist from "./Watchlist";
 
@@ -9,11 +9,7 @@ interface DashboardContentProps {
   isLoading: boolean;
   events: Event[];
   userId: string | null;
-  userPreferences: {
-    industries?: string[];
-    companies?: string[];
-    event_types?: string[];
-  } | null;
+  userPreferences: TrackingPreferences | null;
 }
 
 const DashboardContent = ({ 

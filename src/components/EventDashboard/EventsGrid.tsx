@@ -1,16 +1,10 @@
 
-import type { Database } from "@/integrations/supabase/types";
+import type { Event, TrackingPreferences } from "@/types/event";
 import EventCard from "./EventCard";
-
-type Event = Database["public"]["Tables"]["events"]["Row"];
 
 interface EventsGridProps {
   events: Event[];
-  userPreferences: {
-    industries?: string[];
-    companies?: string[];
-    event_types?: string[];
-  } | null;
+  userPreferences: TrackingPreferences | null;
 }
 
 const EventsGrid = ({ events, userPreferences }: EventsGridProps) => {
