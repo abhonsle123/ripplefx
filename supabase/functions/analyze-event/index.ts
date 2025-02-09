@@ -52,7 +52,7 @@ serve(async (req) => {
 
     const analysis = await generateAnalysis(event);
 
-    // Store stock predictions
+    // Store stock predictions with proper error handling
     if (analysis.stock_predictions) {
       const predictions = [
         ...(analysis.stock_predictions.positive || []).map(pred => ({
@@ -60,26 +60,31 @@ serve(async (req) => {
           symbol: pred.symbol,
           rationale: pred.rationale,
           is_positive: true,
-          target_price: null // To be implemented in future enhancement
+          target_price: null
         })),
         ...(analysis.stock_predictions.negative || []).map(pred => ({
           event_id,
           symbol: pred.symbol,
           rationale: pred.rationale,
           is_positive: false,
-          target_price: null // To be implemented in future enhancement
+          target_price: null
         }))
       ];
 
       if (predictions.length > 0) {
         const { error: predictionError } = await supabase
           .from('stock_predictions')
-          .insert(predictions);
+          .upsert(predictions, {
+            onConflict: 'event_id,symbol',
+            ignoreDuplicates: false
+          });
 
         if (predictionError) {
           console.error("Error storing predictions:", predictionError);
           throw predictionError;
         }
+        
+        console.log("Successfully stored predictions:", predictions);
       }
     }
 
@@ -112,3 +117,4 @@ serve(async (req) => {
     });
   }
 });
+

@@ -32,19 +32,31 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
         .eq('is_positive', isPositive)
         .limit(1);
 
-      if (fetchError) throw fetchError;
+      if (fetchError) {
+        console.error('Error fetching prediction:', fetchError);
+        throw fetchError;
+      }
+
       if (!predictions || predictions.length === 0) {
+        console.error('No prediction found for:', { eventId, symbol: stock.symbol, isPositive });
         throw new Error('Stock prediction not found');
       }
 
       const predictionId = predictions[0].id;
+      console.log('Found prediction ID:', predictionId);
 
       // Create a watch for this stock
       const { error: watchError } = await supabase
         .from('user_stock_watches')
-        .insert([{ stock_prediction_id: predictionId }]);
+        .insert([{ 
+          stock_prediction_id: predictionId,
+          status: 'WATCHING'
+        }]);
 
-      if (watchError) throw watchError;
+      if (watchError) {
+        console.error('Error creating watch:', watchError);
+        throw watchError;
+      }
 
       setWatchingStocks(prev => [...prev, stock.symbol]);
       toast({
@@ -71,7 +83,7 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
           </div>
           <div className="mt-1 space-y-2">
             {positive.slice(0, 3).map((stock, index) => (
-              <div key={stock.symbol} className="flex gap-2">
+              <div key={`${stock.symbol}-${index}`} className="flex gap-2">
                 <span className="text-sm text-muted-foreground w-6 pt-2">
                   {index + 1}
                 </span>
@@ -106,7 +118,7 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
           </div>
           <div className="mt-1 space-y-2">
             {negative.slice(0, 3).map((stock, index) => (
-              <div key={stock.symbol} className="flex gap-2">
+              <div key={`${stock.symbol}-${index}`} className="flex gap-2">
                 <span className="text-sm text-muted-foreground w-6 pt-2">
                   {index + 4}
                 </span>
@@ -137,3 +149,4 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
 };
 
 export default StockPredictions;
+
