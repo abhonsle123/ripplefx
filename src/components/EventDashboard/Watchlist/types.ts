@@ -1,5 +1,9 @@
 
-import { PriceImpactAnalysis } from "./StockPredictionTypes";
+export interface PriceImpactAnalysis {
+  summary: string;
+  factors: string[];
+  risks: string[];
+}
 
 export interface StockPrediction {
   id: string;
