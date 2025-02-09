@@ -35,7 +35,12 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
         return;
       }
 
-      console.log('Fetching prediction for:', { eventId, symbol: stock.symbol, isPositive });
+      console.log('Watching stock with params:', { 
+        eventId, 
+        symbol: stock.symbol, 
+        isPositive,
+        userId: session.user.id 
+      });
 
       // Get the stock prediction ID
       const { data: predictions, error: fetchError } = await supabase
@@ -44,26 +49,35 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
         .eq('event_id', eventId)
         .eq('symbol', stock.symbol)
         .eq('is_positive', isPositive)
-        .limit(1);
+        .single();
 
       if (fetchError) {
         console.error('Error fetching prediction:', fetchError);
         throw fetchError;
       }
 
-      if (!predictions || predictions.length === 0) {
+      if (!predictions) {
         console.error('No prediction found for:', { eventId, symbol: stock.symbol, isPositive });
+        
+        // Let's log the current predictions in the database for debugging
+        const { data: allPredictions, error: debugError } = await supabase
+          .from('stock_predictions')
+          .select('*')
+          .eq('event_id', eventId);
+          
+        console.log('All predictions for this event:', allPredictions);
+        if (debugError) console.error('Debug query error:', debugError);
+        
         throw new Error('Stock prediction not found');
       }
 
-      const predictionId = predictions[0].id;
-      console.log('Found prediction ID:', predictionId);
+      console.log('Found prediction:', predictions);
 
       // Create a watch for this stock
       const { error: watchError } = await supabase
         .from('user_stock_watches')
         .insert([{ 
-          stock_prediction_id: predictionId,
+          stock_prediction_id: predictions.id,
           user_id: session.user.id,
           status: 'WATCHING'
         }]);
