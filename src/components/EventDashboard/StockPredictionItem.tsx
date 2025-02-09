@@ -23,20 +23,22 @@ const StockPredictionItem = ({
   onWatchClick,
 }: StockPredictionItemProps) => {
   const Icon = isPositive ? TrendingUp : TrendingDown;
-  const colorClass = isPositive ? "text-green-600" : "text-red-600";
-  const hoverClass = isPositive ? "hover:bg-green-50" : "hover:bg-red-50";
+  const colorClass = isPositive ? "text-green-500" : "text-red-500";
+  const hoverClass = isPositive 
+    ? "hover:bg-green-500/10 group-hover:bg-green-500/10" 
+    : "hover:bg-red-500/10 group-hover:bg-red-500/10";
 
   return (
-    <div className="flex gap-2">
-      <span className="text-sm text-muted-foreground w-6 pt-2">
-        {index + (isPositive ? 1 : 4)}
-      </span>
+    <div className="flex items-center gap-2 group">
       <Button
-        variant="outline"
-        className={`flex-1 text-left justify-start text-xs ${hoverClass}`}
+        variant="ghost"
+        className={`flex-1 justify-start text-sm font-medium ${hoverClass} h-9`}
         onClick={() => onStockClick(stock, isPositive)}
       >
-        <Icon className={`h-3 w-3 mr-2 ${colorClass}`} />
+        <span className="text-muted-foreground mr-2 w-4">
+          {index + (isPositive ? 1 : 4)}
+        </span>
+        <Icon className={`h-4 w-4 mr-2 ${colorClass}`} />
         {stock.symbol}
       </Button>
       <Button
@@ -44,7 +46,7 @@ const StockPredictionItem = ({
         size="sm"
         disabled={isWatching || isProcessing}
         onClick={() => onWatchClick(stock, isPositive, index)}
-        className="px-2"
+        className={`px-2 h-9 ${hoverClass}`}
       >
         <Eye className={`h-4 w-4 ${isProcessing ? 'animate-pulse' : ''}`} />
       </Button>
