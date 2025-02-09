@@ -12,6 +12,7 @@ interface StockPrediction {
 }
 
 interface ImpactAnalysisProps {
+  eventId: string;
   analysis: {
     affected_sectors: string[];
     stock_predictions?: {
@@ -29,7 +30,7 @@ interface ImpactAnalysisProps {
   };
 }
 
-const ImpactAnalysis = ({ analysis }: ImpactAnalysisProps) => {
+const ImpactAnalysis = ({ eventId, analysis }: ImpactAnalysisProps) => {
   const [selectedStock, setSelectedStock] = useState<StockPrediction | null>(null);
   const [isPositive, setIsPositive] = useState(false);
 
@@ -58,6 +59,7 @@ const ImpactAnalysis = ({ analysis }: ImpactAnalysisProps) => {
       {analysis.stock_predictions && (
         <>
           <StockPredictions
+            eventId={eventId}
             positive={analysis.stock_predictions.positive}
             negative={analysis.stock_predictions.negative}
             onStockClick={handleStockClick}

@@ -52,6 +52,37 @@ serve(async (req) => {
 
     const analysis = await generateAnalysis(event);
 
+    // Store stock predictions
+    if (analysis.stock_predictions) {
+      const predictions = [
+        ...(analysis.stock_predictions.positive || []).map(pred => ({
+          event_id,
+          symbol: pred.symbol,
+          rationale: pred.rationale,
+          is_positive: true,
+          target_price: null // To be implemented in future enhancement
+        })),
+        ...(analysis.stock_predictions.negative || []).map(pred => ({
+          event_id,
+          symbol: pred.symbol,
+          rationale: pred.rationale,
+          is_positive: false,
+          target_price: null // To be implemented in future enhancement
+        }))
+      ];
+
+      if (predictions.length > 0) {
+        const { error: predictionError } = await supabase
+          .from('stock_predictions')
+          .insert(predictions);
+
+        if (predictionError) {
+          console.error("Error storing predictions:", predictionError);
+          throw predictionError;
+        }
+      }
+    }
+
     // Update the event with the impact analysis
     const { error: updateError } = await supabase
       .from('events')

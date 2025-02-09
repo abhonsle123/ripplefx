@@ -97,7 +97,7 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
           affectedOrganizations={event.affected_organizations}
         />
         
-        {impactAnalysis && <ImpactAnalysis analysis={impactAnalysis} />}
+        {impactAnalysis && <ImpactAnalysis analysis={impactAnalysis} eventId={event.id} />}
       </CardContent>
       {event.source_url && (
         <CardFooter>
@@ -116,4 +116,3 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
 };
 
 export default EventCard;
-
