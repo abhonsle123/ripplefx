@@ -115,13 +115,11 @@ const Watchlist = ({ userId }: WatchlistProps) => {
 
   const analyzePriceMutation = useMutation({
     mutationFn: async (stockPredictionId: string) => {
-      const response = await fetch('/api/analyze-stock-price', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stock_prediction_id: stockPredictionId }),
+      const { data, error } = await supabase.functions.invoke('analyze-stock-price', {
+        body: { stock_prediction_id: stockPredictionId },
       });
-      if (!response.ok) throw new Error('Failed to analyze stock price');
-      return response.json();
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
