@@ -26,6 +26,9 @@ const StockPredictionItem = ({
   const colorClass = isPositive ? "text-green-600" : "text-red-600";
   const hoverClass = isPositive ? "hover:bg-green-50" : "hover:bg-red-50";
 
+  // Extract just the ticker symbol from any potential company name
+  const tickerSymbol = stock.symbol.split(' ')[0]; // Take first word which should be the ticker
+
   return (
     <div className="flex gap-2">
       <span className="text-sm text-muted-foreground w-6 pt-2">
@@ -37,7 +40,7 @@ const StockPredictionItem = ({
         onClick={() => onStockClick(stock, isPositive)}
       >
         <Icon className={`h-3 w-3 mr-2 ${colorClass}`} />
-        {stock.symbol}
+        {tickerSymbol}
       </Button>
       <Button
         variant="ghost"
@@ -53,3 +56,4 @@ const StockPredictionItem = ({
 };
 
 export default StockPredictionItem;
+
