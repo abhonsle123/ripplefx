@@ -1,6 +1,5 @@
 
-import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -9,6 +8,7 @@ import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type EventType = Database["public"]["Enums"]["event_type"];
 type SeverityLevel = Database["public"]["Enums"]["severity_level"];
@@ -61,9 +61,6 @@ const CreateEventDialog = ({ isOpen, onOpenChange }: CreateEventDialogProps) => 
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogTrigger asChild>
-        <Button>Create New Event</Button>
-      </DialogTrigger>
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>Create New Event</DialogTitle>
