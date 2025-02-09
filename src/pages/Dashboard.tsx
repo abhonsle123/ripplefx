@@ -15,7 +15,6 @@ const Dashboard = () => {
   const { toast } = useToast();
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
   const [severity, setSeverity] = useState<SeverityLevel | "ALL">("ALL");
-  const [realTimeEvents, setRealTimeEvents] = useState<Event[]>([]);
   const [view, setView] = useState<"grid" | "watchlist">("grid");
   const [isCreating, setIsCreating] = useState(false);
   const [userPreferences, setUserPreferences] = useState<TrackingPreferences | null>(null);
@@ -54,7 +53,7 @@ const Dashboard = () => {
     },
   });
 
-  // Set up real-time subscription and analysis
+  // Set up real-time subscription
   useEffect(() => {
     let channel: RealtimeChannel;
 
@@ -64,42 +63,20 @@ const Dashboard = () => {
         .on(
           "postgres_changes",
           {
-            event: "*",
+            event: "UPDATE",
             schema: "public",
             table: "events",
           },
-          async (payload) => {
-            if (payload.eventType === "INSERT") {
-              const newEvent = payload.new as Event;
-              
-              try {
-                const { data: analysis, error: analysisError } = await supabase.functions.invoke('analyze-event', {
-                  body: { event_id: newEvent.id }
-                });
-                
-                if (analysisError) {
-                  console.error("Analysis error:", analysisError);
-                  toast({
-                    title: "Analysis Error",
-                    description: "There was an error analyzing the event. Please try again.",
-                    variant: "destructive",
-                  });
-                } else {
-                  const updatedEvent = {
-                    ...newEvent,
-                    impact_analysis: analysis,
-                  };
-                  setRealTimeEvents((current) => [updatedEvent, ...current]);
-                  
-                  toast({
-                    title: "New Event Added",
-                    description: "Event analysis completed successfully.",
-                  });
-                }
-              } catch (error) {
-                console.error("Error processing event:", error);
-                setRealTimeEvents((current) => [newEvent, ...current]);
-              }
+          (payload) => {
+            const updatedEvent = payload.new as Event;
+            // Only update the events list when an event is updated (not created)
+            if (payload.eventType === "UPDATE" && events) {
+              const updatedEvents = events.map((event) =>
+                event.id === updatedEvent.id ? updatedEvent : event
+              );
+              // We don't setRealTimeEvents anymore, instead we invalidate the query
+              // to get fresh data from the server
+              queryClient.invalidateQueries({ queryKey: ["events"] });
             }
           }
         )
@@ -113,7 +90,7 @@ const Dashboard = () => {
         supabase.removeChannel(channel);
       }
     };
-  }, [toast]);
+  }, [events]);
 
   // Fetch user preferences
   useEffect(() => {
@@ -142,8 +119,6 @@ const Dashboard = () => {
     fetchUserPreferences();
   }, []);
 
-  const allEvents = [...realTimeEvents, ...(events || [])];
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90">
       <div className="container px-4 pt-24 pb-20">
@@ -168,7 +143,7 @@ const Dashboard = () => {
             <DashboardContent
               view={view}
               isLoading={isLoading}
-              events={allEvents}
+              events={events}
               userId={userId}
               userPreferences={userPreferences}
             />
