@@ -103,7 +103,7 @@ Stocks Affected:
 
         // Send email notification if enabled
         if (emailEnabled && profile.email) {
-          console.log("Sending email to:", profile.email);
+          console.log("Attempting to send email to:", profile.email);
           
           const emailContent = `
 Dear ${profile.full_name || "Valued User"},
@@ -127,19 +127,23 @@ Stay informed,
 The RippleEffect Team
 `;
 
-          await resend.emails.send({
-            from: "RippleEffect <notifications@resend.dev>",
-            to: [profile.email],
-            subject: `🚨 ${event.severity} Alert: ${event.event_type} in ${event.country || 'Unknown Location'}`,
-            html: emailContent.replace(/\n/g, '<br>'),
-          });
-
-          console.log("Email sent successfully to:", profile.email);
+          try {
+            const emailResult = await resend.emails.send({
+              from: "RippleEffect <notifications@resend.dev>",
+              to: [profile.email],
+              subject: `🚨 ${event.severity} Alert: ${event.event_type} in ${event.country || 'Unknown Location'}`,
+              html: emailContent.replace(/\n/g, '<br>'),
+            });
+            console.log("Email sent successfully:", emailResult);
+          } catch (emailError) {
+            console.error("Error sending email:", emailError);
+            throw emailError;
+          }
         }
 
         // Send SMS notification if enabled
         if (smsEnabled && phoneNumber) {
-          console.log("Sending SMS to:", phoneNumber);
+          console.log("Attempting to send SMS to:", phoneNumber);
           
           const smsContent = `
 🚨 ${event.severity} Alert: ${event.event_type} in ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown Location'}
@@ -148,13 +152,17 @@ ${event.description.slice(0, 100)}...${smsStockImpact}
 
 View details: ${supabaseUrl}/dashboard`;
 
-          await twilio.messages.create({
-            body: smsContent,
-            to: phoneNumber,
-            from: twilioPhoneNumber,
-          });
-
-          console.log("SMS sent successfully to:", phoneNumber);
+          try {
+            const smsResult = await twilio.messages.create({
+              body: smsContent,
+              to: phoneNumber,
+              from: twilioPhoneNumber,
+            });
+            console.log("SMS sent successfully:", smsResult.sid);
+          } catch (smsError) {
+            console.error("Error sending SMS:", smsError);
+            throw smsError;
+          }
         }
 
         // Mark notification as processed
@@ -167,6 +175,8 @@ View details: ${supabaseUrl}/dashboard`;
           console.error("Error marking notification as processed:", updateError);
           throw updateError;
         }
+
+        console.log(`Successfully processed notification ${notification.id}`);
 
       } catch (error) {
         console.error(`Error processing notification ${notification.id}:`, error);
@@ -182,8 +192,11 @@ View details: ${supabaseUrl}/dashboard`;
       }
     }
 
+    console.log("Completed notification processing");
+
   } catch (error) {
     console.error("Error in processNotificationQueue:", error);
+    throw error;
   }
 }
 
