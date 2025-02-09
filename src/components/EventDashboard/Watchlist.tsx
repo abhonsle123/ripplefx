@@ -90,7 +90,6 @@ const Watchlist = ({ userId }: WatchlistProps) => {
         throw error;
       }
       
-      // Transform the data to ensure proper typing of JSON fields
       const typedWatches = watches?.map(watch => ({
         ...watch,
         stock_prediction: {
@@ -111,15 +110,30 @@ const Watchlist = ({ userId }: WatchlistProps) => {
       
       return typedWatches;
     },
+    retry: 2,
+    staleTime: 30000, // Consider data stale after 30 seconds
   });
 
   const analyzePriceMutation = useMutation({
     mutationFn: async (stockPredictionId: string) => {
+      console.log('Starting price analysis for prediction:', stockPredictionId);
       const { data, error } = await supabase.functions.invoke('analyze-stock-price', {
         body: { stock_prediction_id: stockPredictionId },
       });
-      if (error) throw error;
+      if (error) {
+        console.error('Error in analyze-stock-price function:', error);
+        throw error;
+      }
+      console.log('Analysis completed successfully:', data);
       return data;
+    },
+    onMutate: (stockPredictionId) => {
+      // Optimistically show loading state
+      console.log('Starting mutation for prediction:', stockPredictionId);
+      toast({
+        title: "Analyzing Stock",
+        description: "Updating price prediction...",
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
@@ -222,9 +236,14 @@ const Watchlist = ({ userId }: WatchlistProps) => {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => analyzePriceMutation.mutate(stock.id)}
+                  onClick={() => {
+                    if (!analyzePriceMutation.isPending) {
+                      analyzePriceMutation.mutate(stock.id);
+                    }
+                  }}
                   disabled={analyzePriceMutation.isPending}
-                  className="hover:bg-blue-100 hover:text-blue-600"
+                  className="hover:bg-blue-100 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                  title={analyzePriceMutation.isPending ? "Analysis in progress..." : "Refresh analysis"}
                 >
                   <RefreshCw className={`h-4 w-4 ${analyzePriceMutation.isPending ? 'animate-spin' : ''}`} />
                 </Button>
