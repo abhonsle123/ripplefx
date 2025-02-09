@@ -45,6 +45,63 @@ async function processNotificationQueue() {
               ? Object.values(event.affected_organizations)
               : [];
 
+          // Format stock impact notifications
+          let stockImpactSection = '';
+          if (event.impact_analysis?.stock_predictions) {
+            const { positive = [], negative = [] } = event.impact_analysis.stock_predictions;
+            
+            if (positive.length > 0 || negative.length > 0) {
+              stockImpactSection = `
+🎯 Significant Stock Impact Predictions:
+
+📈 Positive Impact:
+${positive.slice(0, 5).map(stock => `${stock.symbol}: ${stock.rationale}`).join('\n')}
+
+📉 Negative Impact:
+${negative.slice(0, 5).map(stock => `${stock.symbol}: ${stock.rationale}`).join('\n')}
+`;
+
+              // Send individual stock alerts for high-impact stocks
+              [...positive, ...negative].forEach(async (stock) => {
+                try {
+                  const stockEmailContent = `
+Dear ${profile.full_name || "Valued User"},
+
+A significant market event has been detected that may impact ${stock.symbol}.
+
+🔍 Event Details:
+Type: ${event.event_type}
+Location: ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown Location'}
+Severity: ${event.severity}
+Time: ${new Date(event.created_at || '').toUTCString()}
+
+📊 Stock Impact Analysis:
+${stock.rationale}
+
+🎯 Affected Sectors:
+${affectedOrganizations.map(org => `• ${org}`).join('\n')}
+
+For a full breakdown and real-time updates, visit your RippleEffect Dashboard: ${supabaseUrl}/dashboard
+
+Stay informed,
+The RippleEffect Team
+                  `;
+
+                  await resend.emails.send({
+                    from: "RippleEffect <notifications@resend.dev>",
+                    to: [profile.email || ''],
+                    subject: `🚨 Stock Alert: ${stock.symbol} Impacted by ${event.event_type} in ${event.country || 'Unknown Location'}`,
+                    html: stockEmailContent.replace(/\n/g, '<br>'),
+                  });
+
+                  console.log(`Stock impact email sent to ${profile.email} for ${stock.symbol}`);
+                } catch (error) {
+                  console.error(`Error sending stock impact email for ${stock.symbol}:`, error);
+                }
+              });
+            }
+          }
+
           // Format the market impact analysis section
           let marketAnalysis = '';
           if (event.impact_analysis) {
@@ -53,11 +110,7 @@ async function processNotificationQueue() {
 📊 Market Impact Analysis:
 ${analysis.market_impact}
 
-📈 Positive Stock Impact:
-${analysis.stock_predictions?.positive?.slice(0, 5).join('\n') || 'None identified'}
-
-📉 Negative Stock Impact:
-${analysis.stock_predictions?.negative?.slice(0, 5).join('\n') || 'None identified'}
+${stockImpactSection}
 
 🔄 Supply Chain Impact:
 ${analysis.supply_chain_impact}
