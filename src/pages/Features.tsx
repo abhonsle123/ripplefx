@@ -1,5 +1,5 @@
 
-import { Bell, ChartLine, Brain, Zap, Target, Shield } from "lucide-react";
+import { Bell, ChartLine, Brain, Zap, Target, Shield, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 
