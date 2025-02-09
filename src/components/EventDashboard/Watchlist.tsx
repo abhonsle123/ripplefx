@@ -19,9 +19,9 @@ const Watchlist = ({ userId }: WatchlistProps) => {
         .from('user_stock_watches')
         .select(`
           *,
-          stock_prediction: stock_predictions (
+          stock_prediction:stock_predictions!stock_prediction_id (
             *,
-            event: events (
+            event:events!event_id (
               title,
               description,
               event_type,
@@ -122,3 +122,4 @@ const Watchlist = ({ userId }: WatchlistProps) => {
 };
 
 export default Watchlist;
+
