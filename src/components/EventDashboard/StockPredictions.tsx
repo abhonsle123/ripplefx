@@ -20,6 +20,7 @@ interface StockPredictionsProps {
 const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPredictionsProps) => {
   const { toast } = useToast();
   const [watchingStocks, setWatchingStocks] = useState<string[]>([]);
+  const [processingStocks, setProcessingStocks] = useState<string[]>([]);
 
   const handleWatchStock = async (stock: StockPrediction, isPositive: boolean, index: number) => {
     try {
@@ -35,6 +36,8 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
         return;
       }
 
+      setProcessingStocks(prev => [...prev, stock.symbol]);
+
       console.log('Watching stock with params:', { 
         eventId, 
         symbol: stock.symbol, 
@@ -42,7 +45,7 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
         userId: session.user.id 
       });
 
-      // Get the stock prediction ID
+      // First try to find the existing prediction
       const { data: prediction, error: fetchError } = await supabase
         .from('stock_predictions')
         .select('id')
@@ -56,37 +59,57 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
         throw fetchError;
       }
 
+      let predictionId;
+      
       if (!prediction) {
-        console.error('No prediction found for:', { eventId, symbol: stock.symbol, isPositive });
-        toast({
-          title: "Error",
-          description: "Stock prediction not found. Please try again later.",
-          variant: "destructive",
-        });
-        return;
-      }
+        // If prediction doesn't exist, create it
+        const { data: newPrediction, error: insertError } = await supabase
+          .from('stock_predictions')
+          .insert([{
+            event_id: eventId,
+            symbol: stock.symbol,
+            rationale: stock.rationale,
+            is_positive: isPositive
+          }])
+          .select('id')
+          .single();
 
-      console.log('Found prediction:', prediction);
+        if (insertError) {
+          console.error('Error creating prediction:', insertError);
+          throw insertError;
+        }
+
+        predictionId = newPrediction.id;
+      } else {
+        predictionId = prediction.id;
+      }
 
       // Create a watch for this stock
       const { error: watchError } = await supabase
         .from('user_stock_watches')
         .insert([{ 
-          stock_prediction_id: prediction.id,
+          stock_prediction_id: predictionId,
           user_id: session.user.id,
           status: 'WATCHING'
         }]);
 
       if (watchError) {
-        console.error('Error creating watch:', watchError);
-        throw watchError;
+        if (watchError.code === '23505') { // Unique violation
+          toast({
+            title: "Already Watching",
+            description: `You are already watching ${stock.symbol} for this event.`,
+          });
+        } else {
+          console.error('Error creating watch:', watchError);
+          throw watchError;
+        }
+      } else {
+        setWatchingStocks(prev => [...prev, stock.symbol]);
+        toast({
+          title: "Stock Watch Added",
+          description: `You are now following ${stock.symbol}. You'll receive updates about its movement.`,
+        });
       }
-
-      setWatchingStocks(prev => [...prev, stock.symbol]);
-      toast({
-        title: "Stock Watch Added",
-        description: `You are now following ${stock.symbol}. You'll receive updates about its movement.`,
-      });
     } catch (error) {
       console.error('Error watching stock:', error);
       toast({
@@ -94,6 +117,8 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
         description: "Failed to watch stock. Please try again.",
         variant: "destructive",
       });
+    } finally {
+      setProcessingStocks(prev => prev.filter(symbol => symbol !== stock.symbol));
     }
   };
 
@@ -122,11 +147,11 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={watchingStocks.includes(stock.symbol)}
+                  disabled={watchingStocks.includes(stock.symbol) || processingStocks.includes(stock.symbol)}
                   onClick={() => handleWatchStock(stock, true, index)}
                   className="px-2"
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className={`h-4 w-4 ${processingStocks.includes(stock.symbol) ? 'animate-pulse' : ''}`} />
                 </Button>
               </div>
             ))}
@@ -157,11 +182,11 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
                 <Button
                   variant="ghost"
                   size="sm"
-                  disabled={watchingStocks.includes(stock.symbol)}
+                  disabled={watchingStocks.includes(stock.symbol) || processingStocks.includes(stock.symbol)}
                   onClick={() => handleWatchStock(stock, false, index)}
                   className="px-2"
                 >
-                  <Eye className="h-4 w-4" />
+                  <Eye className={`h-4 w-4 ${processingStocks.includes(stock.symbol) ? 'animate-pulse' : ''}`} />
                 </Button>
               </div>
             ))}
@@ -173,3 +198,4 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
 };
 
 export default StockPredictions;
+
