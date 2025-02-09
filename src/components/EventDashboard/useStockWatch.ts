@@ -22,6 +22,16 @@ export const useStockWatch = (eventId: string) => {
         return;
       }
 
+      // Validate required stock data
+      if (!stock.symbol || !stock.rationale) {
+        toast({
+          title: "Invalid Stock Data",
+          description: "Stock symbol and rationale are required.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       setProcessingStocks(prev => [...prev, stock.symbol]);
 
       const { data: prediction, error: fetchError } = await supabase
@@ -48,7 +58,10 @@ export const useStockWatch = (eventId: string) => {
           .select('id')
           .single();
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error('Error inserting prediction:', insertError);
+          throw insertError;
+        }
         predictionId = newPrediction.id;
       } else {
         predictionId = prediction.id;
