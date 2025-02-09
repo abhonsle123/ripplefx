@@ -43,41 +43,36 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
       });
 
       // Get the stock prediction ID
-      const { data: predictions, error: fetchError } = await supabase
+      const { data: prediction, error: fetchError } = await supabase
         .from('stock_predictions')
         .select('id')
         .eq('event_id', eventId)
         .eq('symbol', stock.symbol)
         .eq('is_positive', isPositive)
-        .single();
+        .maybeSingle();
 
       if (fetchError) {
         console.error('Error fetching prediction:', fetchError);
         throw fetchError;
       }
 
-      if (!predictions) {
+      if (!prediction) {
         console.error('No prediction found for:', { eventId, symbol: stock.symbol, isPositive });
-        
-        // Let's log the current predictions in the database for debugging
-        const { data: allPredictions, error: debugError } = await supabase
-          .from('stock_predictions')
-          .select('*')
-          .eq('event_id', eventId);
-          
-        console.log('All predictions for this event:', allPredictions);
-        if (debugError) console.error('Debug query error:', debugError);
-        
-        throw new Error('Stock prediction not found');
+        toast({
+          title: "Error",
+          description: "Stock prediction not found. Please try again later.",
+          variant: "destructive",
+        });
+        return;
       }
 
-      console.log('Found prediction:', predictions);
+      console.log('Found prediction:', prediction);
 
       // Create a watch for this stock
       const { error: watchError } = await supabase
         .from('user_stock_watches')
         .insert([{ 
-          stock_prediction_id: predictions.id,
+          stock_prediction_id: prediction.id,
           user_id: session.user.id,
           status: 'WATCHING'
         }]);
