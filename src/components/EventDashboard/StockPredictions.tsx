@@ -18,7 +18,7 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
   const { watchingStocks, processingStocks, handleWatchStock } = useStockWatch(eventId);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4">
+    <div className="flex gap-4 mt-2">
       {positive && (
         <StockPredictionColumn
           isPositive={true}
