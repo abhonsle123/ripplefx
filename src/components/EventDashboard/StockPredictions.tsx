@@ -24,7 +24,6 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
 
   const handleWatchStock = async (stock: StockPrediction, isPositive: boolean, index: number) => {
     try {
-      // First get the current user
       const { data: { session }, error: authError } = await supabase.auth.getSession();
       if (authError) throw authError;
       if (!session?.user) {
@@ -37,13 +36,6 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
       }
 
       setProcessingStocks(prev => [...prev, stock.symbol]);
-
-      console.log('Watching stock with params:', { 
-        eventId, 
-        symbol: stock.symbol, 
-        isPositive,
-        userId: session.user.id 
-      });
 
       // First try to find the existing prediction
       const { data: prediction, error: fetchError } = await supabase
@@ -84,32 +76,51 @@ const StockPredictions = ({ eventId, positive, negative, onStockClick }: StockPr
         predictionId = prediction.id;
       }
 
-      // Create a watch for this stock
-      const { error: watchError } = await supabase
+      // Check for existing watch with any status
+      const { data: existingWatch, error: watchCheckError } = await supabase
         .from('user_stock_watches')
-        .insert([{ 
-          stock_prediction_id: predictionId,
-          user_id: session.user.id,
-          status: 'WATCHING'
-        }]);
+        .select('id, status')
+        .eq('stock_prediction_id', predictionId)
+        .eq('user_id', session.user.id)
+        .maybeSingle();
 
-      if (watchError) {
-        if (watchError.code === '23505') { // Unique violation
+      if (watchCheckError) throw watchCheckError;
+
+      if (existingWatch) {
+        if (existingWatch.status === 'WATCHING') {
           toast({
             title: "Already Watching",
             description: `You are already watching ${stock.symbol} for this event.`,
           });
-        } else {
-          console.error('Error creating watch:', watchError);
-          throw watchError;
+          return;
         }
+
+        // Update existing watch back to WATCHING
+        const { error: updateError } = await supabase
+          .from('user_stock_watches')
+          .update({ status: 'WATCHING' })
+          .eq('id', existingWatch.id);
+
+        if (updateError) throw updateError;
       } else {
-        setWatchingStocks(prev => [...prev, stock.symbol]);
-        toast({
-          title: "Stock Watch Added",
-          description: `You are now following ${stock.symbol}. You'll receive updates about its movement.`,
-        });
+        // Create new watch
+        const { error: createError } = await supabase
+          .from('user_stock_watches')
+          .insert([{ 
+            stock_prediction_id: predictionId,
+            user_id: session.user.id,
+            status: 'WATCHING'
+          }]);
+
+        if (createError) throw createError;
       }
+
+      setWatchingStocks(prev => [...prev, stock.symbol]);
+      toast({
+        title: "Stock Watch Added",
+        description: `You are now following ${stock.symbol}. You'll receive updates about its movement.`,
+      });
+
     } catch (error) {
       console.error('Error watching stock:', error);
       toast({
