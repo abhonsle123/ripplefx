@@ -23,29 +23,53 @@ const corsHeaders = {
 
 async function processNotificationQueue() {
   try {
-    // Get unprocessed notifications
+    console.log("Starting notification processing...");
+    
+    // Get unprocessed notifications with related data
     const { data: notifications, error: fetchError } = await supabase
       .from("notification_queue")
       .select("*, events(*), profiles(*)")
       .eq("processed", false)
       .order("created_at", { ascending: true });
 
-    if (fetchError) throw fetchError;
+    if (fetchError) {
+      console.error("Error fetching notifications:", fetchError);
+      throw fetchError;
+    }
+
+    console.log(`Found ${notifications?.length || 0} unprocessed notifications`);
 
     for (const notification of notifications || []) {
       const event = notification.events;
       const profile = notification.profiles;
 
-      if (!event || !profile) continue;
+      if (!event || !profile) {
+        console.log("Missing event or profile data:", { event, profile });
+        continue;
+      }
 
       try {
+        console.log(`Processing notification for event ${event.id} and profile ${profile.id}`);
+        
         // Check notification preferences
         const preferences = profile.preferences?.notifications;
-        const emailEnabled = preferences?.email?.enabled && 
-                           preferences?.email?.[`${event.severity.toLowerCase()}Severity`];
-        const smsEnabled = preferences?.sms?.enabled && 
-                          preferences?.sms?.[`${event.severity.toLowerCase()}Severity`];
-        const phoneNumber = preferences?.sms?.phoneNumber;
+        if (!preferences) {
+          console.log("No notification preferences found for profile:", profile.id);
+          continue;
+        }
+
+        const emailEnabled = preferences.email?.enabled && 
+                           preferences.email?.[`${event.severity.toLowerCase()}Severity`];
+        const smsEnabled = preferences.sms?.enabled && 
+                          preferences.sms?.[`${event.severity.toLowerCase()}Severity`];
+        const phoneNumber = preferences.sms?.phoneNumber;
+
+        console.log("Notification preferences:", {
+          emailEnabled,
+          smsEnabled,
+          phoneNumber,
+          severity: event.severity
+        });
 
         const affectedOrganizations = Array.isArray(event.affected_organizations) 
           ? event.affected_organizations 
@@ -74,46 +98,53 @@ ${negative.slice(0, 5).map(stock => `${stock.symbol}: ${stock.rationale}`).join(
 Stocks Affected:
 📈 ${positive.slice(0, 3).map(s => s.symbol).join(', ')}
 📉 ${negative.slice(0, 3).map(s => s.symbol).join(', ')}`;
-
-            // Process individual stock notifications
-            if (emailEnabled) {
-              await processStockEmails(positive, negative, event, profile, affectedOrganizations);
-            }
           }
         }
 
-        // Format market analysis section
-        let marketAnalysis = '';
-        if (event.impact_analysis) {
-          const analysis = event.impact_analysis;
-          marketAnalysis = `
-📊 Market Impact Analysis:
-${analysis.market_impact}
+        // Send email notification if enabled
+        if (emailEnabled && profile.email) {
+          console.log("Sending email to:", profile.email);
+          
+          const emailContent = `
+Dear ${profile.full_name || "Valued User"},
+
+A ${event.severity} ${event.event_type} has occurred in ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown Location'}.
+
+🔍 Event Details:
+${event.description}
 
 ${stockImpactSection}
 
-🔄 Supply Chain Impact:
-${analysis.supply_chain_impact}
+🏢 Affected Organizations:
+${affectedOrganizations.map(org => `• ${org}`).join('\n')}
 
-📊 Market Sentiment:
-- Short Term: ${analysis.market_sentiment?.short_term}
-- Long Term: ${analysis.market_sentiment?.long_term}
+📊 Market Impact Analysis:
+${event.impact_analysis?.market_impact || 'No market impact analysis available.'}
+
+View full details and manage your watchlist: ${supabaseUrl}/dashboard
+
+Stay informed,
+The RippleEffect Team
 `;
-        }
 
-        // Send email notification if enabled
-        if (emailEnabled) {
-          await sendEmailNotification(event, profile, affectedOrganizations, marketAnalysis);
-          console.log(`Email notification sent to ${profile.email} for event ${event.id}`);
+          await resend.emails.send({
+            from: "RippleEffect <notifications@resend.dev>",
+            to: [profile.email],
+            subject: `🚨 ${event.severity} Alert: ${event.event_type} in ${event.country || 'Unknown Location'}`,
+            html: emailContent.replace(/\n/g, '<br>'),
+          });
+
+          console.log("Email sent successfully to:", profile.email);
         }
 
         // Send SMS notification if enabled
         if (smsEnabled && phoneNumber) {
+          console.log("Sending SMS to:", phoneNumber);
+          
           const smsContent = `
-🚨 ${event.severity} Alert: ${event.event_type} in ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown'}
+🚨 ${event.severity} Alert: ${event.event_type} in ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown Location'}
 
-Impact: ${event.impact_analysis?.market_impact?.slice(0, 100)}...
-${smsStockImpact}
+${event.description.slice(0, 100)}...${smsStockImpact}
 
 View details: ${supabaseUrl}/dashboard`;
 
@@ -122,8 +153,8 @@ View details: ${supabaseUrl}/dashboard`;
             to: phoneNumber,
             from: twilioPhoneNumber,
           });
-          
-          console.log(`SMS notification sent to ${phoneNumber} for event ${event.id}`);
+
+          console.log("SMS sent successfully to:", phoneNumber);
         }
 
         // Mark notification as processed
@@ -132,10 +163,15 @@ View details: ${supabaseUrl}/dashboard`;
           .update({ processed: true })
           .eq("id", notification.id);
 
-        if (updateError) throw updateError;
+        if (updateError) {
+          console.error("Error marking notification as processed:", updateError);
+          throw updateError;
+        }
 
       } catch (error) {
         console.error(`Error processing notification ${notification.id}:`, error);
+        
+        // Mark notification as processed with error
         await supabase
           .from("notification_queue")
           .update({ 
@@ -149,71 +185,6 @@ View details: ${supabaseUrl}/dashboard`;
   } catch (error) {
     console.error("Error in processNotificationQueue:", error);
   }
-}
-
-async function processStockEmails(positive: any[], negative: any[], event: any, profile: any, affectedOrganizations: any[]) {
-  [...positive, ...negative].forEach(async (stock) => {
-    try {
-      const stockEmailContent = `
-Dear ${profile.full_name || "Valued User"},
-
-A significant market event has been detected that may impact ${stock.symbol}.
-
-🔍 Event Details:
-Type: ${event.event_type}
-Location: ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown Location'}
-Severity: ${event.severity}
-Time: ${new Date(event.created_at || '').toUTCString()}
-
-📊 Stock Impact Analysis:
-${stock.rationale}
-
-🎯 Affected Sectors:
-${affectedOrganizations.map(org => `• ${org}`).join('\n')}
-
-For a full breakdown and real-time updates, visit your RippleEffect Dashboard: ${supabaseUrl}/dashboard
-
-Stay informed,
-The RippleEffect Team
-      `;
-
-      await resend.emails.send({
-        from: "RippleEffect <notifications@resend.dev>",
-        to: [profile.email || ''],
-        subject: `🚨 Stock Alert: ${stock.symbol} Impacted by ${event.event_type} in ${event.country || 'Unknown Location'}`,
-        html: stockEmailContent.replace(/\n/g, '<br>'),
-      });
-
-      console.log(`Stock impact email sent to ${profile.email} for ${stock.symbol}`);
-    } catch (error) {
-      console.error(`Error sending stock impact email for ${stock.symbol}:`, error);
-    }
-  });
-}
-
-async function sendEmailNotification(event: any, profile: any, affectedOrganizations: any[], marketAnalysis: string) {
-  const emailContent = `
-Dear ${profile.full_name || "Valued User"},
-
-A ${event.severity} ${event.event_type} has just occurred in ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown Location'} at ${new Date(event.created_at || '').toUTCString()}. The event has been classified as ${event.severity}, with expected disruptions to affected sectors.
-
-🔍 Affected Sectors:
-${affectedOrganizations.map(org => `• ${org}`).join('\n')}
-
-${marketAnalysis}
-
-For a full breakdown and real-time updates, visit your RippleEffect Dashboard: ${supabaseUrl}/dashboard
-
-Stay informed,
-The RippleEffect Team
-  `;
-
-  await resend.emails.send({
-    from: "RippleEffect <notifications@resend.dev>",
-    to: [profile.email || ''],
-    subject: `🚨 Market Alert: ${event.event_type} in ${event.country || 'Unknown Location'} – Significant Market Impact Expected`,
-    html: emailContent.replace(/\n/g, '<br>'),
-  });
 }
 
 const handler = async (_req: Request): Promise<Response> => {
