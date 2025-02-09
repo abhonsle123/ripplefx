@@ -8,7 +8,7 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { Database } from "@/integrations/supabase/types";
 import CreateEventDialog from "@/components/EventDashboard/CreateEventDialog";
-import EventAnalytics from "@/components/EventDashboard/EventAnalytics";
+import Watchlist from "@/components/EventDashboard/Watchlist";
 import EventsGrid from "@/components/EventDashboard/EventsGrid";
 import { useToast } from "@/components/ui/use-toast";
 
@@ -51,15 +51,18 @@ const Dashboard = () => {
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
   const [severity, setSeverity] = useState<SeverityLevel | "ALL">("ALL");
   const [realTimeEvents, setRealTimeEvents] = useState<Event[]>([]);
-  const [view, setView] = useState<"grid" | "analytics">("grid");
+  const [view, setView] = useState<"grid" | "watchlist">("grid");
   const [isCreating, setIsCreating] = useState(false);
   const [userPreferences, setUserPreferences] = useState<TrackingPreferences | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
 
   // Check authentication
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) {
         navigate("/auth");
+      } else {
+        setUserId(session.user.id);
       }
     });
   }, [navigate]);
@@ -189,10 +192,10 @@ const Dashboard = () => {
             isOpen={isCreating}
             onOpenChange={setIsCreating}
           />
-          <Tabs defaultValue={view} onValueChange={(v) => setView(v as "grid" | "analytics")}>
+          <Tabs defaultValue={view} onValueChange={(v) => setView(v as "grid" | "watchlist")}>
             <TabsList>
               <TabsTrigger value="grid">Grid View</TabsTrigger>
-              <TabsTrigger value="analytics">Analytics</TabsTrigger>
+              <TabsTrigger value="watchlist">Watchlist</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
@@ -222,8 +225,8 @@ const Dashboard = () => {
               userPreferences={userPreferences}
             />
           </TabsContent>
-          <TabsContent value="analytics">
-            <EventAnalytics events={allEvents} />
+          <TabsContent value="watchlist">
+            {userId && <Watchlist userId={userId} />}
           </TabsContent>
         </Tabs>
       )}
