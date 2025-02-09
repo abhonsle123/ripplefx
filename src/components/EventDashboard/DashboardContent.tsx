@@ -19,6 +19,16 @@ const DashboardContent = ({
   userId, 
   userPreferences 
 }: DashboardContentProps) => {
+  if (!userId) {
+    return (
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">
+          Please sign in to view your dashboard content.
+        </p>
+      </div>
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -33,7 +43,7 @@ const DashboardContent = ({
   }
 
   return (
-    <Tabs defaultValue={view}>
+    <Tabs defaultValue={view} value={view}>
       <TabsContent value="grid">
         <EventsGrid 
           events={events}

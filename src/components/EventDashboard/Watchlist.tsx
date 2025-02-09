@@ -1,5 +1,5 @@
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ interface WatchlistProps {
 
 const Watchlist = ({ userId }: WatchlistProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: watches = [], isLoading } = useQuery({
     queryKey: ["stock-watches", userId],
@@ -50,6 +51,9 @@ const Watchlist = ({ userId }: WatchlistProps) => {
         .eq('id', watchId);
 
       if (error) throw error;
+
+      // Invalidate and refetch the watches query
+      queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
 
       toast({
         title: "Stock Unwatched",
@@ -166,4 +170,3 @@ const Watchlist = ({ userId }: WatchlistProps) => {
 };
 
 export default Watchlist;
-
