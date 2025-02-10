@@ -9,6 +9,47 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      broker_connections: {
+        Row: {
+          api_key: string
+          api_secret: string
+          broker_name: string
+          created_at: string
+          id: string
+          is_active: boolean | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key: string
+          api_secret: string
+          broker_name: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string
+          api_secret?: string
+          broker_name?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_connections_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       events: {
         Row: {
           affected_organizations: Json | null
@@ -103,6 +144,7 @@ export type Database = {
           full_name: string | null
           id: string
           preferences: Json | null
+          subscription_status: string | null
           tracking_preferences: Json | null
           username: string | null
         }
@@ -113,6 +155,7 @@ export type Database = {
           full_name?: string | null
           id: string
           preferences?: Json | null
+          subscription_status?: string | null
           tracking_preferences?: Json | null
           username?: string | null
         }
@@ -123,6 +166,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           preferences?: Json | null
+          subscription_status?: string | null
           tracking_preferences?: Json | null
           username?: string | null
         }
@@ -184,6 +228,113 @@ export type Database = {
             columns: ["event_id"]
             isOneToOne: false
             referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trade_executions: {
+        Row: {
+          action: string
+          created_at: string
+          error_message: string | null
+          id: string
+          price: number
+          quantity: number
+          rule_id: string | null
+          status: string
+          stock_symbol: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          price: number
+          quantity: number
+          rule_id?: string | null
+          status: string
+          stock_symbol: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          price?: number
+          quantity?: number
+          rule_id?: string | null
+          status?: string
+          stock_symbol?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trade_executions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "trading_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "trade_executions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      trading_rules: {
+        Row: {
+          created_at: string
+          entry_condition: string
+          exit_condition: string
+          id: string
+          is_active: boolean | null
+          max_position_size: number
+          stock_symbol: string
+          stop_loss_percentage: number | null
+          take_profit_percentage: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_condition: string
+          exit_condition: string
+          id?: string
+          is_active?: boolean | null
+          max_position_size: number
+          stock_symbol: string
+          stop_loss_percentage?: number | null
+          take_profit_percentage?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_condition?: string
+          exit_condition?: string
+          id?: string
+          is_active?: boolean | null
+          max_position_size?: number
+          stock_symbol?: string
+          stop_loss_percentage?: number | null
+          take_profit_percentage?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "trading_rules_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
         ]
