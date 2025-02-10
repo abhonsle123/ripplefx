@@ -29,9 +29,13 @@ const ConnectBroker = () => {
   const { data: connections = [], isLoading } = useQuery({
     queryKey: ["broker-connections"],
     queryFn: async () => {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session.session) throw new Error("No authenticated session");
+
       const { data, error } = await supabase
         .from("broker_connections")
         .select("*")
+        .eq("user_id", session.session.user.id)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -66,6 +70,9 @@ const ConnectBroker = () => {
         (oldData: BrokerConnection[] | undefined) => 
           oldData ? oldData.filter(conn => conn.id !== connectionId) : []
       );
+      
+      // Invalidate and refetch to ensure consistency
+      await queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
       
       toast({
         title: "Success",
