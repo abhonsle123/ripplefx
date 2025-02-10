@@ -70,13 +70,27 @@ const BrokerConnectionDialog = ({
         throw new Error("No authenticated session");
       }
 
+      const userId = session.session.user.id;
+
+      // Check if a connection already exists for this broker
+      const { data: existingConnection, error: fetchError } = await supabase
+        .from("broker_connections")
+        .select("id")
+        .eq("user_id", userId)
+        .eq("broker_name", formData.broker_name)
+        .single();
+
+      if (fetchError && fetchError.code !== "PGRST116") { // PGRST116 is "not found" error
+        throw fetchError;
+      }
+
       if (connectionToEdit) {
         // Update existing connection
         const { error } = await supabase
           .from("broker_connections")
           .update({
             ...formData,
-            user_id: session.session.user.id,
+            user_id: userId,
           })
           .eq("id", connectionToEdit.id);
 
@@ -86,14 +100,32 @@ const BrokerConnectionDialog = ({
           title: "Broker connection updated",
           description: "Your broker connection has been updated successfully.",
         });
+      } else if (existingConnection) {
+        // Update the existing connection if one exists for this broker
+        const { error } = await supabase
+          .from("broker_connections")
+          .update({
+            ...formData,
+            user_id: userId,
+          })
+          .eq("id", existingConnection.id);
+
+        if (error) throw error;
+
+        toast({
+          title: "Broker connection updated",
+          description: "Your existing broker connection has been updated.",
+        });
       } else {
         // Create new connection
-        const { error } = await supabase.from("broker_connections").insert([
-          {
-            ...formData,
-            user_id: session.session.user.id,
-          },
-        ]);
+        const { error } = await supabase
+          .from("broker_connections")
+          .insert([
+            {
+              ...formData,
+              user_id: userId,
+            },
+          ]);
 
         if (error) throw error;
 
