@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -104,18 +105,44 @@ export const useWatchlist = (userId: string) => {
         brokerConnectionId = connection.id;
       }
 
-      const { error } = await supabase
+      // Check for existing watch
+      const { data: existingWatch, error: checkError } = await supabase
         .from('user_stock_watches')
-        .insert([{
-          user_id: userId,
-          stock_prediction_id: stockPredictionId,
-          status: "WATCHING",
-          investment_type: investmentType,
-          investment_amount: amount,
-          broker_connection_id: brokerConnectionId
-        }]);
+        .select('id, status')
+        .eq('user_id', userId)
+        .eq('stock_prediction_id', stockPredictionId)
+        .eq('status', 'WATCHING')
+        .maybeSingle();
 
-      if (error) throw error;
+      if (checkError) throw checkError;
+
+      if (existingWatch) {
+        // If already watching, just update the investment details
+        const { error: updateError } = await supabase
+          .from('user_stock_watches')
+          .update({
+            investment_type: investmentType,
+            investment_amount: amount,
+            broker_connection_id: brokerConnectionId
+          })
+          .eq('id', existingWatch.id);
+
+        if (updateError) throw updateError;
+      } else {
+        // Create new watch
+        const { error } = await supabase
+          .from('user_stock_watches')
+          .insert([{
+            user_id: userId,
+            stock_prediction_id: stockPredictionId,
+            status: "WATCHING",
+            investment_type: investmentType,
+            investment_amount: amount,
+            broker_connection_id: brokerConnectionId
+          }]);
+
+        if (error) throw error;
+      }
 
       // If investing, trigger the investment
       if (investmentType === "INVEST_AND_FOLLOW" && amount && brokerConnectionId) {
