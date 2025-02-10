@@ -84,6 +84,10 @@ serve(async (req) => {
     const alpacaBaseUrl = connection.broker_name === 'alpaca_paper' 
       ? 'https://paper-api.alpaca.markets'
       : 'https://api.alpaca.markets';
+    
+    const alpacaDataUrl = connection.broker_name === 'alpaca_paper'
+      ? 'https://data.sandbox.alpaca.markets'
+      : 'https://data.alpaca.markets';
 
     console.log('Checking market hours and fetching current price for:', symbol);
     
@@ -108,9 +112,9 @@ serve(async (req) => {
         throw new Error('Market is currently closed');
       }
 
-      // Get the current price using trades/latest for real-time data
+      // Get the current price using the data API
       const quoteResponse = await fetch(
-        `${alpacaBaseUrl}/v2/stocks/${symbol}/trades/latest`,
+        `${alpacaDataUrl}/v2/stocks/${symbol}/trades/latest`,
         {
           headers: {
             'APCA-API-KEY-ID': connection.api_key,
@@ -125,7 +129,7 @@ serve(async (req) => {
           status: quoteResponse.status,
           statusText: quoteResponse.statusText,
           body: errorText,
-          url: `${alpacaBaseUrl}/v2/stocks/${symbol}/trades/latest`
+          url: `${alpacaDataUrl}/v2/stocks/${symbol}/trades/latest`
         });
         throw new Error(`Failed to fetch price: ${quoteResponse.status} ${errorText}`);
       }
@@ -301,3 +305,4 @@ serve(async (req) => {
     );
   }
 })
+
