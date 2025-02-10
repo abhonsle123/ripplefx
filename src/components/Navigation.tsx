@@ -80,6 +80,14 @@ const Navigation = () => {
                   >
                     Profile
                   </Link>
+                  <Link
+                    to="/connect-broker"
+                    className={`hover:text-primary transition-colors ${
+                      isActive("/connect-broker") ? "text-primary" : "text-foreground"
+                    }`}
+                  >
+                    Connect Broker
+                  </Link>
                 </>
               )}
               <Link
@@ -119,8 +127,8 @@ const Navigation = () => {
           <div className="flex items-center gap-4">
             {user ? (
               <>
-                <Button onClick={() => navigate("/profile")} variant="outline" className="hidden md:inline-flex hover:bg-primary hover:text-primary-foreground">
-                  Profile
+                <Button onClick={() => navigate("/connect-broker")} variant="outline" className="hidden md:inline-flex hover:bg-primary hover:text-primary-foreground">
+                  Connect Broker
                 </Button>
                 <Button onClick={handleSignOut} variant="outline" className="hidden md:inline-flex hover:bg-primary hover:text-primary-foreground">
                   Sign Out
