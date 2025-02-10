@@ -78,157 +78,185 @@ serve(async (req) => {
 
     console.log('Fetching current market price from Alpaca for:', prediction.symbol);
     
-    const quoteResponse = await fetch(
-      `${alpacaBaseUrl}/v2/stocks/${prediction.symbol}/trades/latest`,
-      {
-        headers: {
-          'APCA-API-KEY-ID': connection.api_key,
-          'APCA-API-SECRET-KEY': connection.api_secret,
-        },
+    try {
+      const quoteResponse = await fetch(
+        `${alpacaBaseUrl}/v2/stocks/${prediction.symbol}/trades/latest`,
+        {
+          headers: {
+            'APCA-API-KEY-ID': connection.api_key,
+            'APCA-API-SECRET-KEY': connection.api_secret,
+          },
+        }
+      );
+
+      if (!quoteResponse.ok) {
+        const errorText = await quoteResponse.text();
+        console.error('Error response from Alpaca:', {
+          status: quoteResponse.status,
+          statusText: quoteResponse.statusText,
+          body: errorText
+        });
+        throw new Error(`Failed to fetch price: ${quoteResponse.status} ${errorText}`);
       }
-    );
 
-    if (!quoteResponse.ok) {
-      console.error('Error fetching price from Alpaca:', await quoteResponse.text());
-      throw new Error('Failed to fetch current market price');
-    }
-
-    const quote = await quoteResponse.json();
-    const currentPrice = quote.trade.p;
-    const quantity = Math.floor(amount / currentPrice); // Round down to nearest whole share
-
-    if (quantity < 1) {
-      throw new Error('Investment amount too small to purchase at least one share');
-    }
-
-    console.log('Placing order with Alpaca:', {
-      symbol: prediction.symbol,
-      quantity,
-      currentPrice
-    });
-
-    // Create the order in Alpaca
-    const orderResponse = await fetch(
-      `${alpacaBaseUrl}/v2/orders`,
-      {
-        method: 'POST',
-        headers: {
-          'APCA-API-KEY-ID': connection.api_key,
-          'APCA-API-SECRET-KEY': connection.api_secret,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          symbol: prediction.symbol,
-          qty: quantity,
-          side: 'buy',
-          type: 'market',
-          time_in_force: 'day'
-        })
+      const quote = await quoteResponse.json();
+      if (!quote.trade || !quote.trade.p) {
+        throw new Error('Invalid quote response from Alpaca');
       }
-    );
 
-    const orderResult = await orderResponse.json() as AlpacaOrderResponse;
+      const currentPrice = quote.trade.p;
+      const quantity = Math.floor(amount / currentPrice); // Round down to nearest whole share
 
-    if (!orderResponse.ok) {
-      console.error('Error placing order with Alpaca:', orderResult);
-      throw new Error(orderResult.error || 'Failed to place order with Alpaca');
-    }
+      if (quantity < 1) {
+        throw new Error('Investment amount too small to purchase at least one share');
+      }
 
-    console.log('Order placed successfully with Alpaca:', orderResult);
+      console.log('Placing order with Alpaca:', {
+        symbol: prediction.symbol,
+        quantity,
+        currentPrice
+      });
 
-    // Create trade execution record
-    const { data: execution, error: executionError } = await supabaseClient
-      .from('trade_executions')
-      .insert([{
-        user_id: userId,
-        stock_symbol: prediction.symbol,
-        action: 'BUY',
-        price: currentPrice,
-        quantity: quantity,
-        status: 'PENDING', // Will be updated when we get the final execution
-        error_message: null
-      }])
-      .select()
-      .single();
+      // Create the order in Alpaca
+      const orderResponse = await fetch(
+        `${alpacaBaseUrl}/v2/orders`,
+        {
+          method: 'POST',
+          headers: {
+            'APCA-API-KEY-ID': connection.api_key,
+            'APCA-API-SECRET-KEY': connection.api_secret,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            symbol: prediction.symbol,
+            qty: quantity,
+            side: 'buy',
+            type: 'market',
+            time_in_force: 'day'
+          })
+        }
+      );
 
-    if (executionError) {
-      console.error('Error creating trade execution:', executionError);
+      const orderResult = await orderResponse.json() as AlpacaOrderResponse;
+
+      if (!orderResponse.ok) {
+        console.error('Error placing order with Alpaca:', orderResult);
+        throw new Error(orderResult.error || 'Failed to place order with Alpaca');
+      }
+
+      console.log('Order placed successfully with Alpaca:', orderResult);
+
+      // Create trade execution record
+      const { data: execution, error: executionError } = await supabaseClient
+        .from('trade_executions')
+        .insert([{
+          user_id: userId,
+          stock_symbol: prediction.symbol,
+          action: 'BUY',
+          price: currentPrice,
+          quantity: quantity,
+          status: 'PENDING',
+          error_message: null
+        }])
+        .select()
+        .single();
+
+      if (executionError) {
+        console.error('Error creating trade execution:', executionError);
+        return new Response(
+          JSON.stringify({ error: 'Failed to create trade execution', details: executionError.message }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Start background task to monitor order status
+      EdgeRuntime.waitUntil(
+        (async () => {
+          try {
+            let orderStatus = orderResult.status;
+            let attempts = 0;
+            const maxAttempts = 30; // Maximum number of attempts (1 minute with 2-second intervals)
+
+            while (orderStatus !== 'filled' && orderStatus !== 'canceled' && orderStatus !== 'expired' && attempts < maxAttempts) {
+              await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between checks
+              attempts++;
+              
+              const statusResponse = await fetch(
+                `${alpacaBaseUrl}/v2/orders/${orderResult.id}`,
+                {
+                  headers: {
+                    'APCA-API-KEY-ID': connection.api_key,
+                    'APCA-API-SECRET-KEY': connection.api_secret,
+                  }
+                }
+              );
+              
+              if (!statusResponse.ok) {
+                throw new Error('Failed to fetch order status');
+              }
+              
+              const statusResult = await statusResponse.json() as AlpacaOrderResponse;
+              orderStatus = statusResult.status;
+              
+              // Update execution record with final details when order is filled
+              if (orderStatus === 'filled') {
+                await supabaseClient
+                  .from('trade_executions')
+                  .update({
+                    status: 'COMPLETED',
+                    price: statusResult.filled_avg_price
+                  })
+                  .eq('id', execution.id);
+              } else if (orderStatus === 'canceled' || orderStatus === 'expired' || attempts >= maxAttempts) {
+                await supabaseClient
+                  .from('trade_executions')
+                  .update({
+                    status: 'FAILED',
+                    error_message: attempts >= maxAttempts ? 'Order timeout' : `Order ${orderStatus}`
+                  })
+                  .eq('id', execution.id);
+              }
+            }
+          } catch (error) {
+            console.error('Error in background task:', error);
+            await supabaseClient
+              .from('trade_executions')
+              .update({
+                status: 'FAILED',
+                error_message: error.message
+              })
+              .eq('id', execution.id);
+          }
+        })()
+      );
+
       return new Response(
-        JSON.stringify({ error: 'Failed to create trade execution', details: executionError.message }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: true, 
+          message: 'Trade execution initiated',
+          data: {
+            ...execution,
+            alpaca_order_id: orderResult.id
+          }
+        }),
+        { 
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+
+    } catch (error) {
+      console.error('Error in Alpaca API operations:', error);
+      return new Response(
+        JSON.stringify({ 
+          error: 'Failed to execute trade with Alpaca', 
+          details: error.message 
+        }),
+        { 
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
       );
     }
-
-    // Start background task to monitor order status
-    EdgeRuntime.waitUntil(
-      (async () => {
-        try {
-          let orderStatus = orderResult.status;
-          while (orderStatus !== 'filled' && orderStatus !== 'canceled' && orderStatus !== 'expired') {
-            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between checks
-            
-            const statusResponse = await fetch(
-              `${alpacaBaseUrl}/v2/orders/${orderResult.id}`,
-              {
-                headers: {
-                  'APCA-API-KEY-ID': connection.api_key,
-                  'APCA-API-SECRET-KEY': connection.api_secret,
-                }
-              }
-            );
-            
-            if (!statusResponse.ok) {
-              throw new Error('Failed to fetch order status');
-            }
-            
-            const statusResult = await statusResponse.json() as AlpacaOrderResponse;
-            orderStatus = statusResult.status;
-            
-            // Update execution record with final details when order is filled
-            if (orderStatus === 'filled') {
-              await supabaseClient
-                .from('trade_executions')
-                .update({
-                  status: 'COMPLETED',
-                  price: statusResult.filled_avg_price
-                })
-                .eq('id', execution.id);
-            } else if (orderStatus === 'canceled' || orderStatus === 'expired') {
-              await supabaseClient
-                .from('trade_executions')
-                .update({
-                  status: 'FAILED',
-                  error_message: `Order ${orderStatus}`
-                })
-                .eq('id', execution.id);
-            }
-          }
-        } catch (error) {
-          console.error('Error in background task:', error);
-          await supabaseClient
-            .from('trade_executions')
-            .update({
-              status: 'FAILED',
-              error_message: error.message
-            })
-            .eq('id', execution.id);
-        }
-      })()
-    );
-
-    return new Response(
-      JSON.stringify({ 
-        success: true, 
-        message: 'Trade execution initiated',
-        data: {
-          ...execution,
-          alpaca_order_id: orderResult.id
-        }
-      }),
-      { 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
-    );
 
   } catch (error) {
     console.error('Error processing request:', error);
