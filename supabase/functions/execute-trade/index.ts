@@ -79,8 +79,9 @@ serve(async (req) => {
     console.log('Fetching current market price from Alpaca for:', prediction.symbol);
     
     try {
+      // Using the snapshot endpoint instead of trades/latest
       const quoteResponse = await fetch(
-        `${alpacaBaseUrl}/v2/stocks/${prediction.symbol}/trades/latest`,
+        `${alpacaBaseUrl}/v2/stocks/${prediction.symbol}/snapshot`,
         {
           headers: {
             'APCA-API-KEY-ID': connection.api_key,
@@ -94,17 +95,19 @@ serve(async (req) => {
         console.error('Error response from Alpaca:', {
           status: quoteResponse.status,
           statusText: quoteResponse.statusText,
-          body: errorText
+          body: errorText,
+          url: `${alpacaBaseUrl}/v2/stocks/${prediction.symbol}/snapshot`
         });
         throw new Error(`Failed to fetch price: ${quoteResponse.status} ${errorText}`);
       }
 
       const quote = await quoteResponse.json();
-      if (!quote.trade || !quote.trade.p) {
+      if (!quote || !quote.latestTrade || !quote.latestTrade.p) {
+        console.error('Invalid quote response from Alpaca:', quote);
         throw new Error('Invalid quote response from Alpaca');
       }
 
-      const currentPrice = quote.trade.p;
+      const currentPrice = quote.latestTrade.p;
       const quantity = Math.floor(amount / currentPrice); // Round down to nearest whole share
 
       if (quantity < 1) {
