@@ -1,3 +1,4 @@
+
 import { format } from "date-fns";
 import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -11,9 +12,10 @@ interface WatchCardProps {
   watch: StockWatch;
   analyzePriceMutation: UseMutationResult<any, Error, string>;
   onUnwatch: (watchId: string) => void;
+  onInvest: (stockPredictionId: string, investmentType: "FOLLOW_ONLY" | "INVEST_AND_FOLLOW", amount?: number) => void;
 }
 
-const WatchCard = ({ watch, analyzePriceMutation, onUnwatch }: WatchCardProps) => {
+const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCardProps) => {
   const [showWatchOptions, setShowWatchOptions] = useState(false);
   const stock = watch.stock_prediction;
   const event = stock.event;
@@ -142,7 +144,7 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch }: WatchCardProps) =
         onClose={() => setShowWatchOptions(false)}
         onConfirm={(investmentType, amount) => {
           if (watch.stock_prediction) {
-            watch.addToWatchlist(watch.stock_prediction.id, investmentType, amount);
+            onInvest(watch.stock_prediction.id, investmentType, amount);
           }
           setShowWatchOptions(false);
         }}
@@ -153,3 +155,4 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch }: WatchCardProps) =
 };
 
 export default WatchCard;
+
