@@ -57,23 +57,24 @@ const ConnectBroker = () => {
 
   const handleDelete = async (connectionId: string) => {
     try {
-      const { error } = await supabase
-        .from("broker_connections")
-        .delete()
-        .eq("id", connectionId);
-
-      if (error) throw error;
-
-      // Update the local cache to remove the deleted connection
+      // Immediately update the cache to remove the item
       queryClient.setQueryData(
         ["broker-connections"],
         (oldData: BrokerConnection[] | undefined) => 
           oldData ? oldData.filter(conn => conn.id !== connectionId) : []
       );
-      
-      // Invalidate and refetch to ensure consistency
-      await queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
-      
+
+      const { error } = await supabase
+        .from("broker_connections")
+        .delete()
+        .eq("id", connectionId);
+
+      if (error) {
+        // If deletion fails, restore the cache by refetching
+        queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
+        throw error;
+      }
+
       toast({
         title: "Success",
         description: "Broker connection deleted successfully",
