@@ -29,6 +29,8 @@ serve(async (req) => {
     // Get request body
     const { stockPredictionId, amount, brokerConnectionId, userId } = await req.json() as RequestBody;
 
+    console.log('Processing trade execution request:', { stockPredictionId, amount, brokerConnectionId, userId });
+
     // Get broker connection details
     const { data: connection, error: connectionError } = await supabaseClient
       .from('broker_connections')
@@ -64,13 +66,20 @@ serve(async (req) => {
     const mockPrice = 100;
     const quantity = amount / mockPrice;
 
+    console.log('Creating trade execution record:', {
+      symbol: prediction.symbol,
+      price: mockPrice,
+      quantity,
+      userId
+    });
+
     // Create trade execution record
     const { data: execution, error: executionError } = await supabaseClient
       .from('trade_executions')
       .insert([{
         user_id: userId,
         stock_symbol: prediction.symbol,
-        action: 'BUY', // Since this is an investment, we're buying
+        action: 'BUY', // Now this is a valid value due to our migration
         price: mockPrice,
         quantity: quantity,
         status: 'PENDING',
@@ -86,6 +95,8 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    console.log('Trade execution created successfully:', execution);
 
     // For now, just return success - in a real implementation, 
     // you would make API calls to the broker here
@@ -103,7 +114,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error processing request:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ error: 'Internal server error', details: error.message }),
       { 
         status: 500, 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
