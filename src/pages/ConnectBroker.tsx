@@ -7,7 +7,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import BrokerConnectionCard from "@/components/Broker/BrokerConnectionCard";
 import BrokerConnectionDialog from "@/components/Broker/BrokerConnectionDialog";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import type { Database } from "@/integrations/supabase/types";
 
 type BrokerConnection = Database["public"]["Tables"]["broker_connections"]["Row"];
@@ -60,11 +60,13 @@ const ConnectBroker = () => {
 
       if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
+      // Invalidate and refetch the broker connections query
+      await queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
       
       toast({
-        title: "Broker connection deleted",
-        description: "The broker connection has been removed successfully.",
+        title: "Success",
+        description: "Broker connection deleted successfully",
+        variant: "default",
       });
     } catch (error: any) {
       toast({
@@ -72,6 +74,7 @@ const ConnectBroker = () => {
         description: error.message,
         variant: "destructive",
       });
+      console.error("Error deleting broker connection:", error);
     }
   };
 
