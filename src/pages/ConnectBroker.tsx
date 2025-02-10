@@ -29,13 +29,9 @@ const ConnectBroker = () => {
   const { data: connections = [], isLoading } = useQuery({
     queryKey: ["broker-connections"],
     queryFn: async () => {
-      const { data: session } = await supabase.auth.getSession();
-      if (!session.session) throw new Error("No authenticated session");
-
       const { data, error } = await supabase
         .from("broker_connections")
         .select("*")
-        .eq("user_id", session.session.user.id)
         .order("created_at", { ascending: false });
 
       if (error) {
@@ -62,25 +58,16 @@ const ConnectBroker = () => {
         .delete()
         .eq("id", connectionId);
 
-      if (error) {
-        throw error;
-      }
+      if (error) throw error;
 
-      // Only update the cache after successful deletion
-      queryClient.setQueryData(
-        ["broker-connections"],
-        (oldData: BrokerConnection[] | undefined) => 
-          oldData ? oldData.filter(conn => conn.id !== connectionId) : []
-      );
-
+      // Invalidate and refetch the broker connections query
+      await queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
+      
       toast({
         title: "Success",
         description: "Broker connection deleted successfully",
         variant: "default",
       });
-
-      // Force a refetch to ensure data consistency
-      queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
     } catch (error: any) {
       toast({
         title: "Error deleting broker connection",
@@ -88,9 +75,6 @@ const ConnectBroker = () => {
         variant: "destructive",
       });
       console.error("Error deleting broker connection:", error);
-      
-      // Refetch on error to ensure UI shows correct state
-      queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
     }
   };
 
