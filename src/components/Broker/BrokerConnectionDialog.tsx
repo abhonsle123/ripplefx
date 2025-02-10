@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -19,15 +19,20 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
+import type { Database } from "@/integrations/supabase/types";
+
+type BrokerConnection = Database["public"]["Tables"]["broker_connections"]["Row"];
 
 interface BrokerConnectionDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  connectionToEdit?: BrokerConnection | null;
 }
 
 const BrokerConnectionDialog = ({
   open,
   onOpenChange,
+  connectionToEdit,
 }: BrokerConnectionDialogProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -37,6 +42,23 @@ const BrokerConnectionDialog = ({
     api_key: "",
     api_secret: "",
   });
+
+  // Reset form when dialog opens/closes or connectionToEdit changes
+  useEffect(() => {
+    if (connectionToEdit) {
+      setFormData({
+        broker_name: connectionToEdit.broker_name,
+        api_key: connectionToEdit.api_key,
+        api_secret: connectionToEdit.api_secret,
+      });
+    } else {
+      setFormData({
+        broker_name: "",
+        api_key: "",
+        api_secret: "",
+      });
+    }
+  }, [connectionToEdit, open]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -48,19 +70,38 @@ const BrokerConnectionDialog = ({
         throw new Error("No authenticated session");
       }
 
-      const { error } = await supabase.from("broker_connections").insert([
-        {
-          ...formData,
-          user_id: session.session.user.id,
-        },
-      ]);
+      if (connectionToEdit) {
+        // Update existing connection
+        const { error } = await supabase
+          .from("broker_connections")
+          .update({
+            ...formData,
+            user_id: session.session.user.id,
+          })
+          .eq("id", connectionToEdit.id);
 
-      if (error) throw error;
+        if (error) throw error;
 
-      toast({
-        title: "Broker connected successfully",
-        description: "You can now start creating trading rules for this broker.",
-      });
+        toast({
+          title: "Broker connection updated",
+          description: "Your broker connection has been updated successfully.",
+        });
+      } else {
+        // Create new connection
+        const { error } = await supabase.from("broker_connections").insert([
+          {
+            ...formData,
+            user_id: session.session.user.id,
+          },
+        ]);
+
+        if (error) throw error;
+
+        toast({
+          title: "Broker connected successfully",
+          description: "You can now start creating trading rules for this broker.",
+        });
+      }
 
       queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
       onOpenChange(false);
@@ -71,7 +112,7 @@ const BrokerConnectionDialog = ({
       });
     } catch (error: any) {
       toast({
-        title: "Error connecting broker",
+        title: connectionToEdit ? "Error updating broker" : "Error connecting broker",
         description: error.message,
         variant: "destructive",
       });
@@ -84,7 +125,9 @@ const BrokerConnectionDialog = ({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Connect Broker</DialogTitle>
+          <DialogTitle>
+            {connectionToEdit ? "Edit Broker Connection" : "Connect Broker"}
+          </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">
@@ -135,7 +178,13 @@ const BrokerConnectionDialog = ({
             className="w-full"
             disabled={isSubmitting}
           >
-            {isSubmitting ? "Connecting..." : "Connect Broker"}
+            {isSubmitting
+              ? connectionToEdit
+                ? "Updating..."
+                : "Connecting..."
+              : connectionToEdit
+              ? "Update Broker"
+              : "Connect Broker"}
           </Button>
         </form>
       </DialogContent>

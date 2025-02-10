@@ -24,7 +24,11 @@ const BrokerConnectionCard = ({
           <Server className="h-6 w-6 text-primary" />
         </div>
         <div>
-          <h3 className="font-semibold text-lg">{connection.broker_name}</h3>
+          <h3 className="font-semibold text-lg">
+            {connection.broker_name === "alpaca_paper"
+              ? "Alpaca (Paper Trading)"
+              : "Alpaca (Live Trading)"}
+          </h3>
           <p className="text-sm text-muted-foreground">
             Connected on{" "}
             {new Date(connection.created_at).toLocaleDateString()}
@@ -33,7 +37,7 @@ const BrokerConnectionCard = ({
       </CardHeader>
       <CardContent>
         <div className="text-sm text-muted-foreground">
-          <p>Status: Active</p>
+          <p>Status: {connection.is_active ? "Active" : "Inactive"}</p>
         </div>
       </CardContent>
       <CardFooter className="flex justify-end gap-2">

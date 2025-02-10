@@ -3,16 +3,21 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import BrokerConnectionCard from "@/components/Broker/BrokerConnectionCard";
 import BrokerConnectionDialog from "@/components/Broker/BrokerConnectionDialog";
 import { useToast } from "@/components/ui/use-toast";
+import type { Database } from "@/integrations/supabase/types";
+
+type BrokerConnection = Database["public"]["Tables"]["broker_connections"]["Row"];
 
 const ConnectBroker = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [connectionToEdit, setConnectionToEdit] = useState<BrokerConnection | null>(null);
 
   // Check authentication
   supabase.auth.getSession().then(({ data: { session } }) => {
@@ -40,6 +45,42 @@ const ConnectBroker = () => {
       return data;
     },
   });
+
+  const handleEdit = (connection: BrokerConnection) => {
+    setConnectionToEdit(connection);
+    setIsDialogOpen(true);
+  };
+
+  const handleDelete = async (connectionId: string) => {
+    try {
+      const { error } = await supabase
+        .from("broker_connections")
+        .delete()
+        .eq("id", connectionId);
+
+      if (error) throw error;
+
+      queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
+      
+      toast({
+        title: "Broker connection deleted",
+        description: "The broker connection has been removed successfully.",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error deleting broker connection",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDialogClose = (open: boolean) => {
+    setIsDialogOpen(open);
+    if (!open) {
+      setConnectionToEdit(null);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90">
@@ -83,29 +124,8 @@ const ConnectBroker = () => {
                 <BrokerConnectionCard
                   key={connection.id}
                   connection={connection}
-                  onEdit={() => {
-                    // TODO: Implement edit functionality
-                    console.log("Edit connection:", connection.id);
-                  }}
-                  onDelete={async () => {
-                    const { error } = await supabase
-                      .from("broker_connections")
-                      .delete()
-                      .eq("id", connection.id);
-
-                    if (error) {
-                      toast({
-                        title: "Error deleting broker connection",
-                        description: error.message,
-                        variant: "destructive",
-                      });
-                    } else {
-                      toast({
-                        title: "Broker connection deleted",
-                        description: "The broker connection has been removed successfully.",
-                      });
-                    }
-                  }}
+                  onEdit={() => handleEdit(connection)}
+                  onDelete={() => handleDelete(connection.id)}
                 />
               ))
             )}
@@ -115,7 +135,8 @@ const ConnectBroker = () => {
 
       <BrokerConnectionDialog
         open={isDialogOpen}
-        onOpenChange={setIsDialogOpen}
+        onOpenChange={handleDialogClose}
+        connectionToEdit={connectionToEdit}
       />
     </div>
   );
