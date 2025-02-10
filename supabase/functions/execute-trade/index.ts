@@ -71,17 +71,46 @@ serve(async (req) => {
       );
     }
 
-    // Get the current market price from Alpaca
+    // Clean and validate stock symbol
+    const symbol = prediction.symbol.trim().toUpperCase();
+    if (!symbol.match(/^[A-Z]+$/)) {
+      console.error('Invalid stock symbol format:', symbol);
+      return new Response(
+        JSON.stringify({ error: 'Invalid stock symbol format' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const alpacaBaseUrl = connection.broker_name === 'alpaca_paper' 
       ? 'https://paper-api.alpaca.markets'
       : 'https://api.alpaca.markets';
 
-    console.log('Fetching current market price from Alpaca for:', prediction.symbol);
+    console.log('Checking market hours and fetching current price for:', symbol);
     
     try {
-      // Using the snapshot endpoint instead of trades/latest
+      // First check if the market is open
+      const clockResponse = await fetch(
+        `${alpacaBaseUrl}/v2/clock`,
+        {
+          headers: {
+            'APCA-API-KEY-ID': connection.api_key,
+            'APCA-API-SECRET-KEY': connection.api_secret,
+          },
+        }
+      );
+
+      if (!clockResponse.ok) {
+        throw new Error('Failed to check market hours');
+      }
+
+      const clockData = await clockResponse.json();
+      if (!clockData.is_open) {
+        throw new Error('Market is currently closed');
+      }
+
+      // Get the current price using trades/latest for real-time data
       const quoteResponse = await fetch(
-        `${alpacaBaseUrl}/v2/stocks/${prediction.symbol}/snapshot`,
+        `${alpacaBaseUrl}/v2/stocks/${symbol}/trades/latest`,
         {
           headers: {
             'APCA-API-KEY-ID': connection.api_key,
@@ -96,18 +125,18 @@ serve(async (req) => {
           status: quoteResponse.status,
           statusText: quoteResponse.statusText,
           body: errorText,
-          url: `${alpacaBaseUrl}/v2/stocks/${prediction.symbol}/snapshot`
+          url: `${alpacaBaseUrl}/v2/stocks/${symbol}/trades/latest`
         });
         throw new Error(`Failed to fetch price: ${quoteResponse.status} ${errorText}`);
       }
 
       const quote = await quoteResponse.json();
-      if (!quote || !quote.latestTrade || !quote.latestTrade.p) {
+      if (!quote || !quote.trade || !quote.trade.p) {
         console.error('Invalid quote response from Alpaca:', quote);
-        throw new Error('Invalid quote response from Alpaca');
+        throw new Error('Could not get current price for symbol');
       }
 
-      const currentPrice = quote.latestTrade.p;
+      const currentPrice = quote.trade.p;
       const quantity = Math.floor(amount / currentPrice); // Round down to nearest whole share
 
       if (quantity < 1) {
@@ -115,7 +144,7 @@ serve(async (req) => {
       }
 
       console.log('Placing order with Alpaca:', {
-        symbol: prediction.symbol,
+        symbol,
         quantity,
         currentPrice
       });
@@ -131,7 +160,7 @@ serve(async (req) => {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            symbol: prediction.symbol,
+            symbol: symbol,
             qty: quantity,
             side: 'buy',
             type: 'market',
@@ -154,7 +183,7 @@ serve(async (req) => {
         .from('trade_executions')
         .insert([{
           user_id: userId,
-          stock_symbol: prediction.symbol,
+          stock_symbol: symbol,
           action: 'BUY',
           price: currentPrice,
           quantity: quantity,
