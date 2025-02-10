@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -50,6 +49,14 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch }: WatchCardProps) =
             {stock.symbol}
           </CardTitle>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowWatchOptions(true)}
+              className="hover:bg-green-100 hover:text-green-600"
+            >
+              Invest
+            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -134,7 +141,10 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch }: WatchCardProps) =
         isOpen={showWatchOptions}
         onClose={() => setShowWatchOptions(false)}
         onConfirm={(investmentType, amount) => {
-          // Handle investment logic here
+          if (watch.stock_prediction) {
+            watch.addToWatchlist(watch.stock_prediction.id, investmentType, amount);
+          }
+          setShowWatchOptions(false);
         }}
         symbol={stock.symbol}
       />

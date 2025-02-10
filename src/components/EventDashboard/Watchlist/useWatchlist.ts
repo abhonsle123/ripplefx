@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -94,33 +93,67 @@ export const useWatchlist = (userId: string) => {
     investmentType: "FOLLOW_ONLY" | "INVEST_AND_FOLLOW",
     amount?: number
   ) => {
-    let brokerConnectionId = null;
-    
-    if (investmentType === "INVEST_AND_FOLLOW") {
-      const connection = await getBrokerConnection();
-      brokerConnectionId = connection.id;
-    }
+    try {
+      let brokerConnectionId = null;
+      
+      if (investmentType === "INVEST_AND_FOLLOW") {
+        const connection = await getBrokerConnection();
+        if (!connection) {
+          throw new Error("No active broker connection found. Please connect a broker first.");
+        }
+        brokerConnectionId = connection.id;
+      }
 
-    const { error } = await supabase
-      .from('user_stock_watches')
-      .insert([{
-        user_id: userId,
-        stock_prediction_id: stockPredictionId,
-        status: investmentType === "INVEST_AND_FOLLOW" ? "INVESTING" : "WATCHING",
-        investment_type: investmentType,
-        investment_amount: amount,
-        broker_connection_id: brokerConnectionId
-      }]);
+      const { error } = await supabase
+        .from('user_stock_watches')
+        .insert([{
+          user_id: userId,
+          stock_prediction_id: stockPredictionId,
+          status: "WATCHING",
+          investment_type: investmentType,
+          investment_amount: amount,
+          broker_connection_id: brokerConnectionId
+        }]);
 
-    if (error) throw error;
+      if (error) throw error;
 
-    // If investing, trigger the investment
-    if (investmentType === "INVEST_AND_FOLLOW" && amount && brokerConnectionId) {
-      // Here we would typically call an edge function to handle the investment
-      // For now, we'll just show a success message
+      // If investing, trigger the investment
+      if (investmentType === "INVEST_AND_FOLLOW" && amount && brokerConnectionId) {
+        const { data: investmentResult, error: investmentError } = await supabase.functions.invoke(
+          'execute-trade',
+          {
+            body: {
+              stockPredictionId,
+              amount,
+              brokerConnectionId,
+              userId
+            }
+          }
+        );
+
+        if (investmentError) throw investmentError;
+
+        toast({
+          title: "Investment Initiated",
+          description: "Your investment order has been placed successfully.",
+        });
+      }
+
+      // Refresh the watchlist
+      queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
+
       toast({
-        title: "Investment Initiated",
-        description: "Your investment order has been placed.",
+        title: investmentType === "FOLLOW_ONLY" ? "Stock Added to Watchlist" : "Investment Started",
+        description: investmentType === "FOLLOW_ONLY" 
+          ? "You will now receive updates for this stock."
+          : "Your investment has been initiated and the stock has been added to your watchlist.",
+      });
+    } catch (error: any) {
+      console.error('Error in addToWatchlist:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to process your request. Please try again.",
+        variant: "destructive",
       });
     }
   };
