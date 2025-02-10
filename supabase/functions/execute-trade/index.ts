@@ -14,6 +14,16 @@ interface RequestBody {
   userId: string;
 }
 
+interface AlpacaOrderResponse {
+  id: string;
+  client_order_id: string;
+  status: string;
+  symbol: string;
+  quantity: number;
+  filled_avg_price?: number;
+  error?: string;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -61,17 +71,70 @@ serve(async (req) => {
       );
     }
 
-    // In a real implementation, you would fetch the current market price
-    // For now, use a mock price of $100 per share
-    const mockPrice = 100;
-    const quantity = amount / mockPrice;
+    // Get the current market price from Alpaca
+    const alpacaBaseUrl = connection.broker_name === 'alpaca_paper' 
+      ? 'https://paper-api.alpaca.markets'
+      : 'https://api.alpaca.markets';
 
-    console.log('Creating trade execution record:', {
+    console.log('Fetching current market price from Alpaca for:', prediction.symbol);
+    
+    const quoteResponse = await fetch(
+      `${alpacaBaseUrl}/v2/stocks/${prediction.symbol}/trades/latest`,
+      {
+        headers: {
+          'APCA-API-KEY-ID': connection.api_key,
+          'APCA-API-SECRET-KEY': connection.api_secret,
+        },
+      }
+    );
+
+    if (!quoteResponse.ok) {
+      console.error('Error fetching price from Alpaca:', await quoteResponse.text());
+      throw new Error('Failed to fetch current market price');
+    }
+
+    const quote = await quoteResponse.json();
+    const currentPrice = quote.trade.p;
+    const quantity = Math.floor(amount / currentPrice); // Round down to nearest whole share
+
+    if (quantity < 1) {
+      throw new Error('Investment amount too small to purchase at least one share');
+    }
+
+    console.log('Placing order with Alpaca:', {
       symbol: prediction.symbol,
-      price: mockPrice,
       quantity,
-      userId
+      currentPrice
     });
+
+    // Create the order in Alpaca
+    const orderResponse = await fetch(
+      `${alpacaBaseUrl}/v2/orders`,
+      {
+        method: 'POST',
+        headers: {
+          'APCA-API-KEY-ID': connection.api_key,
+          'APCA-API-SECRET-KEY': connection.api_secret,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          symbol: prediction.symbol,
+          qty: quantity,
+          side: 'buy',
+          type: 'market',
+          time_in_force: 'day'
+        })
+      }
+    );
+
+    const orderResult = await orderResponse.json() as AlpacaOrderResponse;
+
+    if (!orderResponse.ok) {
+      console.error('Error placing order with Alpaca:', orderResult);
+      throw new Error(orderResult.error || 'Failed to place order with Alpaca');
+    }
+
+    console.log('Order placed successfully with Alpaca:', orderResult);
 
     // Create trade execution record
     const { data: execution, error: executionError } = await supabaseClient
@@ -79,10 +142,10 @@ serve(async (req) => {
       .insert([{
         user_id: userId,
         stock_symbol: prediction.symbol,
-        action: 'BUY', // Now this is a valid value due to our migration
-        price: mockPrice,
+        action: 'BUY',
+        price: currentPrice,
         quantity: quantity,
-        status: 'PENDING',
+        status: 'PENDING', // Will be updated when we get the final execution
         error_message: null
       }])
       .select()
@@ -96,15 +159,71 @@ serve(async (req) => {
       );
     }
 
-    console.log('Trade execution created successfully:', execution);
+    // Start background task to monitor order status
+    EdgeRuntime.waitUntil(
+      (async () => {
+        try {
+          let orderStatus = orderResult.status;
+          while (orderStatus !== 'filled' && orderStatus !== 'canceled' && orderStatus !== 'expired') {
+            await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds between checks
+            
+            const statusResponse = await fetch(
+              `${alpacaBaseUrl}/v2/orders/${orderResult.id}`,
+              {
+                headers: {
+                  'APCA-API-KEY-ID': connection.api_key,
+                  'APCA-API-SECRET-KEY': connection.api_secret,
+                }
+              }
+            );
+            
+            if (!statusResponse.ok) {
+              throw new Error('Failed to fetch order status');
+            }
+            
+            const statusResult = await statusResponse.json() as AlpacaOrderResponse;
+            orderStatus = statusResult.status;
+            
+            // Update execution record with final details when order is filled
+            if (orderStatus === 'filled') {
+              await supabaseClient
+                .from('trade_executions')
+                .update({
+                  status: 'COMPLETED',
+                  price: statusResult.filled_avg_price
+                })
+                .eq('id', execution.id);
+            } else if (orderStatus === 'canceled' || orderStatus === 'expired') {
+              await supabaseClient
+                .from('trade_executions')
+                .update({
+                  status: 'FAILED',
+                  error_message: `Order ${orderStatus}`
+                })
+                .eq('id', execution.id);
+            }
+          }
+        } catch (error) {
+          console.error('Error in background task:', error);
+          await supabaseClient
+            .from('trade_executions')
+            .update({
+              status: 'FAILED',
+              error_message: error.message
+            })
+            .eq('id', execution.id);
+        }
+      })()
+    );
 
-    // For now, just return success - in a real implementation, 
-    // you would make API calls to the broker here
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Trade execution created',
-        data: execution
+        message: 'Trade execution initiated',
+        data: {
+          ...execution,
+          alpaca_order_id: orderResult.id
+        }
       }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
