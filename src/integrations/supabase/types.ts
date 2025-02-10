@@ -341,33 +341,49 @@ export type Database = {
       }
       user_stock_watches: {
         Row: {
+          broker_connection_id: string | null
           created_at: string
           entry_price: number | null
           id: string
+          investment_amount: number | null
+          investment_type: string | null
           status: Database["public"]["Enums"]["stock_watch_status"] | null
           stock_prediction_id: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          broker_connection_id?: string | null
           created_at?: string
           entry_price?: number | null
           id?: string
+          investment_amount?: number | null
+          investment_type?: string | null
           status?: Database["public"]["Enums"]["stock_watch_status"] | null
           stock_prediction_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          broker_connection_id?: string | null
           created_at?: string
           entry_price?: number | null
           id?: string
+          investment_amount?: number | null
+          investment_type?: string | null
           status?: Database["public"]["Enums"]["stock_watch_status"] | null
           stock_prediction_id?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "user_stock_watches_broker_connection_id_fkey"
+            columns: ["broker_connection_id"]
+            isOneToOne: false
+            referencedRelation: "broker_connections"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "user_stock_watches_stock_prediction_id_fkey"
             columns: ["stock_prediction_id"]
@@ -387,7 +403,7 @@ export type Database = {
     Enums: {
       event_type: "NATURAL_DISASTER" | "GEOPOLITICAL" | "ECONOMIC" | "OTHER"
       severity_level: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL"
-      stock_watch_status: "WATCHING" | "SOLD" | "CANCELLED"
+      stock_watch_status: "WATCHING" | "SOLD" | "CANCELLED" | "INVESTING"
     }
     CompositeTypes: {
       [_ in never]: never
