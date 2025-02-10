@@ -59,18 +59,22 @@ serve(async (req) => {
       );
     }
 
+    // In a real implementation, you would fetch the current market price
+    // For now, use a mock price of $100 per share
+    const mockPrice = 100;
+    const quantity = amount / mockPrice;
+
     // Create trade execution record
     const { data: execution, error: executionError } = await supabaseClient
       .from('trade_executions')
       .insert([{
         user_id: userId,
-        broker_connection_id: brokerConnectionId,
-        stock_prediction_id: stockPredictionId,
-        symbol: prediction.symbol,
-        amount: amount,
+        stock_symbol: prediction.symbol,
+        action: 'BUY', // Since this is an investment, we're buying
+        price: mockPrice,
+        quantity: quantity,
         status: 'PENDING',
-        broker_order_id: null,
-        execution_details: null
+        error_message: null
       }])
       .select()
       .single();
@@ -78,7 +82,7 @@ serve(async (req) => {
     if (executionError) {
       console.error('Error creating trade execution:', executionError);
       return new Response(
-        JSON.stringify({ error: 'Failed to create trade execution' }),
+        JSON.stringify({ error: 'Failed to create trade execution', details: executionError.message }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
