@@ -60,15 +60,12 @@ const ConnectBroker = () => {
 
       if (error) throw error;
 
-      // Immediately update the local cache to remove the deleted connection
+      // Update the local cache to remove the deleted connection
       queryClient.setQueryData(
         ["broker-connections"],
         (oldData: BrokerConnection[] | undefined) => 
           oldData ? oldData.filter(conn => conn.id !== connectionId) : []
       );
-
-      // Also invalidate the query to ensure fresh data
-      await queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
       
       toast({
         title: "Success",
