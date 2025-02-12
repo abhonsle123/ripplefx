@@ -124,7 +124,15 @@ export const useWatchlist = (userId: string) => {
 
         if (tradeError) {
           console.error('Trade execution error:', tradeError);
-          throw new Error(tradeError.message || 'Failed to execute trade');
+          // Parse the error response to get the details
+          let errorMessage = tradeError.message;
+          try {
+            const errorBody = JSON.parse(tradeError.message);
+            errorMessage = errorBody.details || errorBody.error || tradeError.message;
+          } catch (e) {
+            // If parsing fails, use the original error message
+          }
+          throw new Error(errorMessage);
         }
 
         console.log('Trade execution result:', tradeResult);
@@ -172,8 +180,20 @@ export const useWatchlist = (userId: string) => {
       // Refresh the watchlist
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
 
+      toast({
+        title: "Success",
+        description: investmentType === "FOLLOW_ONLY" 
+          ? "Stock added to watchlist successfully" 
+          : "Investment order placed and stock added to watchlist",
+      });
+
     } catch (error: any) {
       console.error('Error in addToWatchlist:', error);
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
       throw error;
     }
   };
