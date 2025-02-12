@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -124,7 +123,7 @@ export const useWatchlist = (userId: string) => {
 
         if (tradeError) {
           console.error('Trade execution error:', tradeError);
-          // Parse the error response to get the details
+          // Parse the error response
           let errorMessage = tradeError.message;
           try {
             const errorBody = JSON.parse(tradeError.message);
@@ -132,10 +131,27 @@ export const useWatchlist = (userId: string) => {
           } catch (e) {
             // If parsing fails, use the original error message
           }
-          throw new Error(errorMessage);
-        }
+          
+          // Show error toast but only throw for non-400 errors
+          toast({
+            title: "Trade Error",
+            description: errorMessage,
+            variant: "destructive",
+          });
 
-        console.log('Trade execution result:', tradeResult);
+          // For 400 errors (like insufficient shares), we'll still add to watchlist
+          if (tradeError.error_type !== 'http_client_error') {
+            throw new Error(errorMessage);
+          }
+
+          // For 400 errors, we'll fall through and create a FOLLOW_ONLY watch instead
+          console.log('Continuing with FOLLOW_ONLY after trade error');
+          investmentType = "FOLLOW_ONLY";
+          amount = undefined;
+          brokerConnectionId = null;
+        } else {
+          console.log('Trade execution result:', tradeResult);
+        }
       }
 
       // Check for existing watch
@@ -180,6 +196,7 @@ export const useWatchlist = (userId: string) => {
       // Refresh the watchlist
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
 
+      // Show appropriate success message
       toast({
         title: "Success",
         description: investmentType === "FOLLOW_ONLY" 
@@ -189,12 +206,15 @@ export const useWatchlist = (userId: string) => {
 
     } catch (error: any) {
       console.error('Error in addToWatchlist:', error);
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-      throw error;
+      // Only show error toast and throw for non-trade errors
+      if (error.message !== 'AbortError') {
+        toast({
+          title: "Error",
+          description: error.message,
+          variant: "destructive",
+        });
+        throw error;
+      }
     }
   };
 
