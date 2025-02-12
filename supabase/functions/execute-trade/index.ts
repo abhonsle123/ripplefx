@@ -59,7 +59,7 @@ serve(async (req) => {
     // Get stock prediction details
     const { data: prediction, error: predictionError } = await supabaseClient
       .from('stock_predictions')
-      .select('symbol')
+      .select('symbol, is_positive')
       .eq('id', stockPredictionId)
       .single();
 
@@ -81,16 +81,15 @@ serve(async (req) => {
       );
     }
 
-    const alpacaBaseUrl = connection.broker_name === 'alpaca_paper' 
-      ? 'https://paper-api.alpaca.markets'
-      : 'https://api.alpaca.markets';
+    // Use paper trading endpoint for both paper and live trading (for testing)
+    const alpacaBaseUrl = 'https://paper-api.alpaca.markets/v2';
 
     console.log('Checking market hours and fetching current price for:', symbol);
     
     try {
       // First check if the market is open
       const clockResponse = await fetch(
-        `${alpacaBaseUrl}/v2/clock`,
+        `${alpacaBaseUrl}/clock`,
         {
           headers: {
             'APCA-API-KEY-ID': connection.api_key,
@@ -108,9 +107,26 @@ serve(async (req) => {
         throw new Error('Market is currently closed');
       }
 
-      // Get the current price using v2 snapshot endpoint
+      // Get account information to verify API keys are working
+      const accountResponse = await fetch(
+        `${alpacaBaseUrl}/account`,
+        {
+          headers: {
+            'APCA-API-KEY-ID': connection.api_key,
+            'APCA-API-SECRET-KEY': connection.api_secret,
+          },
+        }
+      );
+
+      if (!accountResponse.ok) {
+        const accountError = await accountResponse.text();
+        console.error('Error verifying account:', accountError);
+        throw new Error('Failed to verify trading account');
+      }
+
+      // Get the latest quote
       const quoteResponse = await fetch(
-        `${alpacaBaseUrl}/v2/stocks/${symbol}/snapshot`,
+        `${alpacaBaseUrl}/stocks/${symbol}/trades/latest`,
         {
           headers: {
             'APCA-API-KEY-ID': connection.api_key,
@@ -125,18 +141,18 @@ serve(async (req) => {
           status: quoteResponse.status,
           statusText: quoteResponse.statusText,
           body: errorText,
-          url: `${alpacaBaseUrl}/v2/stocks/${symbol}/snapshot`
+          url: `${alpacaBaseUrl}/stocks/${symbol}/trades/latest`
         });
         throw new Error(`Failed to fetch price: ${quoteResponse.status} ${errorText}`);
       }
 
       const quote = await quoteResponse.json();
-      if (!quote || !quote.latestTrade || !quote.latestTrade.p) {
+      if (!quote || !quote.price) {
         console.error('Invalid quote response from Alpaca:', quote);
         throw new Error('Could not get current price for symbol');
       }
 
-      const currentPrice = quote.latestTrade.p;
+      const currentPrice = quote.price;
       const quantity = Math.floor(amount / currentPrice); // Round down to nearest whole share
 
       if (quantity < 1) {
@@ -146,12 +162,13 @@ serve(async (req) => {
       console.log('Placing order with Alpaca:', {
         symbol,
         quantity,
-        currentPrice
+        currentPrice,
+        side: prediction.is_positive ? 'buy' : 'sell'
       });
 
       // Create the order in Alpaca
       const orderResponse = await fetch(
-        `${alpacaBaseUrl}/v2/orders`,
+        `${alpacaBaseUrl}/orders`,
         {
           method: 'POST',
           headers: {
@@ -162,7 +179,7 @@ serve(async (req) => {
           body: JSON.stringify({
             symbol: symbol,
             qty: quantity,
-            side: 'buy',
+            side: prediction.is_positive ? 'buy' : 'sell',
             type: 'market',
             time_in_force: 'day'
           })
@@ -184,7 +201,7 @@ serve(async (req) => {
         .insert([{
           user_id: userId,
           stock_symbol: symbol,
-          action: 'BUY',
+          action: prediction.is_positive ? 'BUY' : 'SELL',
           price: currentPrice,
           quantity: quantity,
           status: 'PENDING',
@@ -214,7 +231,7 @@ serve(async (req) => {
               attempts++;
               
               const statusResponse = await fetch(
-                `${alpacaBaseUrl}/v2/orders/${orderResult.id}`,
+                `${alpacaBaseUrl}/orders/${orderResult.id}`,
                 {
                   headers: {
                     'APCA-API-KEY-ID': connection.api_key,
