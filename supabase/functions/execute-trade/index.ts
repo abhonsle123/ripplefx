@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -170,7 +171,10 @@ serve(async (req) => {
         throw new Error('Investment amount too small to purchase at least one share');
       }
 
-      // If it's a sell order, verify we have enough shares first
+      // Determine order side and validate position for sells
+      let orderSide = prediction.is_positive ? 'buy' : 'sell';
+      
+      // If this is a sell order, check the position
       if (!prediction.is_positive) {
         const positionResponse = await fetch(
           `${tradingBaseUrl}/positions/${symbol}`,
@@ -182,16 +186,29 @@ serve(async (req) => {
           }
         );
 
-        // If no position exists or error fetching position
+        // If no position exists or error fetching position, we can't sell
         if (!positionResponse.ok || positionResponse.status === 404) {
-          throw new Error('Cannot execute sell order: No existing position for this stock');
+          return new Response(
+            JSON.stringify({
+              error: 'Cannot execute trade',
+              details: 'Shorting is not supported. You must own shares to sell.'
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
+        // Verify sufficient shares for selling
         const position = await positionResponse.json();
         const availableShares = parseInt(position.qty);
         
         if (availableShares < quantity) {
-          throw new Error(`Cannot execute sell order: Insufficient shares (have ${availableShares}, need ${quantity})`);
+          return new Response(
+            JSON.stringify({
+              error: 'Insufficient shares',
+              details: `You only have ${availableShares} shares available to sell, but trying to sell ${quantity} shares.`
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
         }
 
         console.log('Position verified for sell order:', {
@@ -205,18 +222,7 @@ serve(async (req) => {
         symbol,
         quantity,
         currentPrice,
-        side: prediction.is_positive ? 'buy' : 'sell'
-      });
-
-      // Simplified order side determination
-      const orderSide = prediction.is_positive ? 'buy' : 'sell';
-
-      console.log('Final order parameters:', {
-        symbol,
-        quantity,
-        orderSide,
-        type: 'market',
-        time_in_force: 'day'
+        side: orderSide
       });
 
       // Create the order in Alpaca using the Trading API
