@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -100,7 +99,9 @@ serve(async (req) => {
       );
 
       if (!clockResponse.ok) {
-        throw new Error('Failed to check market hours');
+        const clockError = await clockResponse.text();
+        console.error('Error checking market hours:', clockError);
+        throw new Error(`Failed to check market hours: ${clockResponse.status} ${clockError}`);
       }
 
       const clockData = await clockResponse.json();
@@ -108,7 +109,7 @@ serve(async (req) => {
         throw new Error('Market is currently closed');
       }
 
-      // Get account information to verify API keys are working
+      // Get account information to verify API keys and check buying power
       const accountResponse = await fetch(
         `${tradingBaseUrl}/account`,
         {
@@ -122,7 +123,16 @@ serve(async (req) => {
       if (!accountResponse.ok) {
         const accountError = await accountResponse.text();
         console.error('Error verifying account:', accountError);
-        throw new Error('Failed to verify trading account');
+        throw new Error(`Failed to verify trading account: ${accountResponse.status} ${accountError}`);
+      }
+
+      const accountData = await accountResponse.json();
+      console.log('Account data:', accountData);
+
+      // Verify sufficient buying power
+      const buyingPower = parseFloat(accountData.buying_power);
+      if (amount > buyingPower) {
+        throw new Error(`Insufficient buying power. Available: $${buyingPower}, Required: $${amount}`);
       }
 
       // Get the latest trade using the Data API
@@ -167,6 +177,32 @@ serve(async (req) => {
         side: prediction.is_positive ? 'buy' : 'sell'
       });
 
+      // Verify the position if selling
+      if (!prediction.is_positive) {
+        const positionResponse = await fetch(
+          `${tradingBaseUrl}/positions/${symbol}`,
+          {
+            headers: {
+              'APCA-API-KEY-ID': connection.api_key,
+              'APCA-API-SECRET-KEY': connection.api_secret,
+            },
+          }
+        );
+
+        if (!positionResponse.ok) {
+          if (positionResponse.status === 404) {
+            throw new Error(`No position found for ${symbol}. Cannot execute sell order.`);
+          }
+          const positionError = await positionResponse.text();
+          throw new Error(`Failed to verify position: ${positionResponse.status} ${positionError}`);
+        }
+
+        const position = await positionResponse.json();
+        if (parseInt(position.qty) < quantity) {
+          throw new Error(`Insufficient shares to sell. Available: ${position.qty}, Required: ${quantity}`);
+        }
+      }
+
       // Create the order in Alpaca using the Trading API
       const orderResponse = await fetch(
         `${tradingBaseUrl}/orders`,
@@ -188,13 +224,15 @@ serve(async (req) => {
       );
 
       const orderResult = await orderResponse.json() as AlpacaOrderResponse;
+      console.log('Order response from Alpaca:', orderResult);
 
       if (!orderResponse.ok) {
-        console.error('Error placing order with Alpaca:', orderResult);
-        throw new Error(orderResult.error || 'Failed to place order with Alpaca');
+        console.error('Error placing order with Alpaca:', {
+          status: orderResponse.status,
+          result: orderResult
+        });
+        throw new Error(orderResult.error || `Failed to place order: ${orderResponse.status}`);
       }
-
-      console.log('Order placed successfully with Alpaca:', orderResult);
 
       // Create trade execution record
       const { data: execution, error: executionError } = await supabaseClient
