@@ -177,60 +177,8 @@ serve(async (req) => {
         side: prediction.is_positive ? 'buy' : 'sell'
       });
 
-      // For sell orders, check if we need to short sell
-      let orderSide = prediction.is_positive ? 'buy' : 'sell';
-      if (!prediction.is_positive) {
-        const positionResponse = await fetch(
-          `${tradingBaseUrl}/positions/${symbol}`,
-          {
-            headers: {
-              'APCA-API-KEY-ID': connection.api_key,
-              'APCA-API-SECRET-KEY': connection.api_secret,
-            },
-          }
-        );
-
-        if (!positionResponse.ok || positionResponse.status === 404) {
-          if (!accountData.shorting_enabled) {
-            throw new Error('Cannot execute sell order: No existing position and shorting is not enabled on this account');
-          }
-
-          console.log('No existing position found, checking if stock is shortable');
-          // Check if the stock is shortable
-          const assetsResponse = await fetch(
-            `${tradingBaseUrl}/assets/${symbol}`,
-            {
-              headers: {
-                'APCA-API-KEY-ID': connection.api_key,
-                'APCA-API-SECRET-KEY': connection.api_secret,
-              },
-            }
-          );
-
-          if (!assetsResponse.ok) {
-            const assetError = await assetsResponse.text();
-            throw new Error(`Failed to verify asset shortability: ${assetsResponse.status} ${assetError}`);
-          }
-
-          const assetData = await assetsResponse.json();
-          console.log('Asset data:', assetData);
-
-          if (!assetData.shortable) {
-            throw new Error(`${symbol} is not available for short selling`);
-          }
-
-          orderSide = 'sell_short';
-        } else {
-          const position = await positionResponse.json();
-          if (parseInt(position.qty) < quantity) {
-            if (!accountData.shorting_enabled) {
-              throw new Error(`Cannot execute full sell order: Insufficient shares (have ${position.qty}, need ${quantity}) and shorting is not enabled`);
-            }
-            console.log('Insufficient shares for regular sell, converting to short sell');
-            orderSide = 'sell_short';
-          }
-        }
-      }
+      // Simplified order side determination - Alpaca handles short selling automatically
+      const orderSide = prediction.is_positive ? 'buy' : 'sell';
 
       console.log('Final order parameters:', {
         symbol,
@@ -272,7 +220,7 @@ serve(async (req) => {
       const orderResult = await orderResponse.json() as AlpacaOrderResponse;
       console.log('Order response from Alpaca:', orderResult);
 
-      // Create trade execution record with the actual order type used
+      // Create trade execution record
       const { data: execution, error: executionError } = await supabaseClient
         .from('trade_executions')
         .insert([{
