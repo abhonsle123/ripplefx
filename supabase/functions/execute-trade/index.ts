@@ -177,7 +177,8 @@ serve(async (req) => {
         side: prediction.is_positive ? 'buy' : 'sell'
       });
 
-      // Verify the position if selling
+      // For sell orders, check if we need to short sell
+      let orderSide = prediction.is_positive ? 'buy' : 'sell';
       if (!prediction.is_positive) {
         const positionResponse = await fetch(
           `${tradingBaseUrl}/positions/${symbol}`,
@@ -189,17 +190,16 @@ serve(async (req) => {
           }
         );
 
-        if (!positionResponse.ok) {
-          if (positionResponse.status === 404) {
-            throw new Error(`No position found for ${symbol}. Cannot execute sell order.`);
+        // If no position exists or insufficient shares, use short sell
+        if (!positionResponse.ok || positionResponse.status === 404) {
+          console.log('No existing position found, converting to short sell');
+          orderSide = 'sell_short';
+        } else {
+          const position = await positionResponse.json();
+          if (parseInt(position.qty) < quantity) {
+            console.log('Insufficient shares for regular sell, converting to short sell');
+            orderSide = 'sell_short';
           }
-          const positionError = await positionResponse.text();
-          throw new Error(`Failed to verify position: ${positionResponse.status} ${positionError}`);
-        }
-
-        const position = await positionResponse.json();
-        if (parseInt(position.qty) < quantity) {
-          throw new Error(`Insufficient shares to sell. Available: ${position.qty}, Required: ${quantity}`);
         }
       }
 
@@ -216,7 +216,7 @@ serve(async (req) => {
           body: JSON.stringify({
             symbol: symbol,
             qty: quantity,
-            side: prediction.is_positive ? 'buy' : 'sell',
+            side: orderSide,
             type: 'market',
             time_in_force: 'day'
           })
@@ -234,13 +234,13 @@ serve(async (req) => {
         throw new Error(orderResult.error || `Failed to place order: ${orderResponse.status}`);
       }
 
-      // Create trade execution record
+      // Create trade execution record with the actual order type used
       const { data: execution, error: executionError } = await supabaseClient
         .from('trade_executions')
         .insert([{
           user_id: userId,
           stock_symbol: symbol,
-          action: prediction.is_positive ? 'BUY' : 'SELL',
+          action: orderSide.toUpperCase(),
           price: currentPrice,
           quantity: quantity,
           status: 'PENDING',
