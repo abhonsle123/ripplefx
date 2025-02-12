@@ -81,15 +81,16 @@ serve(async (req) => {
       );
     }
 
-    // Use paper trading endpoint for both paper and live trading (for testing)
-    const alpacaBaseUrl = 'https://paper-api.alpaca.markets/v2';
+    // Set up API endpoints
+    const tradingBaseUrl = 'https://paper-api.alpaca.markets/v2';
+    const dataBaseUrl = 'https://data.alpaca.markets/v2';
 
     console.log('Checking market hours and fetching current price for:', symbol);
     
     try {
       // First check if the market is open
       const clockResponse = await fetch(
-        `${alpacaBaseUrl}/clock`,
+        `${tradingBaseUrl}/clock`,
         {
           headers: {
             'APCA-API-KEY-ID': connection.api_key,
@@ -109,7 +110,7 @@ serve(async (req) => {
 
       // Get account information to verify API keys are working
       const accountResponse = await fetch(
-        `${alpacaBaseUrl}/account`,
+        `${tradingBaseUrl}/account`,
         {
           headers: {
             'APCA-API-KEY-ID': connection.api_key,
@@ -124,9 +125,9 @@ serve(async (req) => {
         throw new Error('Failed to verify trading account');
       }
 
-      // Get the latest quote
+      // Get the latest trade using the Data API
       const quoteResponse = await fetch(
-        `${alpacaBaseUrl}/stocks/${symbol}/trades/latest`,
+        `${dataBaseUrl}/stocks/${symbol}/trades/latest`,
         {
           headers: {
             'APCA-API-KEY-ID': connection.api_key,
@@ -141,18 +142,18 @@ serve(async (req) => {
           status: quoteResponse.status,
           statusText: quoteResponse.statusText,
           body: errorText,
-          url: `${alpacaBaseUrl}/stocks/${symbol}/trades/latest`
+          url: `${dataBaseUrl}/stocks/${symbol}/trades/latest`
         });
         throw new Error(`Failed to fetch price: ${quoteResponse.status} ${errorText}`);
       }
 
-      const quote = await quoteResponse.json();
-      if (!quote || !quote.price) {
-        console.error('Invalid quote response from Alpaca:', quote);
+      const quoteData = await quoteResponse.json();
+      if (!quoteData.trade || !quoteData.trade.p) {
+        console.error('Invalid quote response from Alpaca:', quoteData);
         throw new Error('Could not get current price for symbol');
       }
 
-      const currentPrice = quote.price;
+      const currentPrice = quoteData.trade.p;
       const quantity = Math.floor(amount / currentPrice); // Round down to nearest whole share
 
       if (quantity < 1) {
@@ -166,9 +167,9 @@ serve(async (req) => {
         side: prediction.is_positive ? 'buy' : 'sell'
       });
 
-      // Create the order in Alpaca
+      // Create the order in Alpaca using the Trading API
       const orderResponse = await fetch(
-        `${alpacaBaseUrl}/orders`,
+        `${tradingBaseUrl}/orders`,
         {
           method: 'POST',
           headers: {
@@ -231,7 +232,7 @@ serve(async (req) => {
               attempts++;
               
               const statusResponse = await fetch(
-                `${alpacaBaseUrl}/orders/${orderResult.id}`,
+                `${tradingBaseUrl}/orders/${orderResult.id}`,
                 {
                   headers: {
                     'APCA-API-KEY-ID': connection.api_key,
