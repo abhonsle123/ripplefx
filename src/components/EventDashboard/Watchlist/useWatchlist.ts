@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -100,121 +101,128 @@ export const useWatchlist = (userId: string) => {
   ) => {
     try {
       let brokerConnectionId = null;
+      let shouldContinueWithWatchlist = true;
       
       if (investmentType === "INVEST_AND_FOLLOW") {
-        const connection = await getBrokerConnection();
-        if (!connection) {
-          throw new Error("No active broker connection found. Please connect a broker first.");
-        }
-        brokerConnectionId = connection.id;
+        try {
+          const connection = await getBrokerConnection();
+          if (!connection) {
+            throw new Error("No active broker connection found. Please connect a broker first.");
+          }
+          brokerConnectionId = connection.id;
 
-        // Execute the trade
-        const { data: tradeResult, error: tradeError } = await supabase.functions.invoke(
-          'execute-trade',
-          {
-            body: {
-              stockPredictionId,
-              amount,
-              brokerConnectionId: connection.id,
-              userId
+          // Execute the trade
+          const { data: tradeResult, error: tradeError } = await supabase.functions.invoke(
+            'execute-trade',
+            {
+              body: {
+                stockPredictionId,
+                amount,
+                brokerConnectionId: connection.id,
+                userId
+              }
             }
-          }
-        );
+          );
 
-        if (tradeError) {
-          console.error('Trade execution error:', tradeError);
-          // Parse the error response
-          let errorMessage = tradeError.message;
-          try {
-            const errorBody = JSON.parse(tradeError.message);
-            errorMessage = errorBody.details || errorBody.error || tradeError.message;
-          } catch (e) {
-            // If parsing fails, use the original error message
-          }
-          
-          // Show error toast but only throw for non-400 errors
-          toast({
-            title: "Trade Error",
-            description: errorMessage,
-            variant: "destructive",
-          });
+          if (tradeError) {
+            console.error('Trade execution error:', tradeError);
+            // Parse the error response
+            let errorMessage = tradeError.message;
+            let errorBody;
+            
+            try {
+              errorBody = JSON.parse(tradeError.message);
+              errorMessage = errorBody.details || errorBody.error || tradeError.message;
+            } catch (e) {
+              // If parsing fails, use the original error message
+            }
 
-          // For 400 errors (like insufficient shares), we'll still add to watchlist
-          if (tradeError.error_type !== 'http_client_error') {
-            throw new Error(errorMessage);
-          }
+            toast({
+              title: "Trade Error",
+              description: errorMessage,
+              variant: "destructive",
+            });
 
-          // For 400 errors, we'll fall through and create a FOLLOW_ONLY watch instead
-          console.log('Continuing with FOLLOW_ONLY after trade error');
-          investmentType = "FOLLOW_ONLY";
-          amount = undefined;
-          brokerConnectionId = null;
-        } else {
-          console.log('Trade execution result:', tradeResult);
+            // For client errors (400), fall back to FOLLOW_ONLY
+            if (tradeError.error_type === 'http_client_error') {
+              console.log('Converting to FOLLOW_ONLY after trade error');
+              investmentType = "FOLLOW_ONLY";
+              amount = undefined;
+              brokerConnectionId = null;
+            } else {
+              // For other errors, don't continue with watchlist
+              shouldContinueWithWatchlist = false;
+              throw new Error(errorMessage);
+            }
+          } else {
+            console.log('Trade execution result:', tradeResult);
+          }
+        } catch (tradeError: any) {
+          if (!shouldContinueWithWatchlist) {
+            throw tradeError;
+          }
         }
       }
 
-      // Check for existing watch
-      const { data: existingWatch, error: checkError } = await supabase
-        .from('user_stock_watches')
-        .select('id, status')
-        .eq('user_id', userId)
-        .eq('stock_prediction_id', stockPredictionId)
-        .eq('status', 'WATCHING')
-        .maybeSingle();
-
-      if (checkError) throw checkError;
-
-      if (existingWatch) {
-        // If already watching, just update the investment details
-        const { error: updateError } = await supabase
+      if (shouldContinueWithWatchlist) {
+        // Check for existing watch
+        const { data: existingWatch, error: checkError } = await supabase
           .from('user_stock_watches')
-          .update({
-            investment_type: investmentType,
-            investment_amount: amount,
-            broker_connection_id: brokerConnectionId
-          })
-          .eq('id', existingWatch.id);
+          .select('id, status')
+          .eq('user_id', userId)
+          .eq('stock_prediction_id', stockPredictionId)
+          .eq('status', 'WATCHING')
+          .maybeSingle();
 
-        if (updateError) throw updateError;
-      } else {
-        // Create new watch
-        const { error } = await supabase
-          .from('user_stock_watches')
-          .insert([{
-            user_id: userId,
-            stock_prediction_id: stockPredictionId,
-            status: "WATCHING",
-            investment_type: investmentType,
-            investment_amount: amount,
-            broker_connection_id: brokerConnectionId
-          }]);
+        if (checkError) throw checkError;
 
-        if (error) throw error;
+        if (existingWatch) {
+          // If already watching, just update the investment details
+          const { error: updateError } = await supabase
+            .from('user_stock_watches')
+            .update({
+              investment_type: investmentType,
+              investment_amount: amount,
+              broker_connection_id: brokerConnectionId
+            })
+            .eq('id', existingWatch.id);
+
+          if (updateError) throw updateError;
+        } else {
+          // Create new watch
+          const { error } = await supabase
+            .from('user_stock_watches')
+            .insert([{
+              user_id: userId,
+              stock_prediction_id: stockPredictionId,
+              status: "WATCHING",
+              investment_type: investmentType,
+              investment_amount: amount,
+              broker_connection_id: brokerConnectionId
+            }]);
+
+          if (error) throw error;
+        }
+
+        // Refresh the watchlist
+        queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
+
+        // Show appropriate success message
+        toast({
+          title: "Success",
+          description: investmentType === "FOLLOW_ONLY" 
+            ? "Stock added to watchlist successfully" 
+            : "Investment order placed and stock added to watchlist",
+        });
       }
-
-      // Refresh the watchlist
-      queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
-
-      // Show appropriate success message
-      toast({
-        title: "Success",
-        description: investmentType === "FOLLOW_ONLY" 
-          ? "Stock added to watchlist successfully" 
-          : "Investment order placed and stock added to watchlist",
-      });
-
     } catch (error: any) {
       console.error('Error in addToWatchlist:', error);
-      // Only show error toast and throw for non-trade errors
-      if (error.message !== 'AbortError') {
-        toast({
-          title: "Error",
-          description: error.message,
-          variant: "destructive",
-        });
-        throw error;
-      }
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+      throw error;
     }
   };
 
