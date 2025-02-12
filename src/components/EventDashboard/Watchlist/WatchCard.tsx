@@ -12,10 +12,9 @@ interface WatchCardProps {
   watch: StockWatch;
   analyzePriceMutation: UseMutationResult<any, Error, string>;
   onUnwatch: (watchId: string) => void;
-  onInvest: (stockPredictionId: string, investmentType: "FOLLOW_ONLY" | "INVEST_AND_FOLLOW", amount?: number) => void;
 }
 
-const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCardProps) => {
+const WatchCard = ({ watch, analyzePriceMutation, onUnwatch }: WatchCardProps) => {
   const [showWatchOptions, setShowWatchOptions] = useState(false);
   const stock = watch.stock_prediction;
   const event = stock.event;
@@ -51,14 +50,6 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCa
             {stock.symbol}
           </CardTitle>
           <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowWatchOptions(true)}
-              className="hover:bg-green-100 hover:text-green-600"
-            >
-              Invest
-            </Button>
             <Button
               variant="ghost"
               size="sm"
@@ -143,10 +134,7 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCa
         isOpen={showWatchOptions}
         onClose={() => setShowWatchOptions(false)}
         onConfirm={(investmentType, amount) => {
-          if (watch.stock_prediction) {
-            onInvest(watch.stock_prediction.id, investmentType, amount);
-          }
-          setShowWatchOptions(false);
+          // Handle investment logic here
         }}
         symbol={stock.symbol}
       />
@@ -155,4 +143,3 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCa
 };
 
 export default WatchCard;
-

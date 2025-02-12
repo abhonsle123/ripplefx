@@ -36,8 +36,6 @@ const Auth = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        // Clear any existing tokens from localStorage to ensure fresh state
-        localStorage.removeItem('supabase.auth.token');
         navigate('/');
       } else if (event === 'SIGNED_OUT') {
         navigate('/auth');
@@ -82,9 +80,6 @@ const Auth = () => {
           navigate('/');
         }
       } else {
-        // For sign in, first sign out to clear any stale session
-        await supabase.auth.signOut();
-        
         const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
