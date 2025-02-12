@@ -24,6 +24,29 @@ interface AlpacaOrderResponse {
   error?: string;
 }
 
+function createErrorResponse(error: string, details: string, status = 400) {
+  return new Response(
+    JSON.stringify({ error, details }),
+    { 
+      status,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
+}
+
+function createSuccessResponse(data: unknown) {
+  return new Response(
+    JSON.stringify({
+      success: true,
+      data
+    }),
+    { 
+      status: 200,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+    }
+  );
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -50,9 +73,9 @@ serve(async (req) => {
 
     if (connectionError) {
       console.error('Error fetching broker connection:', connectionError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch broker connection' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return createErrorResponse(
+        'Failed to fetch broker connection',
+        connectionError.message
       );
     }
 
@@ -65,9 +88,9 @@ serve(async (req) => {
 
     if (predictionError) {
       console.error('Error fetching stock prediction:', predictionError);
-      return new Response(
-        JSON.stringify({ error: 'Failed to fetch stock prediction' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return createErrorResponse(
+        'Failed to fetch stock prediction',
+        predictionError.message
       );
     }
 
@@ -75,9 +98,9 @@ serve(async (req) => {
     const symbol = prediction.symbol.trim().toUpperCase();
     if (!symbol.match(/^[A-Z]+$/)) {
       console.error('Invalid stock symbol format:', symbol);
-      return new Response(
-        JSON.stringify({ error: 'Invalid stock symbol format' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      return createErrorResponse(
+        'Invalid stock symbol format',
+        'Stock symbol must contain only uppercase letters'
       );
     }
 
@@ -102,12 +125,19 @@ serve(async (req) => {
       if (!clockResponse.ok) {
         const clockError = await clockResponse.text();
         console.error('Error checking market hours:', clockError);
-        throw new Error(`Failed to check market hours: ${clockResponse.status} ${clockError}`);
+        return createErrorResponse(
+          'Failed to check market hours',
+          clockError,
+          clockResponse.status
+        );
       }
 
       const clockData = await clockResponse.json();
       if (!clockData.is_open) {
-        throw new Error('Market is currently closed');
+        return createErrorResponse(
+          'Market is closed',
+          'Cannot execute trades when the market is closed'
+        );
       }
 
       // Get account information to verify API keys and check buying power
@@ -124,7 +154,11 @@ serve(async (req) => {
       if (!accountResponse.ok) {
         const accountError = await accountResponse.text();
         console.error('Error verifying account:', accountError);
-        throw new Error(`Failed to verify trading account: ${accountResponse.status} ${accountError}`);
+        return createErrorResponse(
+          'Failed to verify trading account',
+          accountError,
+          accountResponse.status
+        );
       }
 
       const accountData = await accountResponse.json();
@@ -134,12 +168,9 @@ serve(async (req) => {
       if (prediction.is_positive) {
         const buyingPower = parseFloat(accountData.buying_power);
         if (amount > buyingPower) {
-          return new Response(
-            JSON.stringify({ 
-              error: 'Cannot execute trade', 
-              details: `Insufficient buying power. Available: $${buyingPower}, Required: $${amount}` 
-            }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          return createErrorResponse(
+            'Insufficient funds',
+            `Available buying power: $${buyingPower}, Required: $${amount}`
           );
         }
       }
@@ -163,25 +194,29 @@ serve(async (req) => {
           body: errorText,
           url: `${dataBaseUrl}/stocks/${symbol}/trades/latest`
         });
-        throw new Error(`Failed to fetch price: ${quoteResponse.status} ${errorText}`);
+        return createErrorResponse(
+          'Failed to fetch price',
+          errorText,
+          quoteResponse.status
+        );
       }
 
       const quoteData = await quoteResponse.json();
       if (!quoteData.trade || !quoteData.trade.p) {
         console.error('Invalid quote response from Alpaca:', quoteData);
-        throw new Error('Could not get current price for symbol');
+        return createErrorResponse(
+          'Invalid price data',
+          'Could not get current price for symbol'
+        );
       }
 
       const currentPrice = quoteData.trade.p;
       const quantity = Math.floor(amount / currentPrice); // Round down to nearest whole share
 
       if (quantity < 1) {
-        return new Response(
-          JSON.stringify({ 
-            error: 'Cannot execute trade', 
-            details: 'Investment amount too small to purchase at least one share' 
-          }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        return createErrorResponse(
+          'Invalid quantity',
+          'Investment amount too small to purchase at least one share'
         );
       }
 
@@ -202,12 +237,9 @@ serve(async (req) => {
 
         // If no position exists or error fetching position, we can't sell
         if (!positionResponse.ok || positionResponse.status === 404) {
-          return new Response(
-            JSON.stringify({
-              error: 'Cannot execute trade',
-              details: 'Shorting is not supported. You must own shares to sell.'
-            }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          return createErrorResponse(
+            'No position found',
+            'You must own shares to sell. Shorting is not supported.'
           );
         }
 
@@ -216,12 +248,9 @@ serve(async (req) => {
         const availableShares = parseInt(position.qty);
         
         if (availableShares < quantity) {
-          return new Response(
-            JSON.stringify({
-              error: 'Insufficient shares',
-              details: `You only have ${availableShares} shares available to sell, but trying to sell ${quantity} shares.`
-            }),
-            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          return createErrorResponse(
+            'Insufficient shares',
+            `You only have ${availableShares} shares available to sell, but trying to sell ${quantity} shares.`
           );
         }
 
@@ -265,7 +294,11 @@ serve(async (req) => {
           status: orderResponse.status,
           response: errorText
         });
-        throw new Error(`Failed to place order: ${orderResponse.status} - ${errorText}`);
+        return createErrorResponse(
+          'Failed to place order',
+          errorText,
+          orderResponse.status
+        );
       }
 
       const orderResult = await orderResponse.json() as AlpacaOrderResponse;
@@ -288,9 +321,9 @@ serve(async (req) => {
 
       if (executionError) {
         console.error('Error creating trade execution:', executionError);
-        return new Response(
-          JSON.stringify({ error: 'Failed to create trade execution', details: executionError.message }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        return createErrorResponse(
+          'Failed to create trade execution',
+          executionError.message
         );
       }
 
@@ -355,42 +388,29 @@ serve(async (req) => {
         })()
       );
 
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: 'Trade execution initiated',
-          data: {
-            ...execution,
-            alpaca_order_id: orderResult.id
-          }
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      return createSuccessResponse({
+        message: 'Trade execution initiated',
+        execution: {
+          ...execution,
+          alpaca_order_id: orderResult.id
         }
-      );
+      });
 
     } catch (error) {
       console.error('Error in Alpaca API operations:', error);
-      return new Response(
-        JSON.stringify({ 
-          error: 'Failed to execute trade with Alpaca', 
-          details: error.message 
-        }),
-        { 
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
+      return createErrorResponse(
+        'Failed to execute trade with Alpaca',
+        error.message,
+        500
       );
     }
 
   } catch (error) {
     console.error('Error processing request:', error);
-    return new Response(
-      JSON.stringify({ error: 'Internal server error', details: error.message }),
-      { 
-        status: 500, 
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-      }
+    return createErrorResponse(
+      'Internal server error',
+      error.message,
+      500
     );
   }
 });
