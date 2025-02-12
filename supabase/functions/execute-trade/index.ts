@@ -245,8 +245,8 @@ serve(async (req) => {
         error: error.message,
       }),
       {
-        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        status: 400, // This ensures we return a proper error response
       }
     );
   }
