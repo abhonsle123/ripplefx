@@ -135,11 +135,6 @@ serve(async (req) => {
         throw new Error(`Insufficient buying power. Available: $${buyingPower}, Required: $${amount}`);
       }
 
-      // Check if shorting is enabled
-      if (!accountData.shorting_enabled) {
-        throw new Error('Shorting is not enabled for this account');
-      }
-
       // Get the latest trade using the Data API
       const quoteResponse = await fetch(
         `${dataBaseUrl}/stocks/${symbol}/trades/latest`,
@@ -195,9 +190,12 @@ serve(async (req) => {
           }
         );
 
-        // If no position exists or insufficient shares, use short sell
         if (!positionResponse.ok || positionResponse.status === 404) {
-          console.log('No existing position found, converting to short sell');
+          if (!accountData.shorting_enabled) {
+            throw new Error('Cannot execute sell order: No existing position and shorting is not enabled on this account');
+          }
+
+          console.log('No existing position found, checking if stock is shortable');
           // Check if the stock is shortable
           const assetsResponse = await fetch(
             `${tradingBaseUrl}/assets/${symbol}`,
@@ -225,6 +223,9 @@ serve(async (req) => {
         } else {
           const position = await positionResponse.json();
           if (parseInt(position.qty) < quantity) {
+            if (!accountData.shorting_enabled) {
+              throw new Error(`Cannot execute full sell order: Insufficient shares (have ${position.qty}, need ${quantity}) and shorting is not enabled`);
+            }
             console.log('Insufficient shares for regular sell, converting to short sell');
             orderSide = 'sell_short';
           }
