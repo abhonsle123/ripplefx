@@ -81,11 +81,16 @@ export const useWatchlist = (userId: string) => {
       .select('id')
       .eq('user_id', userId)
       .eq('is_active', true)
-      .single();
+      .maybeSingle();
 
     if (error) {
-      throw error;
+      throw new Error('Failed to fetch broker connection');
     }
+    
+    if (!connection) {
+      throw new Error('No active broker connection found. Please connect a broker first.');
+    }
+    
     return connection;
   };
 
@@ -103,6 +108,26 @@ export const useWatchlist = (userId: string) => {
           throw new Error("No active broker connection found. Please connect a broker first.");
         }
         brokerConnectionId = connection.id;
+
+        // Execute the trade
+        const { data: tradeResult, error: tradeError } = await supabase.functions.invoke(
+          'execute-trade',
+          {
+            body: {
+              stockPredictionId,
+              amount,
+              brokerConnectionId: connection.id,
+              userId
+            }
+          }
+        );
+
+        if (tradeError) {
+          console.error('Trade execution error:', tradeError);
+          throw new Error(tradeError.message || 'Failed to execute trade');
+        }
+
+        console.log('Trade execution result:', tradeResult);
       }
 
       // Check for existing watch
@@ -144,44 +169,12 @@ export const useWatchlist = (userId: string) => {
         if (error) throw error;
       }
 
-      // If investing, trigger the investment
-      if (investmentType === "INVEST_AND_FOLLOW" && amount && brokerConnectionId) {
-        const { data: investmentResult, error: investmentError } = await supabase.functions.invoke(
-          'execute-trade',
-          {
-            body: {
-              stockPredictionId,
-              amount,
-              brokerConnectionId,
-              userId
-            }
-          }
-        );
-
-        if (investmentError) throw investmentError;
-
-        toast({
-          title: "Investment Initiated",
-          description: "Your investment order has been placed successfully.",
-        });
-      }
-
       // Refresh the watchlist
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
 
-      toast({
-        title: investmentType === "FOLLOW_ONLY" ? "Stock Added to Watchlist" : "Investment Started",
-        description: investmentType === "FOLLOW_ONLY" 
-          ? "You will now receive updates for this stock."
-          : "Your investment has been initiated and the stock has been added to your watchlist.",
-      });
     } catch (error: any) {
       console.error('Error in addToWatchlist:', error);
-      toast({
-        title: "Error",
-        description: error.message || "Failed to process your request. Please try again.",
-        variant: "destructive",
-      });
+      throw error;
     }
   };
 
@@ -197,13 +190,6 @@ export const useWatchlist = (userId: string) => {
       }
       console.log('Analysis completed successfully:', data);
       return data;
-    },
-    onMutate: (stockPredictionId) => {
-      console.log('Starting mutation for prediction:', stockPredictionId);
-      toast({
-        title: "Analyzing Stock",
-        description: "Updating price prediction...",
-      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
