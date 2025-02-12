@@ -135,6 +135,11 @@ serve(async (req) => {
         throw new Error(`Insufficient buying power. Available: $${buyingPower}, Required: $${amount}`);
       }
 
+      // Check if shorting is enabled
+      if (!accountData.shorting_enabled) {
+        throw new Error('Shorting is not enabled for this account');
+      }
+
       // Get the latest trade using the Data API
       const quoteResponse = await fetch(
         `${dataBaseUrl}/stocks/${symbol}/trades/latest`,
@@ -193,6 +198,29 @@ serve(async (req) => {
         // If no position exists or insufficient shares, use short sell
         if (!positionResponse.ok || positionResponse.status === 404) {
           console.log('No existing position found, converting to short sell');
+          // Check if the stock is shortable
+          const assetsResponse = await fetch(
+            `${tradingBaseUrl}/assets/${symbol}`,
+            {
+              headers: {
+                'APCA-API-KEY-ID': connection.api_key,
+                'APCA-API-SECRET-KEY': connection.api_secret,
+              },
+            }
+          );
+
+          if (!assetsResponse.ok) {
+            const assetError = await assetsResponse.text();
+            throw new Error(`Failed to verify asset shortability: ${assetsResponse.status} ${assetError}`);
+          }
+
+          const assetData = await assetsResponse.json();
+          console.log('Asset data:', assetData);
+
+          if (!assetData.shortable) {
+            throw new Error(`${symbol} is not available for short selling`);
+          }
+
           orderSide = 'sell_short';
         } else {
           const position = await positionResponse.json();
@@ -202,6 +230,14 @@ serve(async (req) => {
           }
         }
       }
+
+      console.log('Final order parameters:', {
+        symbol,
+        quantity,
+        orderSide,
+        type: 'market',
+        time_in_force: 'day'
+      });
 
       // Create the order in Alpaca using the Trading API
       const orderResponse = await fetch(
@@ -223,16 +259,17 @@ serve(async (req) => {
         }
       );
 
-      const orderResult = await orderResponse.json() as AlpacaOrderResponse;
-      console.log('Order response from Alpaca:', orderResult);
-
       if (!orderResponse.ok) {
+        const errorText = await orderResponse.text();
         console.error('Error placing order with Alpaca:', {
           status: orderResponse.status,
-          result: orderResult
+          response: errorText
         });
-        throw new Error(orderResult.error || `Failed to place order: ${orderResponse.status}`);
+        throw new Error(`Failed to place order: ${orderResponse.status} - ${errorText}`);
       }
+
+      const orderResult = await orderResponse.json() as AlpacaOrderResponse;
+      console.log('Order response from Alpaca:', orderResult);
 
       // Create trade execution record with the actual order type used
       const { data: execution, error: executionError } = await supabaseClient
