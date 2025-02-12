@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 
@@ -35,14 +34,14 @@ async function getAlpacaCredentials(brokerConnectionId: string): Promise<AlpacaC
   };
 }
 
-async function validateSymbol(config: AlpacaConfig, symbol: string) {
+async function getLatestPrice(config: AlpacaConfig, symbol: string): Promise<number> {
   const baseUrl = config.paperTrading 
     ? 'https://paper-api.alpaca.markets' 
     : 'https://api.alpaca.markets';
 
-  // Check if the asset exists and is tradable
-  const assetResponse = await fetch(
-    `${baseUrl}/v2/assets/${symbol}`,
+  // Try to get the latest quote first
+  const quoteResponse = await fetch(
+    `${baseUrl}/v2/stocks/${symbol}/last_quote`,
     {
       headers: {
         'APCA-API-KEY-ID': config.apiKey,
@@ -51,16 +50,34 @@ async function validateSymbol(config: AlpacaConfig, symbol: string) {
     }
   );
 
-  if (!assetResponse.ok) {
-    throw new Error(`Invalid symbol: ${symbol} is not available for trading`);
+  if (quoteResponse.ok) {
+    const quote = await quoteResponse.json();
+    if (quote.quote?.ap) {
+      return quote.quote.ap; // Use ask price if available
+    }
   }
 
-  const asset = await assetResponse.json();
-  if (!asset.tradable) {
-    throw new Error(`Symbol ${symbol} is not currently tradable`);
+  // Fallback to last trade if quote is not available
+  const tradeResponse = await fetch(
+    `${baseUrl}/v2/stocks/${symbol}/last_trade`,
+    {
+      headers: {
+        'APCA-API-KEY-ID': config.apiKey,
+        'APCA-API-SECRET-KEY': config.apiSecret,
+      },
+    }
+  );
+
+  if (!tradeResponse.ok) {
+    throw new Error(`Unable to get price for ${symbol}. Please verify the symbol is correct and trading is available.`);
   }
 
-  return asset;
+  const trade = await tradeResponse.json();
+  if (!trade.trade?.p) {
+    throw new Error(`No recent trade price available for ${symbol}`);
+  }
+
+  return trade.trade.p;
 }
 
 async function executeAlpacaOrder(
@@ -73,43 +90,17 @@ async function executeAlpacaOrder(
     ? 'https://paper-api.alpaca.markets' 
     : 'https://api.alpaca.markets';
 
-  // First validate the symbol
-  console.log(`Validating symbol: ${symbol}`);
-  await validateSymbol(config, symbol);
-
-  // Get current market price using the snapshot endpoint
-  console.log(`Fetching quote for symbol: ${symbol}`);
-  const snapshotResponse = await fetch(
-    `${baseUrl}/v2/stocks/${symbol}/snapshot`,
-    {
-      headers: {
-        'APCA-API-KEY-ID': config.apiKey,
-        'APCA-API-SECRET-KEY': config.apiSecret,
-      },
-    }
-  );
-
-  if (!snapshotResponse.ok) {
-    const errorText = await snapshotResponse.text();
-    console.error('Quote fetch error:', errorText);
-    throw new Error(`Failed to get quote: ${errorText}`);
-  }
-
-  const snapshot = await snapshotResponse.json();
-  if (!snapshot.latestTrade?.p) {
-    throw new Error('No recent trade price available');
-  }
-
-  const currentPrice = snapshot.latestTrade.p;
+  // Get current market price
+  console.log(`Fetching current price for ${symbol}...`);
+  const currentPrice = await getLatestPrice(config, symbol);
   console.log(`Current price for ${symbol}: $${currentPrice}`);
-  const quantity = Math.floor(amount / currentPrice);
 
+  const quantity = Math.floor(amount / currentPrice);
   if (quantity <= 0) {
     throw new Error('Amount too small to purchase any shares');
   }
 
   console.log(`Placing ${side} order for ${quantity} shares of ${symbol} at market price`);
-  // Place the market order
   const orderResponse = await fetch(`${baseUrl}/v2/orders`, {
     method: 'POST',
     headers: {
@@ -238,7 +229,7 @@ serve(async (req) => {
       stopOrderData = await placeStopOrder(
         config,
         symbol,
-        filledQuantity, // Use the actual filled quantity
+        filledQuantity,
         stopPrice
       );
     }
