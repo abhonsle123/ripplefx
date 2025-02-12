@@ -112,7 +112,7 @@ export const useWatchlist = (userId: string) => {
           brokerConnectionId = connection.id;
 
           // Execute the trade
-          const { data: tradeResult, error: tradeError } = await supabase.functions.invoke(
+          const response = await supabase.functions.invoke<{ success: boolean; data?: any; error?: string; details?: string }>(
             'execute-trade',
             {
               body: {
@@ -124,15 +124,15 @@ export const useWatchlist = (userId: string) => {
             }
           );
 
-          if (tradeError) {
-            console.error('Trade execution error:', tradeError);
-            // Parse the error response
-            let errorMessage = tradeError.message;
-            let errorBody;
+          // Handle edge function error response
+          if (response.error) {
+            console.error('Trade execution error:', response.error);
+            let errorMessage = response.error;
             
             try {
-              errorBody = JSON.parse(tradeError.message);
-              errorMessage = errorBody.details || errorBody.error || tradeError.message;
+              // Try to parse the error response body if it's JSON
+              const errorBody = JSON.parse(response.error);
+              errorMessage = errorBody.details || errorBody.error || response.error;
             } catch (e) {
               // If parsing fails, use the original error message
             }
@@ -143,8 +143,11 @@ export const useWatchlist = (userId: string) => {
               variant: "destructive",
             });
 
-            // For client errors (400), fall back to FOLLOW_ONLY
-            if (tradeError.error_type === 'http_client_error') {
+            // Convert to FOLLOW_ONLY for specific errors
+            if (errorMessage.includes('Shorting is not supported') || 
+                errorMessage.includes('Insufficient shares') ||
+                errorMessage.includes('Market is closed') ||
+                errorMessage.includes('Insufficient funds')) {
               console.log('Converting to FOLLOW_ONLY after trade error');
               investmentType = "FOLLOW_ONLY";
               amount = undefined;
@@ -154,8 +157,8 @@ export const useWatchlist = (userId: string) => {
               shouldContinueWithWatchlist = false;
               throw new Error(errorMessage);
             }
-          } else {
-            console.log('Trade execution result:', tradeResult);
+          } else if (response.data) {
+            console.log('Trade execution result:', response.data);
           }
         } catch (tradeError: any) {
           if (!shouldContinueWithWatchlist) {
