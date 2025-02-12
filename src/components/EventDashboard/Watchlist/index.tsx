@@ -6,7 +6,13 @@ import LoadingState from "./LoadingState";
 import type { WatchlistProps } from "./types";
 
 const Watchlist = ({ userId }: WatchlistProps) => {
-  const { watches, isLoading, analyzePriceMutation, handleUnwatch } = useWatchlist(userId);
+  const { 
+    watches, 
+    isLoading, 
+    analyzePriceMutation, 
+    handleUnwatch,
+    handleInvest
+  } = useWatchlist(userId);
 
   if (isLoading) {
     return <LoadingState />;
@@ -24,6 +30,7 @@ const Watchlist = ({ userId }: WatchlistProps) => {
           watch={watch}
           analyzePriceMutation={analyzePriceMutation}
           onUnwatch={handleUnwatch}
+          onInvest={handleInvest}
         />
       ))}
     </div>

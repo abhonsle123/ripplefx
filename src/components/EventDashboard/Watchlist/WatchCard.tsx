@@ -1,23 +1,47 @@
 
 import { format } from "date-fns";
-import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw } from "lucide-react";
+import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw, PiggyBank } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { StockWatch } from "./types";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { useState } from "react";
 import WatchOptionsDialog from "./WatchOptionsDialog";
+import InvestDialog from "./InvestDialog";
+import { useToast } from "@/components/ui/use-toast";
 
 interface WatchCardProps {
   watch: StockWatch;
   analyzePriceMutation: UseMutationResult<any, Error, string>;
   onUnwatch: (watchId: string) => void;
+  onInvest?: (watchId: string, amount: number) => Promise<void>;
 }
 
-const WatchCard = ({ watch, analyzePriceMutation, onUnwatch }: WatchCardProps) => {
+const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCardProps) => {
   const [showWatchOptions, setShowWatchOptions] = useState(false);
+  const [showInvestDialog, setShowInvestDialog] = useState(false);
+  const [isInvesting, setIsInvesting] = useState(false);
+  const { toast } = useToast();
   const stock = watch.stock_prediction;
   const event = stock.event;
+
+  const handleInvest = async (amount: number) => {
+    if (!onInvest) return;
+    
+    setIsInvesting(true);
+    try {
+      await onInvest(watch.id, amount);
+      toast({
+        title: "Investment Initiated",
+        description: `Your investment in ${stock.symbol} has been initiated.`,
+      });
+    } catch (error: any) {
+      // Error will be handled by the parent component
+      console.error('Investment error:', error);
+    } finally {
+      setIsInvesting(false);
+    }
+  };
 
   const affectedOrgs = event.affected_organizations 
     ? (typeof event.affected_organizations === 'object' 
@@ -50,6 +74,18 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch }: WatchCardProps) =
             {stock.symbol}
           </CardTitle>
           <div className="flex gap-2">
+            {stock.is_positive && onInvest && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowInvestDialog(true)}
+                className="hover:bg-green-100 hover:text-green-600"
+                disabled={isInvesting}
+              >
+                <PiggyBank className="h-4 w-4 mr-1" />
+                Invest
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -137,6 +173,14 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch }: WatchCardProps) =
           // Handle investment logic here
         }}
         symbol={stock.symbol}
+      />
+
+      <InvestDialog
+        isOpen={showInvestDialog}
+        onOpenChange={setShowInvestDialog}
+        onConfirm={handleInvest}
+        symbol={stock.symbol}
+        isLoading={isInvesting}
       />
     </>
   );

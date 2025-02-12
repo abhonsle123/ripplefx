@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -187,11 +186,57 @@ export const useWatchlist = (userId: string) => {
     }
   };
 
+  const handleInvest = async (watchId: string, amount: number) => {
+    try {
+      // Get the watch details
+      const watch = watches.find(w => w.id === watchId);
+      if (!watch) {
+        throw new Error('Watch not found');
+      }
+
+      // Get the active broker connection
+      const connection = await getBrokerConnection();
+      
+      // Execute the trade
+      const response = await supabase.functions.invoke('execute-trade', {
+        body: {
+          stockPredictionId: watch.stock_prediction.id,
+          amount,
+          brokerConnectionId: connection.id,
+          userId
+        }
+      });
+
+      if (response.error) {
+        console.error('Trade execution error:', response.error);
+        throw new Error(response.error);
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
+
+      toast({
+        title: "Investment Successful",
+        description: `Your investment in ${watch.stock_prediction.symbol} has been placed successfully.`,
+      });
+
+      return response.data;
+    } catch (error: any) {
+      console.error('Error investing in stock:', error);
+      toast({
+        title: "Investment Failed",
+        description: error.message || "Failed to place investment. Please try again.",
+        variant: "destructive",
+      });
+      throw error;
+    }
+  };
+
   return {
     watches,
     isLoading,
     analyzePriceMutation,
     handleUnwatch,
+    handleInvest,
     addToWatchlist,
   };
 };
