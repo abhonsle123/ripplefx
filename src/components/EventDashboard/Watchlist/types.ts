@@ -31,6 +31,10 @@ export interface StockWatch {
   created_at: string;
   status: string;
   entry_price: number | null;
+  initial_price: number | null;
+  stop_price: number | null;
+  stop_order_id: string | null;
+  last_price_check: string | null;
   investment_amount: number | null;
   investment_type: "FOLLOW_ONLY" | "INVEST_AND_FOLLOW" | null;
   broker_connection_id: string | null;

@@ -1,6 +1,6 @@
 
 import { format } from "date-fns";
-import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw, PiggyBank } from "lucide-react";
+import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw, PiggyBank, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { StockWatch } from "./types";
@@ -125,6 +125,17 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCa
                     <p className="text-sm text-muted-foreground">
                       Confidence: {(stock.confidence_score * 100).toFixed(1)}%
                     </p>
+                  )}
+                  {watch.initial_price && (
+                    <div className="space-y-1 mt-2">
+                      <p className="text-sm">Entry Price: ${watch.initial_price.toFixed(2)}</p>
+                      {watch.stop_price && !stock.is_positive && (
+                        <p className="text-sm flex items-center gap-1 text-amber-600">
+                          <AlertCircle className="h-4 w-4" />
+                          Stop Order: ${watch.stop_price.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
                   )}
                 </div>
               )}
