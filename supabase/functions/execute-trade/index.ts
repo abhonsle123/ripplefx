@@ -45,9 +45,10 @@ async function executeAlpacaOrder(
     ? 'https://paper-api.alpaca.markets' 
     : 'https://api.alpaca.markets';
 
-  // Get current market price
+  // Get current market price using the correct endpoint
+  console.log(`Fetching quote for symbol: ${symbol}`);
   const quoteResponse = await fetch(
-    `${baseUrl}/v2/stocks/${symbol}/quotes/latest`,
+    `${baseUrl}/v2/stocks/${symbol}/trades/last`,  // Changed to /trades/last for better reliability
     {
       headers: {
         'APCA-API-KEY-ID': config.apiKey,
@@ -57,17 +58,21 @@ async function executeAlpacaOrder(
   );
 
   if (!quoteResponse.ok) {
-    throw new Error(`Failed to get quote: ${await quoteResponse.text()}`);
+    const errorText = await quoteResponse.text();
+    console.error('Quote fetch error:', errorText);
+    throw new Error(`Failed to get quote: ${errorText}`);
   }
 
   const quote = await quoteResponse.json();
-  const currentPrice = quote.quote.ap; // Ask price
+  const currentPrice = quote.trade.p; // Using trade price instead of ask price
+  console.log(`Current price for ${symbol}: $${currentPrice}`);
   const quantity = Math.floor(amount / currentPrice);
 
   if (quantity <= 0) {
     throw new Error('Amount too small to purchase any shares');
   }
 
+  console.log(`Placing order for ${quantity} shares of ${symbol} at market price`);
   // Place the market order
   const orderResponse = await fetch(`${baseUrl}/v2/orders`, {
     method: 'POST',
@@ -86,7 +91,9 @@ async function executeAlpacaOrder(
   });
 
   if (!orderResponse.ok) {
-    throw new Error(`Failed to place order: ${await orderResponse.text()}`);
+    const errorText = await orderResponse.text();
+    console.error('Order placement error:', errorText);
+    throw new Error(`Failed to place order: ${errorText}`);
   }
 
   const orderData = await orderResponse.json();
@@ -103,6 +110,7 @@ async function placeStopOrder(
     ? 'https://paper-api.alpaca.markets' 
     : 'https://api.alpaca.markets';
 
+  console.log(`Placing stop order for ${quantity} shares of ${symbol} at $${stopPrice}`);
   const response = await fetch(`${baseUrl}/v2/orders`, {
     method: 'POST',
     headers: {
@@ -121,7 +129,9 @@ async function placeStopOrder(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to place stop order: ${await response.text()}`);
+    const errorText = await response.text();
+    console.error('Stop order placement error:', errorText);
+    throw new Error(`Failed to place stop order: ${errorText}`);
   }
 
   return await response.json();
@@ -141,6 +151,8 @@ serve(async (req) => {
       throw new Error('Missing required parameters');
     }
 
+    console.log('Processing trade request:', { stockPredictionId, amount, brokerConnectionId, userId });
+
     // Get stock prediction details
     const { data: prediction, error: predictionError } = await supabase
       .from('stock_predictions')
@@ -149,8 +161,11 @@ serve(async (req) => {
       .single();
 
     if (predictionError || !prediction) {
+      console.error('Prediction fetch error:', predictionError);
       throw new Error('Failed to fetch stock prediction');
     }
+
+    console.log('Stock prediction found:', prediction);
 
     // Get Alpaca credentials and execute trade
     const config = await getAlpacaCredentials(brokerConnectionId);
@@ -188,7 +203,7 @@ serve(async (req) => {
       .eq('user_id', userId);
 
     if (updateError) {
-      console.error('Failed to update watch entry:', updateError);
+      console.error('Watch entry update error:', updateError);
       throw new Error('Failed to update watch entry');
     }
 
