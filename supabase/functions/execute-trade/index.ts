@@ -170,6 +170,37 @@ serve(async (req) => {
         throw new Error('Investment amount too small to purchase at least one share');
       }
 
+      // If it's a sell order, verify we have enough shares first
+      if (!prediction.is_positive) {
+        const positionResponse = await fetch(
+          `${tradingBaseUrl}/positions/${symbol}`,
+          {
+            headers: {
+              'APCA-API-KEY-ID': connection.api_key,
+              'APCA-API-SECRET-KEY': connection.api_secret,
+            },
+          }
+        );
+
+        // If no position exists or error fetching position
+        if (!positionResponse.ok || positionResponse.status === 404) {
+          throw new Error('Cannot execute sell order: No existing position for this stock');
+        }
+
+        const position = await positionResponse.json();
+        const availableShares = parseInt(position.qty);
+        
+        if (availableShares < quantity) {
+          throw new Error(`Cannot execute sell order: Insufficient shares (have ${availableShares}, need ${quantity})`);
+        }
+
+        console.log('Position verified for sell order:', {
+          symbol,
+          availableShares,
+          requestedQuantity: quantity
+        });
+      }
+
       console.log('Placing order with Alpaca:', {
         symbol,
         quantity,
@@ -177,7 +208,7 @@ serve(async (req) => {
         side: prediction.is_positive ? 'buy' : 'sell'
       });
 
-      // Simplified order side determination - Alpaca handles short selling automatically
+      // Simplified order side determination
       const orderSide = prediction.is_positive ? 'buy' : 'sell';
 
       console.log('Final order parameters:', {
