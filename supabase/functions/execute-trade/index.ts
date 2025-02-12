@@ -72,7 +72,7 @@ async function executeAlpacaOrder(
     throw new Error('Amount too small to purchase any shares');
   }
 
-  console.log(`Placing order for ${quantity} shares of ${symbol} at market price`);
+  console.log(`Placing ${side} order for ${quantity} shares of ${symbol} at market price`);
   // Place the market order
   const orderResponse = await fetch(`${baseUrl}/v2/orders`, {
     method: 'POST',
@@ -97,6 +97,7 @@ async function executeAlpacaOrder(
   }
 
   const orderData = await orderResponse.json();
+  console.log(`${side} order placed successfully:`, orderData);
   return { orderData, initialPrice: currentPrice };
 }
 
@@ -122,9 +123,10 @@ async function placeStopOrder(
       symbol,
       qty: quantity,
       side: 'sell',
-      type: 'stop',
+      type: 'stop_limit', // Changed to stop_limit for better execution
       time_in_force: 'gtc',
       stop_price: stopPrice,
+      limit_price: stopPrice * 0.99, // Set limit price slightly below stop price to ensure execution
     }),
   });
 
@@ -134,7 +136,9 @@ async function placeStopOrder(
     throw new Error(`Failed to place stop order: ${errorText}`);
   }
 
-  return await response.json();
+  const stopOrderData = await response.json();
+  console.log('Stop order placed successfully:', stopOrderData);
+  return stopOrderData;
 }
 
 serve(async (req) => {
@@ -167,23 +171,36 @@ serve(async (req) => {
 
     console.log('Stock prediction found:', prediction);
 
-    // Get Alpaca credentials and execute trade
+    // Get Alpaca credentials
     const config = await getAlpacaCredentials(brokerConnectionId);
-    const { orderData, initialPrice } = await executeAlpacaOrder(
+
+    // Execute initial buy order
+    console.log('Executing buy order...');
+    const { orderData: buyOrderData, initialPrice } = await executeAlpacaOrder(
       config,
       prediction.symbol,
       amount,
       'buy'
     );
 
-    // Calculate stop price for negative predictions
+    // Wait for buy order to be filled
+    console.log('Waiting for buy order to be filled...');
+    let filledQuantity = 0;
+    if (buyOrderData.status === 'filled') {
+      filledQuantity = parseFloat(buyOrderData.filled_qty);
+    }
+
+    // Calculate and place stop order for negative predictions
     let stopOrderData = null;
-    if (!prediction.is_positive && prediction.price_change_percentage) {
+    if (!prediction.is_positive && prediction.price_change_percentage && filledQuantity > 0) {
+      console.log('Calculating stop price...');
       const stopPrice = initialPrice * (1 + prediction.price_change_percentage / 100);
+      
+      console.log('Placing stop order...');
       stopOrderData = await placeStopOrder(
         config,
         prediction.symbol,
-        orderData.qty,
+        filledQuantity, // Use the actual filled quantity
         stopPrice
       );
     }
@@ -211,7 +228,7 @@ serve(async (req) => {
       JSON.stringify({
         success: true,
         data: {
-          order: orderData,
+          order: buyOrderData,
           stopOrder: stopOrderData,
           initialPrice,
         },
