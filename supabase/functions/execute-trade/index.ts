@@ -1,11 +1,11 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-}
+};
 
 interface RequestBody {
   stockPredictionId: string;
@@ -34,7 +34,7 @@ serve(async (req) => {
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    )
+    );
 
     // Get request body
     const { stockPredictionId, amount, brokerConnectionId, userId } = await req.json() as RequestBody;
@@ -130,10 +130,18 @@ serve(async (req) => {
       const accountData = await accountResponse.json();
       console.log('Account data:', accountData);
 
-      // Verify sufficient buying power
-      const buyingPower = parseFloat(accountData.buying_power);
-      if (amount > buyingPower) {
-        throw new Error(`Insufficient buying power. Available: $${buyingPower}, Required: $${amount}`);
+      // Verify sufficient buying power for buys
+      if (prediction.is_positive) {
+        const buyingPower = parseFloat(accountData.buying_power);
+        if (amount > buyingPower) {
+          return new Response(
+            JSON.stringify({ 
+              error: 'Cannot execute trade', 
+              details: `Insufficient buying power. Available: $${buyingPower}, Required: $${amount}` 
+            }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
       }
 
       // Get the latest trade using the Data API
@@ -168,13 +176,19 @@ serve(async (req) => {
       const quantity = Math.floor(amount / currentPrice); // Round down to nearest whole share
 
       if (quantity < 1) {
-        throw new Error('Investment amount too small to purchase at least one share');
+        return new Response(
+          JSON.stringify({ 
+            error: 'Cannot execute trade', 
+            details: 'Investment amount too small to purchase at least one share' 
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
       }
 
-      // Determine order side and validate position for sells
-      let orderSide = prediction.is_positive ? 'buy' : 'sell';
+      // Determine order side based on prediction
+      const orderSide = prediction.is_positive ? 'buy' : 'sell';
       
-      // If this is a sell order, check the position
+      // If this is a sell order, check the position first
       if (!prediction.is_positive) {
         const positionResponse = await fetch(
           `${tradingBaseUrl}/positions/${symbol}`,
@@ -379,4 +393,4 @@ serve(async (req) => {
       }
     );
   }
-})
+});
