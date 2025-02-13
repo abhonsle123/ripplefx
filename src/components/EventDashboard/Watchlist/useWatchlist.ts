@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -198,7 +199,7 @@ export const useWatchlist = (userId: string) => {
       const connection = await getBrokerConnection();
       
       // Execute the trade
-      const response = await supabase.functions.invoke('execute-trade', {
+      const { data, error } = await supabase.functions.invoke('execute-trade', {
         body: {
           stockPredictionId: watch.stock_prediction.id,
           amount,
@@ -207,9 +208,20 @@ export const useWatchlist = (userId: string) => {
         }
       });
 
-      if (response.error) {
-        console.error('Trade execution error:', response.error);
-        throw new Error(response.error);
+      if (error) {
+        console.error('Trade execution error:', error);
+        // Parse the error message from the response if available
+        let errorMessage = 'Failed to place investment. Please try again.';
+        try {
+          const errorBody = JSON.parse(error.message);
+          if (errorBody?.error) {
+            errorMessage = errorBody.error;
+          }
+        } catch (e) {
+          // If parsing fails, use the original error message
+          errorMessage = error.message;
+        }
+        throw new Error(errorMessage);
       }
 
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
@@ -219,7 +231,7 @@ export const useWatchlist = (userId: string) => {
         description: `Your investment in ${watch.stock_prediction.symbol} has been placed successfully.`,
       });
 
-      return response.data;
+      return data;
     } catch (error: any) {
       console.error('Error investing in stock:', error);
       toast({
