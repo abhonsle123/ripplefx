@@ -212,20 +212,30 @@ async function executeAlpacaOrder(
 
   const orderData = await orderResponse.json();
   console.log(`${side} order placed successfully:`, orderData);
-  return { orderData, initialPrice: currentPrice };
+  return { orderData, initialPrice: currentPrice, quantity };
 }
 
 async function placeStopOrder(
   config: AlpacaConfig,
   symbol: string,
   quantity: number,
-  stopPrice: number
+  stopPrice: number,
+  currentPrice: number
 ) {
   const baseUrl = config.paperTrading 
     ? 'https://paper-api.alpaca.markets' 
     : 'https://api.alpaca.markets';
 
-  console.log(`Placing stop order for ${quantity} shares of ${symbol} at $${stopPrice}`);
+  // Calculate a limit price slightly below the stop price to ensure execution
+  // Using 0.2% below stop price to account for potential slippage while ensuring execution
+  const limitPrice = stopPrice * 0.998;
+
+  console.log(`Placing stop-limit sell order for ${quantity} shares of ${symbol}:`, {
+    stopPrice,
+    limitPrice,
+    currentPrice,
+  });
+
   const response = await fetch(`${baseUrl}/v2/orders`, {
     method: 'POST',
     headers: {
@@ -237,10 +247,10 @@ async function placeStopOrder(
       symbol,
       qty: quantity,
       side: 'sell',
-      type: 'stop_limit', // Changed to stop_limit for better execution
+      type: 'stop_limit',
       time_in_force: 'gtc',
       stop_price: stopPrice,
-      limit_price: stopPrice * 0.99, // Set limit price slightly below stop price to ensure execution
+      limit_price: limitPrice,
     }),
   });
 
@@ -256,7 +266,6 @@ async function placeStopOrder(
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
@@ -264,7 +273,6 @@ serve(async (req) => {
   try {
     const { stockPredictionId, amount, brokerConnectionId, userId } = await req.json();
 
-    // Validate input
     if (!stockPredictionId || !amount || !brokerConnectionId || !userId) {
       throw new Error('Missing required parameters');
     }
@@ -283,7 +291,6 @@ serve(async (req) => {
       throw new Error('Failed to fetch stock prediction');
     }
 
-    // Clean up the symbol
     const symbol = prediction.symbol.trim().toUpperCase();
     console.log('Stock prediction found:', { ...prediction, symbol });
 
@@ -292,32 +299,33 @@ serve(async (req) => {
 
     // Execute initial buy order
     console.log('Executing buy order...');
-    const { orderData: buyOrderData, initialPrice } = await executeAlpacaOrder(
+    const { orderData: buyOrderData, initialPrice, quantity } = await executeAlpacaOrder(
       config,
       symbol,
       amount,
       'buy'
     );
 
-    // Wait for buy order to be filled
-    console.log('Waiting for buy order to be filled...');
-    let filledQuantity = 0;
-    if (buyOrderData.status === 'filled') {
-      filledQuantity = parseFloat(buyOrderData.filled_qty);
-    }
-
-    // Calculate and place stop order for negative predictions
     let stopOrderData = null;
-    if (!prediction.is_positive && prediction.price_change_percentage && filledQuantity > 0) {
-      console.log('Calculating stop price...');
-      const stopPrice = initialPrice * (1 + prediction.price_change_percentage / 100);
+    if (!prediction.is_positive && prediction.price_change_percentage && quantity > 0) {
+      // Calculate the stop price based on the predicted price change
+      // If price_change_percentage is -5%, we want to sell when the price drops 5% from entry
+      const priceChangeDecimal = prediction.price_change_percentage / 100;
+      const stopPrice = initialPrice * (1 + priceChangeDecimal);
       
-      console.log('Placing stop order...');
+      console.log('Placing stop order with calculated prices:', {
+        initialPrice,
+        priceChangePercentage: prediction.price_change_percentage,
+        calculatedStopPrice: stopPrice,
+        quantity,
+      });
+
       stopOrderData = await placeStopOrder(
         config,
         symbol,
-        filledQuantity,
-        stopPrice
+        quantity,
+        stopPrice,
+        initialPrice
       );
     }
 
