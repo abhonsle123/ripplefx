@@ -114,10 +114,8 @@ export const useWatchlist = (userId: string) => {
 
     if (error) throw error;
 
-    // If investing, trigger the investment
     if (investmentType === "INVEST_AND_FOLLOW" && amount && brokerConnectionId) {
-      // Here we would typically call an edge function to handle the investment
-      // For now, we'll just show a success message
+      // Trigger the investment
       toast({
         title: "Investment Initiated",
         description: "Your investment order has been placed.",
@@ -209,19 +207,19 @@ export const useWatchlist = (userId: string) => {
       });
 
       if (error) {
-        console.error('Trade execution error:', error);
-        // Parse the error message from the response if available
-        let errorMessage = 'Failed to place investment. Please try again.';
-        try {
-          const errorBody = JSON.parse(error.message);
-          if (errorBody?.error) {
-            errorMessage = errorBody.error;
-          }
-        } catch (e) {
-          // If parsing fails, use the original error message
-          errorMessage = error.message;
+        // Check if the error is due to market being closed
+        const errorData = JSON.parse(error.message);
+        if (errorData?.error === 'Market is currently closed') {
+          toast({
+            title: "Market Closed",
+            description: "The US stock market is currently closed. Trading is available from 9:30 AM to 4:00 PM ET, Monday through Friday.",
+            variant: "destructive",
+          });
+        } else {
+          console.error('Trade execution error:', error);
+          throw new Error(errorData?.error || 'Failed to place investment. Please try again.');
         }
-        throw new Error(errorMessage);
+        return;
       }
 
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });

@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw, PiggyBank, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -31,10 +30,7 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCa
     setIsInvesting(true);
     try {
       await onInvest(watch.id, amount);
-      toast({
-        title: "Investment Initiated",
-        description: `Your investment in ${stock.symbol} has been initiated.`,
-      });
+      setShowInvestDialog(false); // Close dialog on success
     } catch (error: any) {
       // Error will be handled by the parent component
       console.error('Investment error:', error);
