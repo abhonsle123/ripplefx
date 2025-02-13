@@ -167,6 +167,39 @@ async function getLatestPrice(config: AlpacaConfig, symbol: string): Promise<num
   return data.bars[0].c;
 }
 
+async function waitForOrderFill(config: AlpacaConfig, orderId: string, maxAttempts = 10): Promise<any> {
+  const baseUrl = config.paperTrading 
+    ? 'https://paper-api.alpaca.markets' 
+    : 'https://api.alpaca.markets';
+
+  for (let i = 0; i < maxAttempts; i++) {
+    const response = await fetch(`${baseUrl}/v2/orders/${orderId}`, {
+      headers: {
+        'APCA-API-KEY-ID': config.apiKey,
+        'APCA-API-SECRET-KEY': config.apiSecret,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to check order status');
+    }
+
+    const orderData = await response.json();
+    console.log(`Order ${orderId} status:`, orderData.status);
+
+    if (orderData.status === 'filled') {
+      return orderData;
+    } else if (orderData.status === 'rejected' || orderData.status === 'canceled') {
+      throw new Error(`Order was ${orderData.status}: ${orderData.failure_reason || 'Unknown reason'}`);
+    }
+
+    // Wait 2 seconds before checking again
+    await new Promise(resolve => setTimeout(resolve, 2000));
+  }
+
+  throw new Error('Order did not fill within expected time');
+}
+
 async function executeAlpacaOrder(
   config: AlpacaConfig,
   symbol: string,
@@ -210,9 +243,18 @@ async function executeAlpacaOrder(
     throw new Error(`Failed to place order: ${errorText}`);
   }
 
-  const orderData = await orderResponse.json();
-  console.log(`${side} order placed successfully:`, orderData);
-  return { orderData, initialPrice: currentPrice, quantity };
+  const initialOrderData = await orderResponse.json();
+  console.log(`Initial ${side} order placed:`, initialOrderData);
+
+  // Wait for the order to be filled
+  const filledOrderData = await waitForOrderFill(config, initialOrderData.id);
+  console.log(`${side} order filled:`, filledOrderData);
+
+  return {
+    orderData: filledOrderData,
+    initialPrice: parseFloat(filledOrderData.filled_avg_price) || currentPrice,
+    quantity: parseFloat(filledOrderData.filled_qty)
+  };
 }
 
 async function placeStopOrder(
@@ -297,7 +339,7 @@ serve(async (req) => {
     // Get Alpaca credentials
     const config = await getAlpacaCredentials(brokerConnectionId);
 
-    // Execute initial buy order
+    // Execute initial buy order and wait for it to be filled
     console.log('Executing buy order...');
     const { orderData: buyOrderData, initialPrice, quantity } = await executeAlpacaOrder(
       config,
@@ -306,10 +348,10 @@ serve(async (req) => {
       'buy'
     );
 
+    // Only place stop order if the prediction is negative and we have filled shares
     let stopOrderData = null;
     if (!prediction.is_positive && prediction.price_change_percentage && quantity > 0) {
       // Calculate the stop price based on the predicted price change
-      // If price_change_percentage is -5%, we want to sell when the price drops 5% from entry
       const priceChangeDecimal = prediction.price_change_percentage / 100;
       const stopPrice = initialPrice * (1 + priceChangeDecimal);
       
@@ -320,6 +362,7 @@ serve(async (req) => {
         quantity,
       });
 
+      // Place the stop order using the actual filled quantity from the buy order
       stopOrderData = await placeStopOrder(
         config,
         symbol,
