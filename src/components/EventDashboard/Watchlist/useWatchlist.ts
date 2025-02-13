@@ -197,7 +197,7 @@ export const useWatchlist = (userId: string) => {
       const connection = await getBrokerConnection();
       
       // Execute the trade
-      const { data, error } = await supabase.functions.invoke('execute-trade', {
+      const response = await supabase.functions.invoke('execute-trade', {
         body: {
           stockPredictionId: watch.stock_prediction.id,
           amount,
@@ -206,30 +206,54 @@ export const useWatchlist = (userId: string) => {
         }
       });
 
-      if (error) {
-        // Check if the error is due to market being closed
-        const errorData = JSON.parse(error.message);
-        if (errorData?.error === 'Market is currently closed') {
+      // Handle both error cases: function error and function success with error response
+      if (response.error) {
+        let errorMessage: string;
+        try {
+          // Try to parse the error response
+          const body = response.error.message ? JSON.parse(response.error.message) : null;
+          errorMessage = body?.error || response.error.message;
+        } catch (e) {
+          errorMessage = response.error.message;
+        }
+
+        // Check for market closed error
+        if (errorMessage.includes('Market is currently closed')) {
           toast({
             title: "Market Closed",
             description: "The US stock market is currently closed. Trading is available from 9:30 AM to 4:00 PM ET, Monday through Friday.",
             variant: "destructive",
           });
-        } else {
-          console.error('Trade execution error:', error);
-          throw new Error(errorData?.error || 'Failed to place investment. Please try again.');
+          return;
         }
-        return;
+
+        // For other errors
+        console.error('Trade execution error:', response.error);
+        throw new Error(errorMessage || 'Failed to place investment. Please try again.');
       }
 
-      queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
+      // If we have a successful response but with an error status
+      if (response.data?.success === false) {
+        const errorMessage = response.data.error || 'Failed to place investment';
+        if (errorMessage.includes('Market is currently closed')) {
+          toast({
+            title: "Market Closed",
+            description: "The US stock market is currently closed. Trading is available from 9:30 AM to 4:00 PM ET, Monday through Friday.",
+            variant: "destructive",
+          });
+          return;
+        }
+        throw new Error(errorMessage);
+      }
 
+      // Success case
+      queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
       toast({
         title: "Investment Successful",
         description: `Your investment in ${watch.stock_prediction.symbol} has been placed successfully.`,
       });
 
-      return data;
+      return response.data;
     } catch (error: any) {
       console.error('Error investing in stock:', error);
       toast({

@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 
@@ -351,7 +350,34 @@ serve(async (req) => {
     const { stockPredictionId, amount, brokerConnectionId, userId } = await req.json();
 
     if (!stockPredictionId || !amount || !brokerConnectionId || !userId) {
-      throw new Error('Missing required parameters');
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Missing required parameters',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
+    }
+
+    // Get Alpaca credentials first
+    const config = await getAlpacaCredentials(brokerConnectionId);
+
+    // Check market status before proceeding with any other operations
+    const isMarketOpen = await checkMarketStatus(config);
+    if (!isMarketOpen) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Market is currently closed',
+        }),
+        {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          status: 400,
+        }
+      );
     }
 
     console.log('Processing trade request:', { stockPredictionId, amount, brokerConnectionId, userId });
@@ -370,9 +396,6 @@ serve(async (req) => {
 
     const symbol = prediction.symbol.trim().toUpperCase();
     console.log('Stock prediction found:', { ...prediction, symbol });
-
-    // Get Alpaca credentials
-    const config = await getAlpacaCredentials(brokerConnectionId);
 
     // Execute initial buy order and wait for it to be filled
     console.log('Executing buy order...');
@@ -448,7 +471,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: false,
-        error: error.message,
+        error: error.message || 'An unexpected error occurred',
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
