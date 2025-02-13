@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 
@@ -34,14 +35,67 @@ async function getAlpacaCredentials(brokerConnectionId: string): Promise<AlpacaC
   };
 }
 
+async function checkMarketStatus(config: AlpacaConfig): Promise<boolean> {
+  const baseUrl = config.paperTrading 
+    ? 'https://paper-api.alpaca.markets' 
+    : 'https://api.alpaca.markets';
+
+  const response = await fetch(`${baseUrl}/v2/clock`, {
+    headers: {
+      'APCA-API-KEY-ID': config.apiKey,
+      'APCA-API-SECRET-KEY': config.apiSecret,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to check market status');
+  }
+
+  const data = await response.json();
+  return data.is_open;
+}
+
+async function verifyTradableAsset(config: AlpacaConfig, symbol: string) {
+  const baseUrl = config.paperTrading 
+    ? 'https://paper-api.alpaca.markets' 
+    : 'https://api.alpaca.markets';
+
+  const response = await fetch(`${baseUrl}/v2/assets/${symbol}`, {
+    headers: {
+      'APCA-API-KEY-ID': config.apiKey,
+      'APCA-API-SECRET-KEY': config.apiSecret,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Symbol ${symbol} is not available for trading`);
+  }
+
+  const asset = await response.json();
+  if (!asset.tradable) {
+    throw new Error(`Symbol ${symbol} is not currently tradable`);
+  }
+
+  return asset;
+}
+
 async function getLatestPrice(config: AlpacaConfig, symbol: string): Promise<number> {
   const baseUrl = config.paperTrading 
     ? 'https://paper-api.alpaca.markets' 
     : 'https://api.alpaca.markets';
 
-  // Try to get the latest quote first
+  // First verify if market is open
+  const isMarketOpen = await checkMarketStatus(config);
+  if (!isMarketOpen) {
+    throw new Error('Market is currently closed');
+  }
+
+  // Then verify if the asset is tradable
+  await verifyTradableAsset(config, symbol);
+
+  // Try to get the latest quote
   const quoteResponse = await fetch(
-    `${baseUrl}/v2/stocks/${symbol}/last_quote`,
+    `${baseUrl}/v2/stocks/${symbol}/trades/latest`,
     {
       headers: {
         'APCA-API-KEY-ID': config.apiKey,
@@ -50,34 +104,17 @@ async function getLatestPrice(config: AlpacaConfig, symbol: string): Promise<num
     }
   );
 
-  if (quoteResponse.ok) {
-    const quote = await quoteResponse.json();
-    if (quote.quote?.ap) {
-      return quote.quote.ap; // Use ask price if available
-    }
+  if (!quoteResponse.ok) {
+    console.error('Failed to get latest trade:', await quoteResponse.text());
+    throw new Error(`Unable to get current price for ${symbol}`);
   }
 
-  // Fallback to last trade if quote is not available
-  const tradeResponse = await fetch(
-    `${baseUrl}/v2/stocks/${symbol}/last_trade`,
-    {
-      headers: {
-        'APCA-API-KEY-ID': config.apiKey,
-        'APCA-API-SECRET-KEY': config.apiSecret,
-      },
-    }
-  );
-
-  if (!tradeResponse.ok) {
-    throw new Error(`Unable to get price for ${symbol}. Please verify the symbol is correct and trading is available.`);
-  }
-
-  const trade = await tradeResponse.json();
-  if (!trade.trade?.p) {
+  const tradeData = await quoteResponse.json();
+  if (!tradeData.trade?.p) {
     throw new Error(`No recent trade price available for ${symbol}`);
   }
 
-  return trade.trade.p;
+  return tradeData.trade.p;
 }
 
 async function executeAlpacaOrder(
