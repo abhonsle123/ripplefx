@@ -80,9 +80,7 @@ async function verifyTradableAsset(config: AlpacaConfig, symbol: string) {
 }
 
 async function getLatestPrice(config: AlpacaConfig, symbol: string): Promise<number> {
-  const baseUrl = config.paperTrading 
-    ? 'https://data.alpaca.markets'  // Note: Using data API for bars
-    : 'https://data.alpaca.markets';
+  const marketDataUrl = 'https://data.alpaca.markets';
 
   // First verify if market is open
   const isMarketOpen = await checkMarketStatus(config);
@@ -93,12 +91,60 @@ async function getLatestPrice(config: AlpacaConfig, symbol: string): Promise<num
   // Then verify if the asset is tradable
   await verifyTradableAsset(config, symbol);
 
-  // Get the latest bar data
+  // Try to get the latest quote first
+  try {
+    const quoteResponse = await fetch(
+      `${marketDataUrl}/v2/stocks/${symbol}/quotes/latest`,
+      {
+        headers: {
+          'APCA-API-KEY-ID': config.apiKey,
+          'APCA-API-SECRET-KEY': config.apiSecret,
+        },
+      }
+    );
+
+    if (quoteResponse.ok) {
+      const quoteData = await quoteResponse.json();
+      if (quoteData.quote?.ap) {
+        console.log(`Got latest quote price for ${symbol}:`, quoteData.quote.ap);
+        return quoteData.quote.ap;
+      }
+    }
+    console.log('Quote data not available, falling back to trade data');
+  } catch (error) {
+    console.error('Error getting quote:', error);
+  }
+
+  // If quote not available, try latest trade
+  try {
+    const tradeResponse = await fetch(
+      `${marketDataUrl}/v2/stocks/${symbol}/trades/latest`,
+      {
+        headers: {
+          'APCA-API-KEY-ID': config.apiKey,
+          'APCA-API-SECRET-KEY': config.apiSecret,
+        },
+      }
+    );
+
+    if (tradeResponse.ok) {
+      const tradeData = await tradeResponse.json();
+      if (tradeData.trade?.p) {
+        console.log(`Got latest trade price for ${symbol}:`, tradeData.trade.p);
+        return tradeData.trade.p;
+      }
+    }
+    console.log('Trade data not available, falling back to bars');
+  } catch (error) {
+    console.error('Error getting trade:', error);
+  }
+
+  // If still no price, try getting recent bars
   const now = new Date();
   const start = new Date(now.getTime() - 5 * 60000); // 5 minutes ago
 
   const response = await fetch(
-    `${baseUrl}/v2/stocks/${symbol}/bars?start=${start.toISOString()}&end=${now.toISOString()}&limit=1`,
+    `${marketDataUrl}/v2/stocks/${symbol}/bars?start=${start.toISOString()}&end=${now.toISOString()}&limit=1`,
     {
       headers: {
         'APCA-API-KEY-ID': config.apiKey,
@@ -109,36 +155,16 @@ async function getLatestPrice(config: AlpacaConfig, symbol: string): Promise<num
 
   if (!response.ok) {
     console.error('Failed to get bars:', await response.text());
-    throw new Error(`Unable to get current price for ${symbol}`);
+    throw new Error(`Unable to get current price for ${symbol}. Please verify the symbol is correct and trading is available.`);
   }
 
   const data = await response.json();
   if (!data.bars || data.bars.length === 0) {
-    // If no recent bars, try snapshot as fallback
-    const snapshotResponse = await fetch(
-      `${baseUrl}/v2/stocks/${symbol}/snapshot`,
-      {
-        headers: {
-          'APCA-API-KEY-ID': config.apiKey,
-          'APCA-API-SECRET-KEY': config.apiSecret,
-        },
-      }
-    );
-
-    if (!snapshotResponse.ok) {
-      console.error('Failed to get snapshot:', await snapshotResponse.text());
-      throw new Error(`No recent price data available for ${symbol}`);
-    }
-
-    const snapshot = await snapshotResponse.json();
-    if (!snapshot.latestTrade?.p) {
-      throw new Error(`No price data available for ${symbol}`);
-    }
-
-    return snapshot.latestTrade.p;
+    throw new Error(`No recent price data available for ${symbol}. The stock might not be actively trading.`);
   }
 
-  return data.bars[0].c; // Return the closing price of the most recent bar
+  console.log(`Got bar price for ${symbol}:`, data.bars[0].c);
+  return data.bars[0].c;
 }
 
 async function executeAlpacaOrder(
