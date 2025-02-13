@@ -268,15 +268,23 @@ async function placeStopOrder(
     ? 'https://paper-api.alpaca.markets' 
     : 'https://api.alpaca.markets';
 
-  // Calculate a limit price slightly below the stop price to ensure execution
-  // Using 0.2% below stop price to account for potential slippage while ensuring execution
-  const limitPrice = stopPrice * 0.998;
-
-  console.log(`Placing stop-limit sell order for ${quantity} shares of ${symbol}:`, {
+  // For negative predictions, we want to sell when the price drops
+  // No need for a limit price offset as we want to ensure execution
+  console.log(`Placing stop sell order for ${quantity} shares of ${symbol}:`, {
     stopPrice,
-    limitPrice,
     currentPrice,
   });
+
+  const orderRequest = {
+    symbol,
+    qty: quantity.toString(),
+    side: 'sell',
+    type: 'stop',
+    time_in_force: 'gtc',
+    stop_price: stopPrice.toFixed(2), // Format to 2 decimal places
+  };
+
+  console.log('Stop order request:', orderRequest);
 
   const response = await fetch(`${baseUrl}/v2/orders`, {
     method: 'POST',
@@ -285,24 +293,18 @@ async function placeStopOrder(
       'APCA-API-SECRET-KEY': config.apiSecret,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({
-      symbol,
-      qty: quantity,
-      side: 'sell',
-      type: 'stop_limit',
-      time_in_force: 'gtc',
-      stop_price: stopPrice,
-      limit_price: limitPrice,
-    }),
+    body: JSON.stringify(orderRequest),
   });
 
+  const responseText = await response.text();
+  console.log('Stop order response:', responseText);
+
   if (!response.ok) {
-    const errorText = await response.text();
-    console.error('Stop order placement error:', errorText);
-    throw new Error(`Failed to place stop order: ${errorText}`);
+    console.error('Stop order placement error:', responseText);
+    throw new Error(`Failed to place stop order: ${responseText}`);
   }
 
-  const stopOrderData = await response.json();
+  const stopOrderData = JSON.parse(responseText);
   console.log('Stop order placed successfully:', stopOrderData);
   return stopOrderData;
 }
@@ -351,13 +353,16 @@ serve(async (req) => {
     // Only place stop order if the prediction is negative and we have filled shares
     let stopOrderData = null;
     if (!prediction.is_positive && prediction.price_change_percentage && quantity > 0) {
-      // Calculate the stop price based on the predicted price change
+      // For negative predictions, we want to sell when the price drops by the predicted percentage
+      // If price_change_percentage is -5%, we want to sell when the price drops 5% from entry
+      // So if entry is $100 and prediction is -5%, stop price should be $95
       const priceChangeDecimal = prediction.price_change_percentage / 100;
-      const stopPrice = initialPrice * (1 + priceChangeDecimal);
+      const stopPrice = initialPrice * (1 + priceChangeDecimal); // This will be less than initialPrice for negative predictions
       
-      console.log('Placing stop order with calculated prices:', {
+      console.log('Calculated stop price details:', {
         initialPrice,
         priceChangePercentage: prediction.price_change_percentage,
+        priceChangeDecimal,
         calculatedStopPrice: stopPrice,
         quantity,
       });
@@ -370,6 +375,14 @@ serve(async (req) => {
         stopPrice,
         initialPrice
       );
+
+      console.log('Stop order details:', stopOrderData);
+    } else {
+      console.log('No stop order needed:', {
+        isPositive: prediction.is_positive,
+        priceChangePercentage: prediction.price_change_percentage,
+        quantity,
+      });
     }
 
     // Update watch entry with order details
