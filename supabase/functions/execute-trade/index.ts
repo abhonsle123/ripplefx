@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.0";
 
@@ -200,6 +201,27 @@ async function waitForOrderFill(config: AlpacaConfig, orderId: string, maxAttemp
   throw new Error('Order did not fill within expected time');
 }
 
+async function verifyPosition(config: AlpacaConfig, symbol: string): Promise<number> {
+  const baseUrl = config.paperTrading 
+    ? 'https://paper-api.alpaca.markets' 
+    : 'https://api.alpaca.markets';
+
+  const response = await fetch(`${baseUrl}/v2/positions/${symbol}`, {
+    headers: {
+      'APCA-API-KEY-ID': config.apiKey,
+      'APCA-API-SECRET-KEY': config.apiSecret,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to verify position');
+  }
+
+  const position = await response.json();
+  console.log('Current position:', position);
+  return parseFloat(position.qty);
+}
+
 async function executeAlpacaOrder(
   config: AlpacaConfig,
   symbol: string,
@@ -261,30 +283,42 @@ async function placeStopOrder(
   config: AlpacaConfig,
   symbol: string,
   quantity: number,
-  stopPrice: number,
-  currentPrice: number
+  stopPrice: number
 ) {
   const baseUrl = config.paperTrading 
     ? 'https://paper-api.alpaca.markets' 
     : 'https://api.alpaca.markets';
 
-  // For negative predictions, we want to sell when the price drops
-  // No need for a limit price offset as we want to ensure execution
-  console.log(`Placing stop sell order for ${quantity} shares of ${symbol}:`, {
-    stopPrice,
-    currentPrice,
-  });
+  console.log(`Placing stop market sell order for ${quantity} shares of ${symbol} at ${stopPrice}`);
 
+  // First, cancel any existing open orders for this symbol
+  try {
+    await fetch(`${baseUrl}/v2/orders`, {
+      method: 'DELETE',
+      headers: {
+        'APCA-API-KEY-ID': config.apiKey,
+        'APCA-API-SECRET-KEY': config.apiSecret,
+      },
+      body: JSON.stringify({
+        symbol: symbol
+      })
+    });
+    console.log('Cancelled any existing orders for symbol:', symbol);
+  } catch (error) {
+    console.log('No existing orders to cancel:', error);
+  }
+
+  // Place the stop market order
   const orderRequest = {
-    symbol,
+    symbol: symbol,
     qty: quantity.toString(),
     side: 'sell',
     type: 'stop',
     time_in_force: 'gtc',
-    stop_price: stopPrice.toFixed(2), // Format to 2 decimal places
+    stop_price: stopPrice.toFixed(2)
   };
 
-  console.log('Stop order request:', orderRequest);
+  console.log('Sending stop order request:', orderRequest);
 
   const response = await fetch(`${baseUrl}/v2/orders`, {
     method: 'POST',
@@ -293,14 +327,13 @@ async function placeStopOrder(
       'APCA-API-SECRET-KEY': config.apiSecret,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(orderRequest),
+    body: JSON.stringify(orderRequest)
   });
 
   const responseText = await response.text();
   console.log('Stop order response:', responseText);
 
   if (!response.ok) {
-    console.error('Stop order placement error:', responseText);
     throw new Error(`Failed to place stop order: ${responseText}`);
   }
 
@@ -350,39 +383,32 @@ serve(async (req) => {
       'buy'
     );
 
-    // Only place stop order if the prediction is negative and we have filled shares
+    // Verify the position exists and get the actual quantity
+    const actualPosition = await verifyPosition(config, symbol);
+    console.log('Verified position quantity:', actualPosition);
+
+    // Only place stop order if the prediction is negative and we have a position
     let stopOrderData = null;
-    if (!prediction.is_positive && prediction.price_change_percentage && quantity > 0) {
-      // For negative predictions, we want to sell when the price drops by the predicted percentage
-      // If price_change_percentage is -5%, we want to sell when the price drops 5% from entry
-      // So if entry is $100 and prediction is -5%, stop price should be $95
+    if (!prediction.is_positive && prediction.price_change_percentage && actualPosition > 0) {
+      // Calculate stop price based on the entry price and predicted percentage
       const priceChangeDecimal = prediction.price_change_percentage / 100;
-      const stopPrice = initialPrice * (1 + priceChangeDecimal); // This will be less than initialPrice for negative predictions
-      
-      console.log('Calculated stop price details:', {
+      const stopPrice = initialPrice * (1 + priceChangeDecimal);
+
+      console.log('Stop order calculation:', {
         initialPrice,
         priceChangePercentage: prediction.price_change_percentage,
         priceChangeDecimal,
-        calculatedStopPrice: stopPrice,
-        quantity,
+        stopPrice,
+        positionQuantity: actualPosition
       });
 
-      // Place the stop order using the actual filled quantity from the buy order
+      // Place the stop order using the verified position quantity
       stopOrderData = await placeStopOrder(
         config,
         symbol,
-        quantity,
-        stopPrice,
-        initialPrice
+        actualPosition,
+        stopPrice
       );
-
-      console.log('Stop order details:', stopOrderData);
-    } else {
-      console.log('No stop order needed:', {
-        isPositive: prediction.is_positive,
-        priceChangePercentage: prediction.price_change_percentage,
-        quantity,
-      });
     }
 
     // Update watch entry with order details
