@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -114,8 +113,10 @@ export const useWatchlist = (userId: string) => {
 
     if (error) throw error;
 
+    // If investing, trigger the investment
     if (investmentType === "INVEST_AND_FOLLOW" && amount && brokerConnectionId) {
-      // Trigger the investment
+      // Here we would typically call an edge function to handle the investment
+      // For now, we'll just show a success message
       toast({
         title: "Investment Initiated",
         description: "Your investment order has been placed.",
@@ -206,48 +207,13 @@ export const useWatchlist = (userId: string) => {
         }
       });
 
-      // Handle both error cases: function error and function success with error response
       if (response.error) {
-        let errorMessage: string;
-        try {
-          // Try to parse the error response
-          const body = response.error.message ? JSON.parse(response.error.message) : null;
-          errorMessage = body?.error || response.error.message;
-        } catch (e) {
-          errorMessage = response.error.message;
-        }
-
-        // Check for market closed error
-        if (errorMessage.includes('Market is currently closed')) {
-          toast({
-            title: "Market Closed",
-            description: "The US stock market is currently closed. Trading is available from 9:30 AM to 4:00 PM ET, Monday through Friday.",
-            variant: "destructive",
-          });
-          return;
-        }
-
-        // For other errors
         console.error('Trade execution error:', response.error);
-        throw new Error(errorMessage || 'Failed to place investment. Please try again.');
+        throw new Error(response.error);
       }
 
-      // If we have a successful response but with an error status
-      if (response.data?.success === false) {
-        const errorMessage = response.data.error || 'Failed to place investment';
-        if (errorMessage.includes('Market is currently closed')) {
-          toast({
-            title: "Market Closed",
-            description: "The US stock market is currently closed. Trading is available from 9:30 AM to 4:00 PM ET, Monday through Friday.",
-            variant: "destructive",
-          });
-          return;
-        }
-        throw new Error(errorMessage);
-      }
-
-      // Success case
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
+
       toast({
         title: "Investment Successful",
         description: `Your investment in ${watch.stock_prediction.symbol} has been placed successfully.`,
