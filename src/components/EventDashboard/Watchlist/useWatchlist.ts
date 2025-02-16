@@ -197,7 +197,6 @@ export const useWatchlist = (userId: string) => {
       // Get the active broker connection
       const connection = await getBrokerConnection();
       
-      // Execute the trade
       const response = await supabase.functions.invoke('execute-trade', {
         body: {
           stockPredictionId: watch.stock_prediction.id,
@@ -208,8 +207,13 @@ export const useWatchlist = (userId: string) => {
       });
 
       if (response.error) {
-        console.error('Trade execution error:', response.error);
-        throw new Error(response.error);
+        // Handle specific error cases
+        const errorData = JSON.parse(response.error.message);
+        if (errorData.body) {
+          const parsedBody = JSON.parse(errorData.body);
+          throw new Error(parsedBody.error || 'Failed to execute trade');
+        }
+        throw new Error(response.error.message);
       }
 
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
