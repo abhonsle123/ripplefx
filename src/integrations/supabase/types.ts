@@ -345,10 +345,14 @@ export type Database = {
           created_at: string
           entry_price: number | null
           id: string
+          initial_price: number | null
           investment_amount: number | null
           investment_type: string | null
+          last_price_check: string | null
           status: Database["public"]["Enums"]["stock_watch_status"] | null
           stock_prediction_id: string | null
+          stop_order_id: string | null
+          stop_price: number | null
           updated_at: string
           user_id: string | null
         }
@@ -357,10 +361,14 @@ export type Database = {
           created_at?: string
           entry_price?: number | null
           id?: string
+          initial_price?: number | null
           investment_amount?: number | null
           investment_type?: string | null
+          last_price_check?: string | null
           status?: Database["public"]["Enums"]["stock_watch_status"] | null
           stock_prediction_id?: string | null
+          stop_order_id?: string | null
+          stop_price?: number | null
           updated_at?: string
           user_id?: string | null
         }
@@ -369,10 +377,14 @@ export type Database = {
           created_at?: string
           entry_price?: number | null
           id?: string
+          initial_price?: number | null
           investment_amount?: number | null
           investment_type?: string | null
+          last_price_check?: string | null
           status?: Database["public"]["Enums"]["stock_watch_status"] | null
           stock_prediction_id?: string | null
+          stop_order_id?: string | null
+          stop_price?: number | null
           updated_at?: string
           user_id?: string | null
         }
