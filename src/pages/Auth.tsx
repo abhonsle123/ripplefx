@@ -16,47 +16,34 @@ const Auth = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  // Check if user is already logged in and handle session persistence
+  // Check if user is already logged in
   useEffect(() => {
-    // Initialize session check
-    const initSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) {
-          console.error("Session initialization error:", error);
-          return;
-        }
-        if (session) {
-          console.log("Valid session found, redirecting to home");
-          navigate('/');
-        }
-      } catch (error) {
-        console.error("Session initialization failed:", error);
+    const checkSession = async () => {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (error) {
+        console.error("Session check error:", error);
+        return;
+      }
+      if (session) {
+        navigate('/');
       }
     };
 
-    initSession();
+    checkSession();
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth state changed:", event);
-      
       if (event === 'SIGNED_IN' && session) {
-        console.log("User signed in, redirecting to home");
         navigate('/');
       } else if (event === 'SIGNED_OUT') {
-        console.log("User signed out, staying on auth page");
         navigate('/auth');
       } else if (event === 'TOKEN_REFRESHED') {
         console.log('Token has been refreshed');
-      } else if (event === 'USER_UPDATED') {
-        console.log('User data has been updated');
       }
     });
 
-    // Cleanup subscription on unmount
     return () => {
       subscription.unsubscribe();
     };
@@ -75,8 +62,6 @@ const Auth = () => {
             data: {
               username: username,
             },
-            // Enable persistent sessions
-            emailRedirectTo: window.location.origin,
           },
         });
 
@@ -95,20 +80,15 @@ const Auth = () => {
           navigate('/');
         }
       } else {
-        const { data: { session }, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         
         if (error) throw error;
-
-        if (session) {
-          console.log("Login successful, session established");
-          navigate('/');
-        }
+        navigate('/');
       }
     } catch (error: any) {
-      console.error("Authentication error:", error);
       toast({
         title: "Error",
         description: error.message,

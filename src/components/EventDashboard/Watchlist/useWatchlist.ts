@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -197,41 +196,20 @@ export const useWatchlist = (userId: string) => {
 
       // Get the active broker connection
       const connection = await getBrokerConnection();
-
-      console.log('Executing trade with params:', {
-        stockPredictionId: watch.stock_prediction.id,
-        amount,
-        brokerConnectionId: connection.id,
-        userId
-      });
       
-      const { data, error } = await supabase.functions.invoke('execute-trade', {
+      // Execute the trade
+      const response = await supabase.functions.invoke('execute-trade', {
         body: {
           stockPredictionId: watch.stock_prediction.id,
           amount,
           brokerConnectionId: connection.id,
           userId
-        },
-        headers: {
-          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         }
       });
 
-      if (error) {
-        let errorMessage = 'Failed to execute trade';
-        try {
-          if (typeof error === 'object' && error.message) {
-            const responseData = JSON.parse(error.message);
-            if (responseData.body) {
-              const bodyData = JSON.parse(responseData.body);
-              errorMessage = bodyData.error || errorMessage;
-            }
-          }
-        } catch {
-          // If parsing fails, use the original error message
-          errorMessage = error.message || errorMessage;
-        }
-        throw new Error(errorMessage);
+      if (response.error) {
+        console.error('Trade execution error:', response.error);
+        throw new Error(response.error);
       }
 
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
@@ -241,7 +219,7 @@ export const useWatchlist = (userId: string) => {
         description: `Your investment in ${watch.stock_prediction.symbol} has been placed successfully.`,
       });
 
-      return data;
+      return response.data;
     } catch (error: any) {
       console.error('Error investing in stock:', error);
       toast({

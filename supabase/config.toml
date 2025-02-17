@@ -1,6 +1,8 @@
 
 project_id = "pqxzzviqodstimvybgow"
 
-[functions.execute-trade]
+[functions.fetch-events]
 verify_jwt = false
 
+[functions.process-notifications]
+verify_jwt = false
