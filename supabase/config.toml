@@ -2,4 +2,5 @@
 project_id = "pqxzzviqodstimvybgow"
 
 [functions.execute-trade]
-verify_jwt = true
+verify_jwt = false
+

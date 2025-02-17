@@ -197,6 +197,13 @@ export const useWatchlist = (userId: string) => {
 
       // Get the active broker connection
       const connection = await getBrokerConnection();
+
+      console.log('Executing trade with params:', {
+        stockPredictionId: watch.stock_prediction.id,
+        amount,
+        brokerConnectionId: connection.id,
+        userId
+      });
       
       const { data, error } = await supabase.functions.invoke('execute-trade', {
         body: {
@@ -204,11 +211,13 @@ export const useWatchlist = (userId: string) => {
           amount,
           brokerConnectionId: connection.id,
           userId
+        },
+        headers: {
+          Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
         }
       });
 
       if (error) {
-        // Try to extract error message from the error response
         let errorMessage = 'Failed to execute trade';
         try {
           if (typeof error === 'object' && error.message) {
