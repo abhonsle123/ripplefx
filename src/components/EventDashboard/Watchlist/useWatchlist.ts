@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -115,8 +116,6 @@ export const useWatchlist = (userId: string) => {
 
     // If investing, trigger the investment
     if (investmentType === "INVEST_AND_FOLLOW" && amount && brokerConnectionId) {
-      // Here we would typically call an edge function to handle the investment
-      // For now, we'll just show a success message
       toast({
         title: "Investment Initiated",
         description: "Your investment order has been placed.",
@@ -188,6 +187,8 @@ export const useWatchlist = (userId: string) => {
 
   const handleInvest = async (watchId: string, amount: number) => {
     try {
+      console.log('Starting investment process for watch ID:', watchId);
+      
       // Get the watch details
       const watch = watches.find(w => w.id === watchId);
       if (!watch) {
@@ -198,7 +199,14 @@ export const useWatchlist = (userId: string) => {
       const connection = await getBrokerConnection();
       
       // Execute the trade
-      const response = await supabase.functions.invoke('execute-trade', {
+      console.log('Calling execute-trade function with:', {
+        stockPredictionId: watch.stock_prediction.id,
+        amount,
+        brokerConnectionId: connection.id,
+        userId
+      });
+
+      const { data: response, error } = await supabase.functions.invoke('execute-trade', {
         body: {
           stockPredictionId: watch.stock_prediction.id,
           amount,
@@ -207,10 +215,12 @@ export const useWatchlist = (userId: string) => {
         }
       });
 
-      if (response.error) {
-        console.error('Trade execution error:', response.error);
-        throw new Error(response.error);
+      if (error) {
+        console.error('Trade execution error:', error);
+        throw error;
       }
+
+      console.log('Trade execution response:', response);
 
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
 
@@ -219,7 +229,7 @@ export const useWatchlist = (userId: string) => {
         description: `Your investment in ${watch.stock_prediction.symbol} has been placed successfully.`,
       });
 
-      return response.data;
+      return response;
     } catch (error: any) {
       console.error('Error investing in stock:', error);
       toast({

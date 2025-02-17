@@ -6,3 +6,7 @@ verify_jwt = false
 
 [functions.process-notifications]
 verify_jwt = false
+
+[functions.execute-trade]
+verify_jwt = false
+
