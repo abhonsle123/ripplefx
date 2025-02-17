@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
@@ -197,7 +198,7 @@ export const useWatchlist = (userId: string) => {
       // Get the active broker connection
       const connection = await getBrokerConnection();
       
-      const response = await supabase.functions.invoke('execute-trade', {
+      const { data, error } = await supabase.functions.invoke('execute-trade', {
         body: {
           stockPredictionId: watch.stock_prediction.id,
           amount,
@@ -206,14 +207,22 @@ export const useWatchlist = (userId: string) => {
         }
       });
 
-      if (response.error) {
-        // Handle specific error cases
-        const errorData = JSON.parse(response.error.message);
-        if (errorData.body) {
-          const parsedBody = JSON.parse(errorData.body);
-          throw new Error(parsedBody.error || 'Failed to execute trade');
+      if (error) {
+        // Try to extract error message from the error response
+        let errorMessage = 'Failed to execute trade';
+        try {
+          if (typeof error === 'object' && error.message) {
+            const responseData = JSON.parse(error.message);
+            if (responseData.body) {
+              const bodyData = JSON.parse(responseData.body);
+              errorMessage = bodyData.error || errorMessage;
+            }
+          }
+        } catch {
+          // If parsing fails, use the original error message
+          errorMessage = error.message || errorMessage;
         }
-        throw new Error(response.error.message);
+        throw new Error(errorMessage);
       }
 
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
@@ -223,7 +232,7 @@ export const useWatchlist = (userId: string) => {
         description: `Your investment in ${watch.stock_prediction.symbol} has been placed successfully.`,
       });
 
-      return response.data;
+      return data;
     } catch (error: any) {
       console.error('Error investing in stock:', error);
       toast({
