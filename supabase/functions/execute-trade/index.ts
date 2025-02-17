@@ -82,18 +82,28 @@ serve(async (req) => {
       throw new Error('Invalid stock prediction');
     }
 
+    // For demo purposes, using a mock stock price of $100
+    // In production, you would fetch the real-time stock price
+    const mockStockPrice = 100;
+    const quantity = Math.floor(amount / mockStockPrice);
+
+    if (quantity <= 0) {
+      throw new Error('Investment amount too small for current stock price');
+    }
+
     // Create trade execution record
     const { data: trade, error: tradeError } = await supabase
       .from('trade_executions')
       .insert([
         {
           user_id: userId,
-          stock_prediction_id: stockPredictionId,
-          broker_connection_id: brokerConnectionId,
-          amount: amount,
-          status: 'PENDING',
+          stock_symbol: prediction.symbol,
+          quantity: quantity,
+          price: mockStockPrice,
+          stock_price: mockStockPrice,
           trade_type: prediction.is_positive ? 'BUY' : 'SELL',
-          symbol: prediction.symbol
+          status: 'PENDING',
+          action: prediction.is_positive ? 'BUY' : 'SELL'
         }
       ])
       .select()
@@ -108,7 +118,8 @@ serve(async (req) => {
     console.log('Trade execution initiated:', {
       tradeId: trade.id,
       symbol: prediction.symbol,
-      amount,
+      quantity,
+      price: mockStockPrice,
       type: prediction.is_positive ? 'BUY' : 'SELL'
     });
 
