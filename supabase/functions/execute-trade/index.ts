@@ -1,6 +1,7 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
+import { AlpacaClient } from 'https://esm.sh/@alpacahq/alpaca-trade-api@3.0.1'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,7 +16,6 @@ interface TradeRequest {
 }
 
 serve(async (req) => {
-  // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -23,44 +23,15 @@ serve(async (req) => {
   try {
     const { stockPredictionId, amount, brokerConnectionId, userId } = await req.json() as TradeRequest;
 
-    // Basic input validation
     if (!stockPredictionId || !amount || !brokerConnectionId || !userId) {
       throw new Error('Missing required parameters');
     }
 
-    // Check if market is open (NYSE hours: 9:30 AM - 4:00 PM ET, Monday-Friday)
-    const now = new Date();
-    const etOffset = -4; // EDT offset from UTC
-    const etTime = new Date(now.getTime() + etOffset * 60 * 60 * 1000);
-    const hour = etTime.getUTCHours();
-    const minute = etTime.getUTCMinutes();
-    const day = etTime.getUTCDay();
-
-    // Check if it's a weekday and within market hours
-    const isWeekday = day >= 1 && day <= 5;
-    const currentTimeInMinutes = hour * 60 + minute;
-    const marketOpenInMinutes = 9 * 60 + 30;  // 9:30 AM
-    const marketCloseInMinutes = 16 * 60;     // 4:00 PM
-
-    if (!isWeekday || currentTimeInMinutes < marketOpenInMinutes || currentTimeInMinutes >= marketCloseInMinutes) {
-      return new Response(
-        JSON.stringify({
-          success: false,
-          error: "Market is currently closed. Trading is only available during market hours (9:30 AM - 4:00 PM ET, Monday-Friday)."
-        }),
-        {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        }
-      );
-    }
-
-    // Create Supabase client
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Get broker connection details
+    // Get broker connection details with API keys
     const { data: brokerConnection, error: brokerError } = await supabase
       .from('broker_connections')
       .select('*')
@@ -82,13 +53,31 @@ serve(async (req) => {
       throw new Error('Invalid stock prediction');
     }
 
-    // For demo purposes, using a mock stock price of $100
-    // In production, you would fetch the real-time stock price
-    const mockStockPrice = 100;
-    const quantity = Math.floor(amount / mockStockPrice);
+    console.log('Initializing Alpaca client for', brokerConnection.broker_name);
+    
+    // Initialize Alpaca client with broker credentials
+    const baseURL = brokerConnection.broker_name === 'alpaca_paper' 
+      ? 'https://paper-api.alpaca.markets'
+      : 'https://api.alpaca.markets';
 
+    const alpaca = new AlpacaClient({
+      credentials: {
+        key: brokerConnection.api_key,
+        secret: brokerConnection.api_secret,
+      },
+      paper: brokerConnection.broker_name === 'alpaca_paper',
+    });
+
+    // Get current market price
+    console.log('Fetching latest price for', prediction.symbol);
+    const quote = await alpaca.getLatestTrade(prediction.symbol);
+    const currentPrice = quote.price;
+    console.log('Current price:', currentPrice);
+
+    // Calculate quantity based on amount and current price
+    const quantity = Math.floor(amount / currentPrice);
     if (quantity <= 0) {
-      throw new Error('Investment amount too small for current stock price');
+      throw new Error(`Investment amount (${amount}) too small for current stock price (${currentPrice})`);
     }
 
     // Create trade execution record
@@ -99,8 +88,8 @@ serve(async (req) => {
           user_id: userId,
           stock_symbol: prediction.symbol,
           quantity: quantity,
-          price: mockStockPrice,
-          stock_price: mockStockPrice,
+          price: currentPrice,
+          stock_price: currentPrice,
           trade_type: prediction.is_positive ? 'BUY' : 'SELL',
           status: 'PENDING',
           action: prediction.is_positive ? 'BUY' : 'SELL'
@@ -113,18 +102,38 @@ serve(async (req) => {
       throw tradeError;
     }
 
-    // Here you would typically integrate with the actual broker API
-    // For now, we'll simulate a successful trade
-    console.log('Trade execution initiated:', {
-      tradeId: trade.id,
+    console.log('Submitting order to Alpaca');
+    
+    // Submit the order to Alpaca
+    const order = await alpaca.submitOrder({
       symbol: prediction.symbol,
-      quantity,
-      price: mockStockPrice,
-      type: prediction.is_positive ? 'BUY' : 'SELL'
+      qty: quantity,
+      side: prediction.is_positive ? 'buy' : 'sell',
+      type: 'market',
+      time_in_force: 'day'
     });
 
+    console.log('Order submitted successfully:', order);
+
+    // Update trade execution status
+    const { error: updateError } = await supabase
+      .from('trade_executions')
+      .update({ 
+        status: 'EXECUTED',
+        external_order_id: order.id
+      })
+      .eq('id', trade.id);
+
+    if (updateError) {
+      console.error('Error updating trade status:', updateError);
+    }
+
     return new Response(
-      JSON.stringify({ success: true, trade }),
+      JSON.stringify({ 
+        success: true, 
+        trade,
+        order 
+      }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
