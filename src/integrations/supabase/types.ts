@@ -242,7 +242,9 @@ export type Database = {
           quantity: number
           rule_id: string | null
           status: string
+          stock_price: number | null
           stock_symbol: string
+          trade_type: string
           updated_at: string
           user_id: string
         }
@@ -255,7 +257,9 @@ export type Database = {
           quantity: number
           rule_id?: string | null
           status: string
+          stock_price?: number | null
           stock_symbol: string
+          trade_type?: string
           updated_at?: string
           user_id: string
         }
@@ -268,7 +272,9 @@ export type Database = {
           quantity?: number
           rule_id?: string | null
           status?: string
+          stock_price?: number | null
           stock_symbol?: string
+          trade_type?: string
           updated_at?: string
           user_id?: string
         }
