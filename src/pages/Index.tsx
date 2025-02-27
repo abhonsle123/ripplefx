@@ -50,8 +50,14 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative min-h-screen bg-hero-gradient">
-        <div className="absolute inset-0 bg-black/30" />
+      <div className="relative min-h-screen">
+        {/* Modern gradient background with animation */}
+        <div className="absolute inset-0">
+          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/30 via-background to-purple-900/30 animate-gradientShift" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(59,130,246,0.1)_0%,transparent_50%)] animate-shimmer" />
+          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(59,130,246,0.1)_1px,transparent_1px)] bg-[size:40px_40px] opacity-20" />
+        </div>
+
         <div className="container relative px-4 pt-32 pb-20">
           <div className="text-center max-w-3xl mx-auto space-y-6">
             <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight text-foreground animate-slideUp">
@@ -93,22 +99,22 @@ const Index = () => {
             Why Choose RippleEffect?
           </h2>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <div className="p-8 rounded-xl bg-secondary/50 backdrop-blur animate-slideUp hover:bg-secondary/70 transition-all duration-300 border border-white/5">
-              <Shield className="w-12 h-12 text-primary mb-4" />
+            <div className="p-8 rounded-xl bg-secondary/50 backdrop-blur animate-slideUp hover:bg-secondary/70 transition-all duration-300 border border-white/5 hover:translate-y-[-4px]">
+              <Shield className="w-12 h-12 text-primary mb-4 animate-floating" />
               <h3 className="text-xl font-semibold mb-3 text-foreground">Protected Trading</h3>
               <p className="text-muted-foreground">
                 Advanced risk analysis and real-time market monitoring to protect your investments.
               </p>
             </div>
-            <div className="p-8 rounded-xl bg-secondary/50 backdrop-blur animate-slideUp [animation-delay:200ms] hover:bg-secondary/70 transition-all duration-300 border border-white/5">
-              <LineChart className="w-12 h-12 text-primary mb-4" />
+            <div className="p-8 rounded-xl bg-secondary/50 backdrop-blur animate-slideUp [animation-delay:200ms] hover:bg-secondary/70 transition-all duration-300 border border-white/5 hover:translate-y-[-4px]">
+              <LineChart className="w-12 h-12 text-primary mb-4 animate-floating [animation-delay:200ms]" />
               <h3 className="text-xl font-semibold mb-3 text-foreground">AI Analysis</h3>
               <p className="text-muted-foreground">
                 Predictive AI algorithms analyze events and forecast potential market impact.
               </p>
             </div>
-            <div className="p-8 rounded-xl bg-secondary/50 backdrop-blur animate-slideUp [animation-delay:400ms] hover:bg-secondary/70 transition-all duration-300 border border-white/5">
-              <BellRing className="w-12 h-12 text-primary mb-4" />
+            <div className="p-8 rounded-xl bg-secondary/50 backdrop-blur animate-slideUp [animation-delay:400ms] hover:bg-secondary/70 transition-all duration-300 border border-white/5 hover:translate-y-[-4px]">
+              <BellRing className="w-12 h-12 text-primary mb-4 animate-floating [animation-delay:400ms]" />
               <h3 className="text-xl font-semibold mb-3 text-foreground">Instant Alerts</h3>
               <p className="text-muted-foreground">
                 Get actionable notifications based on real-time market analysis.

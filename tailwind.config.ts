@@ -51,7 +51,8 @@ export default {
         }
       },
       backgroundImage: {
-        'hero-gradient': 'radial-gradient(circle at 50% 50%, #1E293B 0%, #0A0B0D 100%)',
+        'gradient-radial': 'radial-gradient(circle at center, var(--tw-gradient-stops))',
+        'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))',
       },
       keyframes: {
         fadeIn: {
@@ -66,12 +67,22 @@ export default {
           '0%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
           '100%': { backgroundPosition: '0% 50%' }
+        },
+        floating: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' }
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '200% 0' },
+          '100%': { backgroundPosition: '-200% 0' }
         }
       },
       animation: {
         fadeIn: 'fadeIn 0.8s ease-out',
         slideUp: 'slideUp 0.8s ease-out forwards',
-        gradientShift: 'gradientShift 15s ease infinite'
+        gradientShift: 'gradientShift 15s ease infinite',
+        floating: 'floating 3s ease-in-out infinite',
+        shimmer: 'shimmer 8s ease-in-out infinite'
       }
     }
   },
