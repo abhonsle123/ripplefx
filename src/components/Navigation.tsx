@@ -114,14 +114,6 @@ const Navigation = () => {
               >
                 Pricing
               </Link>
-              <Link
-                to="/testimonials"
-                className={`hover:text-primary transition-colors ${
-                  isActive("/testimonials") ? "text-primary" : "text-foreground"
-                }`}
-              >
-                Testimonials
-              </Link>
             </div>
           </div>
           <div className="flex items-center gap-4">
