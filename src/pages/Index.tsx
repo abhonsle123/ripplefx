@@ -55,7 +55,7 @@ const Index = () => {
         <div className="container relative px-4 pt-32 pb-20">
           <div className="text-center max-w-3xl mx-auto space-y-6">
             <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight text-foreground animate-slideUp">
-              Trading is Risky. <span className="text-primary">Be Protected</span>
+              Stay Ahead of <span className="text-primary">Market-Moving Events</span>
             </h1>
             <p className="text-xl text-muted-foreground animate-slideUp [animation-delay:200ms]">
               Get real-time alerts and AI-powered insights on market-moving events. We cover your trading risks
