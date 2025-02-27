@@ -66,12 +66,17 @@ export default {
           '0%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
           '100%': { backgroundPosition: '0% 50%' }
+        },
+        moveBackground: {
+          '0%': { backgroundPosition: '0 0' },
+          '100%': { backgroundPosition: '100% 100%' }
         }
       },
       animation: {
         fadeIn: 'fadeIn 0.8s ease-out',
         slideUp: 'slideUp 0.8s ease-out forwards',
-        gradientShift: 'gradientShift 15s ease infinite'
+        gradientShift: 'gradientShift 15s ease infinite',
+        moveBackground: 'moveBackground 30s linear infinite'
       }
     }
   },

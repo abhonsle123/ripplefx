@@ -50,8 +50,22 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative min-h-screen bg-hero-gradient">
-        <div className="absolute inset-0 bg-black/30" />
+      <div className="relative min-h-screen overflow-hidden">
+        {/* Abstract animated background */}
+        <div className="absolute inset-0 bg-gradient-to-br from-blue-900 via-background to-purple-900">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.2)_0%,rgba(59,130,246,0)_50%)]" />
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(147,51,234,0.2)_0%,rgba(147,51,234,0)_50%)]" />
+          </div>
+          
+          {/* Animated lines */}
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%239C92AC' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+            animation: 'moveBackground 30s linear infinite',
+          }} />
+        </div>
+
+        {/* Content */}
         <div className="container relative px-4 pt-32 pb-20">
           <div className="text-center max-w-3xl mx-auto space-y-6">
             <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight text-foreground animate-slideUp">
