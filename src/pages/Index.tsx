@@ -50,15 +50,8 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative min-h-screen overflow-hidden">
-        {/* Dynamic gradient background */}
-        <div className="absolute inset-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-900/40 via-background to-purple-900/40 animate-gradientShift" />
-          <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(59,130,246,0.1)_1px,transparent_1px)] bg-[size:40px_40px]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(59,130,246,0.1)_0%,rgba(59,130,246,0)_50%)] animate-pulse" />
-        </div>
-
-        {/* Content */}
+      <div className="relative min-h-screen bg-hero-gradient">
+        <div className="absolute inset-0 bg-black/30" />
         <div className="container relative px-4 pt-32 pb-20">
           <div className="text-center max-w-3xl mx-auto space-y-6">
             <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight text-foreground animate-slideUp">

@@ -66,17 +66,12 @@ export default {
           '0%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
           '100%': { backgroundPosition: '0% 50%' }
-        },
-        pulse: {
-          '0%, 100%': { opacity: '1' },
-          '50%': { opacity: '0.5' }
         }
       },
       animation: {
         fadeIn: 'fadeIn 0.8s ease-out',
         slideUp: 'slideUp 0.8s ease-out forwards',
-        gradientShift: 'gradientShift 15s ease infinite',
-        pulse: 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite'
+        gradientShift: 'gradientShift 15s ease infinite'
       }
     }
   },
