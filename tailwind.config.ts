@@ -13,45 +13,45 @@ export default {
   theme: {
     container: {
       center: true,
-      padding: '2rem',
+      padding: "2rem",
       screens: {
-        '2xl': '1400px'
-      }
+        "2xl": "1400px",
+      },
     },
     extend: {
       colors: {
-        border: 'hsl(var(--border))',
-        input: 'hsl(var(--input))',
-        ring: 'hsl(var(--ring))',
-        background: '#0A192F',
-        foreground: '#FFFFFF',
+        border: "hsl(var(--border))",
+        input: "hsl(var(--input))",
+        ring: "hsl(var(--ring))",
+        background: "#0A0B0D",
+        foreground: "#FFFFFF",
         primary: {
-          DEFAULT: '#64FFDA',
-          foreground: '#0A192F'
+          DEFAULT: "#3B82F6",
+          foreground: "#FFFFFF"
         },
         secondary: {
-          DEFAULT: '#112240',
-          foreground: '#FFFFFF'
+          DEFAULT: "#1A1D1F",
+          foreground: "#FFFFFF"
         },
         accent: {
-          DEFAULT: '#233554',
-          foreground: '#FFFFFF'
+          DEFAULT: "#2563EB",
+          foreground: "#FFFFFF"
         },
         destructive: {
-          DEFAULT: '#FF3B30',
-          foreground: '#FFFFFF'
+          DEFAULT: "#FF3B30",
+          foreground: "#FFFFFF"
         },
         muted: {
-          DEFAULT: '#8892B0',
-          foreground: '#A1A1A1'
+          DEFAULT: "#64748B",
+          foreground: "#94A3B8"
         },
         card: {
-          DEFAULT: '#112240',
-          foreground: '#FFFFFF'
+          DEFAULT: "#111317",
+          foreground: "#FFFFFF"
         }
       },
       backgroundImage: {
-        'hero-gradient': 'linear-gradient(135deg, #0A192F 0%, #112240 50%, #64FFDA 100%)',
+        'hero-gradient': 'radial-gradient(circle at 50% 50%, #1E293B 0%, #0A0B0D 100%)',
       },
       keyframes: {
         fadeIn: {
@@ -70,7 +70,7 @@ export default {
       },
       animation: {
         fadeIn: 'fadeIn 0.8s ease-out',
-        slideUp: 'slideUp 0.8s ease-out',
+        slideUp: 'slideUp 0.8s ease-out forwards',
         gradientShift: 'gradientShift 15s ease infinite'
       }
     }

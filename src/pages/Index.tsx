@@ -1,7 +1,7 @@
 
 import { Button } from "@/components/ui/button";
 import PricingCard from "@/components/PricingCard";
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Shield, LineChart, BellRing } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Index = () => {
@@ -50,57 +50,68 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Hero Section */}
-      <div className="relative min-h-screen bg-hero-gradient animate-gradientShift bg-[length:200%_200%]">
-        <div className="absolute inset-0 bg-gradient-to-b from-background/95 to-transparent" />
+      <div className="relative min-h-screen bg-hero-gradient">
+        <div className="absolute inset-0 bg-black/30" />
         <div className="container relative px-4 pt-32 pb-20">
           <div className="text-center max-w-3xl mx-auto space-y-6">
             <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight text-foreground animate-slideUp">
-              Stay Ahead of Market-Moving Events
+              Trading is Risky. <span className="text-primary">Be Protected</span>
             </h1>
-            <p className="text-xl text-muted animate-slideUp [animation-delay:200ms]">
-              Get real-time alerts and AI-powered insights on global events that impact
-              your investments. Make informed decisions with our advanced stock analysis.
+            <p className="text-xl text-muted-foreground animate-slideUp [animation-delay:200ms]">
+              Get real-time alerts and AI-powered insights on market-moving events. We cover your trading risks
+              with advanced analysis and predictive alerts.
             </p>
-            <Button 
-              className="group mt-8 bg-primary text-primary-foreground hover:bg-primary/90 animate-slideUp [animation-delay:400ms]" 
-              size="lg"
-              onClick={() => {
-                navigate("/auth");
-                localStorage.setItem("authMode", "signup");
-              }}
-            >
-              Start Trading Smarter
-              <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-8">
+              <Button 
+                className="w-full sm:w-auto group bg-primary text-primary-foreground hover:bg-primary/90 animate-slideUp [animation-delay:400ms]" 
+                size="lg"
+                onClick={() => {
+                  navigate("/auth");
+                  localStorage.setItem("authMode", "signup");
+                }}
+              >
+                Start Free Trial
+                <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              </Button>
+              <Button 
+                variant="outline"
+                className="w-full sm:w-auto animate-slideUp [animation-delay:500ms]"
+                size="lg"
+                onClick={() => navigate("/features")}
+              >
+                View Features
+              </Button>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Features Grid */}
-      <div className="bg-secondary py-20">
+      <div className="bg-card py-20">
         <div className="container px-4">
           <h2 className="text-3xl font-bold text-center mb-16 text-foreground">
             Why Choose RippleEffect?
           </h2>
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            <div className="p-6 rounded-xl bg-accent animate-slideUp hover:bg-accent/80 transition-colors">
-              <h3 className="text-xl font-semibold mb-3 text-primary">Real-Time Alerts</h3>
-              <p className="text-muted">
-                Instant notifications about market-moving global events via SMS and
-                email.
+            <div className="p-8 rounded-xl bg-secondary/50 backdrop-blur animate-slideUp hover:bg-secondary/70 transition-all duration-300 border border-white/5">
+              <Shield className="w-12 h-12 text-primary mb-4" />
+              <h3 className="text-xl font-semibold mb-3 text-foreground">Protected Trading</h3>
+              <p className="text-muted-foreground">
+                Advanced risk analysis and real-time market monitoring to protect your investments.
               </p>
             </div>
-            <div className="p-6 rounded-xl bg-accent animate-slideUp delay-100 hover:bg-accent/80 transition-colors">
-              <h3 className="text-xl font-semibold mb-3 text-primary">AI Analysis</h3>
-              <p className="text-muted">
-                Advanced AI algorithms analyze events and predict potential market
-                impact.
+            <div className="p-8 rounded-xl bg-secondary/50 backdrop-blur animate-slideUp [animation-delay:200ms] hover:bg-secondary/70 transition-all duration-300 border border-white/5">
+              <LineChart className="w-12 h-12 text-primary mb-4" />
+              <h3 className="text-xl font-semibold mb-3 text-foreground">AI Analysis</h3>
+              <p className="text-muted-foreground">
+                Predictive AI algorithms analyze events and forecast potential market impact.
               </p>
             </div>
-            <div className="p-6 rounded-xl bg-accent animate-slideUp delay-200 hover:bg-accent/80 transition-colors">
-              <h3 className="text-xl font-semibold mb-3 text-primary">Smart Insights</h3>
-              <p className="text-muted">
-                Get actionable recommendations based on real-time market analysis.
+            <div className="p-8 rounded-xl bg-secondary/50 backdrop-blur animate-slideUp [animation-delay:400ms] hover:bg-secondary/70 transition-all duration-300 border border-white/5">
+              <BellRing className="w-12 h-12 text-primary mb-4" />
+              <h3 className="text-xl font-semibold mb-3 text-foreground">Instant Alerts</h3>
+              <p className="text-muted-foreground">
+                Get actionable notifications based on real-time market analysis.
               </p>
             </div>
           </div>
