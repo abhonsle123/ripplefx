@@ -1,6 +1,7 @@
 
 import { CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { AlertCircle, AlertTriangle, AlertOctagon, Info } from "lucide-react";
 
 interface EventCardHeaderProps {
   title: string;
@@ -13,13 +14,26 @@ const EventCardHeader = ({ title, severity, eventType, isRelevant }: EventCardHe
   const getSeverityColor = (severity: string) => {
     switch (severity.toLowerCase()) {
       case 'critical':
-        return 'bg-red-500';
+        return 'bg-red-500 border-red-600';
       case 'high':
-        return 'bg-orange-500';
+        return 'bg-orange-500 border-orange-600';
       case 'medium':
-        return 'bg-yellow-500';
+        return 'bg-yellow-500 border-yellow-600';
       default:
-        return 'bg-blue-500';
+        return 'bg-blue-500 border-blue-600';
+    }
+  };
+
+  const getSeverityIcon = (severity: string) => {
+    switch (severity.toLowerCase()) {
+      case 'critical':
+        return <AlertOctagon className="h-3.5 w-3.5" />;
+      case 'high':
+        return <AlertCircle className="h-3.5 w-3.5" />;
+      case 'medium':
+        return <AlertTriangle className="h-3.5 w-3.5" />;
+      default:
+        return <Info className="h-3.5 w-3.5" />;
     }
   };
 
@@ -28,22 +42,21 @@ const EventCardHeader = ({ title, severity, eventType, isRelevant }: EventCardHe
   };
 
   return (
-    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-      <div className="flex flex-col gap-2">
-        <h3 className="font-semibold text-lg">{title}</h3>
-        <div className="flex gap-2">
-          <Badge className={`${getSeverityColor(severity)}`}>
-            {severity.toLowerCase()}
+    <CardHeader className="flex flex-col space-y-2 pb-2">
+      <h3 className="font-semibold text-lg leading-tight">{title}</h3>
+      <div className="flex flex-wrap gap-2">
+        <Badge className={`${getSeverityColor(severity)} shadow-sm flex items-center gap-1 font-medium`}>
+          {getSeverityIcon(severity)}
+          {severity.toLowerCase()}
+        </Badge>
+        <Badge variant="outline" className="border-accent/30 shadow-sm font-medium">
+          {formatEventType(eventType)}
+        </Badge>
+        {isRelevant && (
+          <Badge variant="default" className="bg-primary/90 hover:bg-primary shadow-sm">
+            Relevant
           </Badge>
-          <Badge variant="outline">
-            {formatEventType(eventType)}
-          </Badge>
-          {isRelevant && (
-            <Badge variant="default" className="bg-primary">
-              Relevant
-            </Badge>
-          )}
-        </div>
+        )}
       </div>
     </CardHeader>
   );
