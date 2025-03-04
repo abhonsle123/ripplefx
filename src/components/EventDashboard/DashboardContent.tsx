@@ -11,6 +11,9 @@ interface DashboardContentProps {
   userId: string | null;
   userPreferences: TrackingPreferences | null;
   filteredEvents: Event[];
+  searchTerm: string;
+  eventType: string;
+  severity: string;
 }
 
 const DashboardContent = ({ 
@@ -19,7 +22,10 @@ const DashboardContent = ({
   events, 
   userId, 
   userPreferences,
-  filteredEvents
+  filteredEvents,
+  searchTerm,
+  eventType,
+  severity
 }: DashboardContentProps) => {
   if (!userId) {
     return (
@@ -62,7 +68,14 @@ const DashboardContent = ({
           )}
         </TabsContent>
         <TabsContent value="watchlist" className="mt-0">
-          {userId && <Watchlist userId={userId} />}
+          {userId && (
+            <Watchlist 
+              userId={userId} 
+              searchTerm={searchTerm}
+              eventType={eventType}
+              severity={severity}
+            />
+          )}
         </TabsContent>
       </Tabs>
     </div>
