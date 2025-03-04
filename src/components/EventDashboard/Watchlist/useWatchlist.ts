@@ -1,9 +1,18 @@
 
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { StockWatch } from "./types";
 import { useSubscription } from "@/hooks/useSubscription";
+import { 
+  fetchUserWatches, 
+  unwatchStock, 
+  createStockWatch 
+} from "./utils/watchApi";
+import { 
+  getBrokerConnection, 
+  executeTrade, 
+  analyzeStockPrice 
+} from "./utils/brokerApi";
 
 export const useWatchlist = (userId: string) => {
   const { toast } = useToast();
@@ -12,84 +21,10 @@ export const useWatchlist = (userId: string) => {
 
   const { data: watches = [], isLoading } = useQuery({
     queryKey: ["stock-watches", userId],
-    queryFn: async () => {
-      const { data: watches, error } = await supabase
-        .from('user_stock_watches')
-        .select(`
-          id,
-          created_at,
-          status,
-          entry_price,
-          investment_amount,
-          investment_type,
-          broker_connection_id,
-          stock_prediction:stock_predictions!stock_prediction_id (
-            id,
-            symbol,
-            rationale,
-            is_positive,
-            target_price,
-            price_change_percentage,
-            price_impact_analysis,
-            confidence_score,
-            last_analysis_date,
-            event:events!stock_predictions_event_id_fkey (
-              id,
-              title,
-              description,
-              event_type,
-              severity,
-              created_at,
-              affected_organizations
-            )
-          )
-        `)
-        .eq('user_id', userId)
-        .eq('status', 'WATCHING')
-        .order('created_at', { ascending: false });
-
-      if (error) {
-        console.error('Error fetching watches:', error);
-        throw error;
-      }
-      
-      const typedWatches = watches?.map(watch => ({
-        ...watch,
-        stock_prediction: {
-          ...watch.stock_prediction,
-          price_impact_analysis: watch.stock_prediction.price_impact_analysis 
-            ? {
-                summary: String((watch.stock_prediction.price_impact_analysis as any).summary || ''),
-                factors: Array.isArray((watch.stock_prediction.price_impact_analysis as any).factors) 
-                  ? (watch.stock_prediction.price_impact_analysis as any).factors 
-                  : [],
-                risks: Array.isArray((watch.stock_prediction.price_impact_analysis as any).risks)
-                  ? (watch.stock_prediction.price_impact_analysis as any).risks
-                  : []
-              }
-            : null
-        }
-      })) as StockWatch[];
-      
-      return typedWatches;
-    },
+    queryFn: () => fetchUserWatches(userId),
     retry: 2,
     staleTime: 30000,
   });
-
-  const getBrokerConnection = async () => {
-    const { data: connection, error } = await supabase
-      .from('broker_connections')
-      .select('id')
-      .eq('user_id', userId)
-      .eq('is_active', true)
-      .single();
-
-    if (error) {
-      throw error;
-    }
-    return connection;
-  };
 
   const addToWatchlist = async (
     stockPredictionId: string,
@@ -111,22 +46,17 @@ export const useWatchlist = (userId: string) => {
     let brokerConnectionId = null;
     
     if (investmentType === "INVEST_AND_FOLLOW") {
-      const connection = await getBrokerConnection();
+      const connection = await getBrokerConnection(userId);
       brokerConnectionId = connection.id;
     }
 
-    const { error } = await supabase
-      .from('user_stock_watches')
-      .insert([{
-        user_id: userId,
-        stock_prediction_id: stockPredictionId,
-        status: investmentType === "INVEST_AND_FOLLOW" ? "INVESTING" : "WATCHING",
-        investment_type: investmentType,
-        investment_amount: amount,
-        broker_connection_id: brokerConnectionId
-      }]);
-
-    if (error) throw error;
+    await createStockWatch(
+      userId, 
+      stockPredictionId, 
+      investmentType, 
+      brokerConnectionId, 
+      amount
+    );
 
     // If investing, trigger the investment
     if (investmentType === "INVEST_AND_FOLLOW" && amount && brokerConnectionId) {
@@ -138,18 +68,7 @@ export const useWatchlist = (userId: string) => {
   };
 
   const analyzePriceMutation = useMutation({
-    mutationFn: async (stockPredictionId: string) => {
-      console.log('Starting price analysis for prediction:', stockPredictionId);
-      const { data, error } = await supabase.functions.invoke('analyze-stock-price', {
-        body: { stock_prediction_id: stockPredictionId },
-      });
-      if (error) {
-        console.error('Error in analyze-stock-price function:', error);
-        throw error;
-      }
-      console.log('Analysis completed successfully:', data);
-      return data;
-    },
+    mutationFn: (stockPredictionId: string) => analyzeStockPrice(stockPredictionId),
     onMutate: (stockPredictionId) => {
       console.log('Starting mutation for prediction:', stockPredictionId);
       toast({
@@ -176,13 +95,7 @@ export const useWatchlist = (userId: string) => {
 
   const handleUnwatch = async (watchId: string) => {
     try {
-      const { error } = await supabase
-        .from('user_stock_watches')
-        .update({ status: 'CANCELLED' })
-        .eq('id', watchId);
-
-      if (error) throw error;
-
+      await unwatchStock(watchId);
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
 
       toast({
@@ -210,31 +123,15 @@ export const useWatchlist = (userId: string) => {
       }
 
       // Get the active broker connection
-      const connection = await getBrokerConnection();
+      const connection = await getBrokerConnection(userId);
       
       // Execute the trade
-      console.log('Calling execute-trade function with:', {
-        stockPredictionId: watch.stock_prediction.id,
-        amount,
-        brokerConnectionId: connection.id,
+      const response = await executeTrade(
+        watch.stock_prediction.id, 
+        amount, 
+        connection.id, 
         userId
-      });
-
-      const { data: response, error } = await supabase.functions.invoke('execute-trade', {
-        body: {
-          stockPredictionId: watch.stock_prediction.id,
-          amount,
-          brokerConnectionId: connection.id,
-          userId
-        }
-      });
-
-      if (error) {
-        console.error('Trade execution error:', error);
-        throw error;
-      }
-
-      console.log('Trade execution response:', response);
+      );
 
       queryClient.invalidateQueries({ queryKey: ["stock-watches", userId] });
 
