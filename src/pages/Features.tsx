@@ -1,5 +1,5 @@
 
-import { Bell, ChartLine, Brain, Zap, Target, Shield, ArrowRight, Lightbulb, Gauge, Lock } from "lucide-react";
+import { Bell, ChartLine, Brain, Zap, Target, Shield, ArrowRight, Gauge } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
@@ -63,18 +63,6 @@ const Features = () => {
       title: "Risk Assessment",
       description: "Evaluate potential risks and opportunities with our comprehensive market analysis tools.",
       color: "from-indigo-500/20 to-indigo-600/10"
-    },
-    {
-      icon: Lightbulb,
-      title: "Investment Insights",
-      description: "Discover new investment opportunities through our intelligent event analysis and recommendations.",
-      color: "from-amber-500/20 to-amber-600/10"
-    },
-    {
-      icon: Lock,
-      title: "Secure Platform",
-      description: "Your data is protected with enterprise-grade security measures and encryption protocols.",
-      color: "from-gray-500/20 to-gray-600/10"
     }
   ];
 
