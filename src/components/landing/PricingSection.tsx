@@ -45,7 +45,7 @@ const PricingSection = () => {
   ];
 
   return (
-    <div className="container px-4 py-20 relative overflow-hidden">
+    <div id="pricing-section" className="container px-4 py-20 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 overflow-hidden">
         <div className="absolute top-1/2 left-0 w-40 h-40 bg-primary/5 rounded-full blur-3xl transform -translate-y-1/2"></div>
