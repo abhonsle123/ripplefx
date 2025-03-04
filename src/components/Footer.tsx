@@ -1,8 +1,27 @@
 
 import { Github, Twitter, Linkedin } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
 const Footer = () => {
+  const location = useLocation();
+  const navigate = useNavigate();
+  
+  const scrollToFAQ = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    // If we're not on the home page, navigate to home and then scroll to FAQ
+    if (location.pathname !== '/') {
+      navigate('/?scrollTo=faq');
+      return;
+    }
+    
+    // If already on home page, just scroll to the FAQ section
+    const faqSection = document.getElementById('faq-section');
+    if (faqSection) {
+      faqSection.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <footer className="bg-[#111317] border-t border-white/5">
       <div className="container mx-auto px-4 py-12">
@@ -23,7 +42,7 @@ const Footer = () => {
             <ul className="space-y-2">
               <li><Link to="/features" className="text-muted-foreground hover:text-white transition-colors">Features</Link></li>
               <li><Link to="/pricing" className="text-muted-foreground hover:text-white transition-colors">Pricing</Link></li>
-              <li><Link to="/faqs" className="text-muted-foreground hover:text-white transition-colors">FAQs</Link></li>
+              <li><a href="#faq" onClick={scrollToFAQ} className="text-muted-foreground hover:text-white transition-colors cursor-pointer">FAQs</a></li>
             </ul>
           </div>
 

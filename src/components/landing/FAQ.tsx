@@ -1,13 +1,31 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ArrowRight, PlusCircle, MinusCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 const FAQ = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [openFaqs, setOpenFaqs] = useState<number[]>([0]); // Start with the first one open
+
+  // Check if we need to scroll to FAQ section
+  useEffect(() => {
+    if (location.search.includes('scrollTo=faq')) {
+      // Small delay to ensure the component is fully rendered
+      setTimeout(() => {
+        const faqSection = document.getElementById('faq-section');
+        if (faqSection) {
+          faqSection.scrollIntoView({ behavior: 'smooth' });
+          
+          // Clean up the URL without refreshing the page
+          const newUrl = window.location.pathname;
+          window.history.replaceState({}, document.title, newUrl);
+        }
+      }, 100);
+    }
+  }, [location]);
 
   const toggleFaq = (index: number) => {
     setOpenFaqs(prev =>
@@ -41,7 +59,7 @@ const FAQ = () => {
   ];
 
   return (
-    <div className="bg-card py-20">
+    <div id="faq-section" className="bg-card py-20">
       <div className="container px-4">
         <h2 className="text-3xl font-bold text-center mb-16 text-foreground">
           Frequently Asked <span className="text-primary">Questions</span>
