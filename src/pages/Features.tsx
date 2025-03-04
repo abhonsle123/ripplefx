@@ -1,6 +1,5 @@
 
-import { Bell, ChartLine, Brain, Zap, Target, Shield, ArrowRight, Gauge } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Bell, ChartLine, Brain, Zap, Target, Shield, Gauge } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -118,20 +117,6 @@ const Features = () => {
                 </p>
               </motion.div>
             ))}
-          </motion.div>
-
-          <motion.div 
-            className="mt-16 text-center"
-            variants={itemVariants}
-          >
-            <Button
-              size="lg"
-              className="bg-primary text-primary-foreground hover:bg-primary/90 group shadow-lg shadow-primary/20 hover:translate-y-[-2px] transition-transform"
-              onClick={() => navigate("/auth")}
-            >
-              Get Started
-              <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
-            </Button>
           </motion.div>
         </motion.div>
       </div>
