@@ -7,7 +7,7 @@ import { useNavigate } from "react-router-dom";
 
 const FAQ = () => {
   const navigate = useNavigate();
-  const [openFaqs, setOpenFaqs] = useState<number[]>([]);
+  const [openFaqs, setOpenFaqs] = useState<number[]>([0]); // Start with the first one open
 
   const toggleFaq = (index: number) => {
     setOpenFaqs(prev =>
@@ -44,27 +44,34 @@ const FAQ = () => {
     <div className="bg-card py-20">
       <div className="container px-4">
         <h2 className="text-3xl font-bold text-center mb-16 text-foreground">
-          Frequently Asked Questions
+          Frequently Asked <span className="text-primary">Questions</span>
         </h2>
         <div className="max-w-3xl mx-auto space-y-4">
           {faqs.map((faq, index) => (
-            <Card key={index} className="border border-white/10 bg-secondary/30 backdrop-blur overflow-hidden">
+            <Card 
+              key={index} 
+              className="border border-white/10 bg-secondary/30 backdrop-blur overflow-hidden hover:bg-secondary/40 transition-all duration-300"
+            >
               <div 
                 className="flex items-center justify-between p-6 cursor-pointer group"
                 onClick={() => toggleFaq(index)}
               >
-                <h3 className="text-lg font-medium text-foreground group-hover:text-primary transition-colors">
+                <h3 className="text-lg font-medium text-foreground group-hover:text-primary transition-colors duration-300">
                   {faq.question}
                 </h3>
-                <div className="flex-shrink-0 ml-2">
+                <div className="flex-shrink-0 ml-2 transition-transform duration-300">
                   {openFaqs.includes(index) ? (
                     <MinusCircle className="h-5 w-5 text-primary" />
                   ) : (
-                    <PlusCircle className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
+                    <PlusCircle className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors duration-300" />
                   )}
                 </div>
               </div>
-              <CardContent className={`px-6 pb-6 pt-0 ${openFaqs.includes(index) ? 'block' : 'hidden'}`}>
+              <CardContent className={`px-6 pb-6 pt-0 transition-all duration-300 overflow-hidden ${
+                openFaqs.includes(index) 
+                  ? 'max-h-96 opacity-100' 
+                  : 'max-h-0 opacity-0 pointer-events-none'
+              }`}>
                 <p className="text-muted-foreground">{faq.answer}</p>
               </CardContent>
             </Card>
@@ -73,11 +80,11 @@ const FAQ = () => {
         <div className="text-center mt-12">
           <Button
             variant="outline" 
-            className="bg-secondary/50 backdrop-blur border-white/10 hover:bg-secondary/70"
+            className="bg-secondary/50 backdrop-blur border-white/10 hover:bg-secondary/70 transition-all duration-300 hover:translate-y-[-2px] group"
             onClick={() => navigate("/features")}
           >
             Learn more about our features
-            <ArrowRight className="ml-2 w-4 h-4" />
+            <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
           </Button>
         </div>
       </div>

@@ -1,5 +1,6 @@
 
 import PricingCard from "@/components/PricingCard";
+import { motion } from "framer-motion";
 
 const PricingSection = () => {
   const plans = [
@@ -44,13 +45,28 @@ const PricingSection = () => {
   ];
 
   return (
-    <div className="container px-4 py-20">
-      <h2 className="text-3xl font-bold text-center mb-16 text-foreground">
-        Choose Your Plan
+    <div className="container px-4 py-20 relative overflow-hidden">
+      {/* Background decorative elements */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/2 left-0 w-40 h-40 bg-primary/5 rounded-full blur-3xl transform -translate-y-1/2"></div>
+        <div className="absolute bottom-0 right-0 w-60 h-60 bg-primary/5 rounded-full blur-3xl"></div>
+      </div>
+      
+      <h2 className="text-3xl font-bold text-center mb-16 text-foreground relative">
+        Choose Your <span className="text-primary">Plan</span>
       </h2>
       <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
         {plans.map((plan, index) => (
-          <PricingCard key={index} {...plan} />
+          <div
+            key={index}
+            className={`transform transition-all duration-500 hover:z-10 ${
+              index === 0 ? "animate-slideUp" : 
+              index === 1 ? "animate-slideUp [animation-delay:150ms]" : 
+              "animate-slideUp [animation-delay:300ms]"
+            }`}
+          >
+            <PricingCard {...plan} />
+          </div>
         ))}
       </div>
     </div>
