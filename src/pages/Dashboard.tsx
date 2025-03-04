@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +9,6 @@ import { useToast } from "@/components/ui/use-toast";
 import DashboardHeader from "@/components/EventDashboard/DashboardHeader";
 import DashboardContent from "@/components/EventDashboard/DashboardContent";
 import { useSubscription } from "@/hooks/useSubscription";
-import SubscriptionGate from "@/components/SubscriptionGate";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -132,12 +130,8 @@ const Dashboard = () => {
             onOpenChange={setIsCreating}
             view={view}
             onViewChange={(v) => {
-              // Restrict watchlist view to users with appropriate plans
-              if (v === "watchlist") {
-                setView(v);
-              } else {
-                setView(v);
-              }
+              // Allow all users to access the watchlist view
+              setView(v);
             }}
           />
           
@@ -151,30 +145,13 @@ const Dashboard = () => {
           </div>
 
           <div className="animate-slideUp [animation-delay:400ms]">
-            {view === "watchlist" ? (
-              <SubscriptionGate
-                requiredPlan="premium"
-                userPlan={plan}
-                featureName="Watchlist"
-                description="Upgrade to Premium or Pro to track stocks in your personal watchlist."
-              >
-                <DashboardContent
-                  view={view}
-                  isLoading={isLoading}
-                  events={events}
-                  userId={userId}
-                  userPreferences={userPreferences}
-                />
-              </SubscriptionGate>
-            ) : (
-              <DashboardContent
-                view={view}
-                isLoading={isLoading}
-                events={events}
-                userId={userId}
-                userPreferences={userPreferences}
-              />
-            )}
+            <DashboardContent
+              view={view}
+              isLoading={isLoading}
+              events={events}
+              userId={userId}
+              userPreferences={userPreferences}
+            />
           </div>
         </div>
       </div>
