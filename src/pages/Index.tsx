@@ -36,7 +36,7 @@ const Index = () => {
     },
     {
       title: "Pro",
-      price: "$99/mo",
+      price: "Coming Soon",
       description: "Complete solution for professional traders",
       features: [
         "Instant event notifications",
@@ -46,6 +46,7 @@ const Index = () => {
         "24/7 priority support",
         "API access",
       ],
+      disabled: true,
     },
   ];
 

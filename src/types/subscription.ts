@@ -46,3 +46,10 @@ export const PLAN_FEATURES: Record<SubscriptionPlan, SubscriptionFeatures> = {
     apiAccess: true
   }
 };
+
+// Flag to indicate which plans are currently available
+export const AVAILABLE_PLANS: Record<SubscriptionPlan, boolean> = {
+  free: true,
+  premium: true,
+  pro: false // Pro plan is coming soon
+};
