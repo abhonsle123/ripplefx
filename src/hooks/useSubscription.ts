@@ -1,7 +1,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { SubscriptionPlan, PLAN_FEATURES } from "@/types/subscription";
+import { SubscriptionPlan, PLAN_FEATURES, SubscriptionFeatures } from "@/types/subscription";
 
 export const useSubscription = (userId: string | null) => {
   const { data: plan = "free" as SubscriptionPlan, isLoading } = useQuery({
