@@ -2,10 +2,11 @@
 import React from 'react';
 import { format } from "date-fns";
 import { Calendar, Building2, ArrowRight } from 'lucide-react';
+import { Json } from '@/integrations/supabase/types';
 
 interface CardFooterProps {
   createdAt: string;
-  affectedOrganizations: string[] | Record<string, string> | string | null;
+  affectedOrganizations: Json | null;
   eventType: string;
 }
 
@@ -22,14 +23,16 @@ const CardFooter = ({
     }
     
     if (Array.isArray(affectedOrganizations)) {
-      return affectedOrganizations.join(', ');
+      return affectedOrganizations.map(org => String(org)).join(', ');
     }
     
     if (typeof affectedOrganizations === 'object') {
-      return Object.values(affectedOrganizations).join(', ');
+      return Object.values(affectedOrganizations)
+        .map(value => String(value))
+        .join(', ');
     }
     
-    return 'No organizations listed';
+    return String(affectedOrganizations);
   };
 
   return (
