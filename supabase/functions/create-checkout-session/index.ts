@@ -1,62 +1,86 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
-import Stripe from "https://esm.sh/stripe@13.9.0";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
+import Stripe from "https://esm.sh/stripe@12.5.0";
+
+const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
+
+const supabase = createClient(supabaseUrl, supabaseKey);
+const stripe = new Stripe(stripeKey, {
+  apiVersion: "2023-10-16",
+});
 
 const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
 serve(async (req) => {
-  // Handle CORS preflight requests
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
-  
-  try {
-    const { planId, userId, returnUrl } = await req.json();
-    console.log(`Creating checkout session for plan: ${planId}, user: ${userId}`);
-    
-    // Initialize Supabase client
-    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    
-    // Initialize Stripe
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-      apiVersion: "2023-10-16",
+  // Handle CORS preflight request
+  if (req.method === "OPTIONS") {
+    return new Response(null, { 
+      headers: corsHeaders,
+      status: 204,
     });
+  }
+
+  try {
+    // Parse request body
+    const { planId, userId, returnUrl } = await req.json();
+    console.log(`Creating checkout session for plan ${planId} and user ${userId}`);
     
-    // Get plan details from planId
-    const priceId = getPriceId(planId);
-    if (!priceId) {
-      return new Response(
-        JSON.stringify({ error: "Invalid plan selected" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!planId || !userId) {
+      throw new Error("Missing required parameters: planId, userId");
     }
-    
-    // Get user data to populate customer information
-    const { data: userData, error: userError } = await supabase
+
+    // Get the user profile to check if they already have a Stripe customer ID
+    const { data: profile, error: profileError } = await supabase
       .from("profiles")
-      .select("email, full_name")
+      .select("stripe_customer_id, email")
       .eq("id", userId)
       .single();
-      
-    if (userError) {
-      console.error("Error fetching user data:", userError);
-      return new Response(
-        JSON.stringify({ error: "User not found" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+
+    if (profileError) {
+      throw new Error(`Error fetching user profile: ${profileError.message}`);
     }
-    
-    console.log("Creating checkout session with user data:", userData);
-    
+
+    // Determine price ID based on selected plan
+    let priceId;
+    switch (planId) {
+      case "premium":
+        priceId = "price_1Okl2GKw8ziqodstYXFVvuTz"; // Replace with your actual Stripe price ID
+        break;
+      case "pro":
+        priceId = "price_1Okl2WKw8ziqodstdAWlAscx"; // Replace with your actual Stripe price ID
+        break;
+      default:
+        throw new Error(`Invalid plan ID: ${planId}`);
+    }
+
+    let customerId = profile.stripe_customer_id;
+
+    // If user doesn't have a Stripe customer ID yet, create one
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: profile.email,
+        metadata: {
+          supabase_user_id: userId,
+        },
+      });
+      customerId = customer.id;
+
+      // Save the customer ID to the user's profile
+      await supabase
+        .from("profiles")
+        .update({ stripe_customer_id: customerId })
+        .eq("id", userId);
+    }
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
+      customer: customerId,
       line_items: [
         {
           price: priceId,
@@ -64,37 +88,29 @@ serve(async (req) => {
         },
       ],
       mode: "subscription",
-      success_url: `${returnUrl}?session_id={CHECKOUT_SESSION_ID}&success=true`,
+      success_url: `${returnUrl}?success=true`,
       cancel_url: `${returnUrl}?canceled=true`,
-      customer_email: userData.email,
-      client_reference_id: userId,
       metadata: {
-        userId: userId,
-        planId: planId,
+        user_id: userId,
+        plan_id: planId,
       },
     });
-    
+
     return new Response(
-      JSON.stringify({ id: session.id, url: session.url }),
-      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ url: session.url }),
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      }
     );
-    
   } catch (error) {
     console.error("Error creating checkout session:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      }
     );
   }
 });
-
-// Map our plan names to Stripe Price IDs
-function getPriceId(planId: string): string | null {
-  const priceMap: Record<string, string> = {
-    "premium": "price_1Ow4JWLvThIIf0dH6mFiujZ9", // Replace with your actual Stripe price ID
-    "pro": "price_1Ow4JxLvThIIf0dHs7vRvBzF", // Replace with your actual Stripe price ID
-    // Add other plans as needed
-  };
-  
-  return priceMap[planId] || null;
-}
