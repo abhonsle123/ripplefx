@@ -9,6 +9,12 @@ export interface WatchlistProps {
   severity?: string;
 }
 
+export interface PriceImpactAnalysis {
+  summary: string;
+  factors: string[];
+  risks: string[];
+}
+
 export interface StockWatch {
   id: string;
   created_at: string;
@@ -26,11 +32,7 @@ export interface StockWatch {
     price_change_percentage: number;
     confidence_score: number;
     last_analysis_date: string;
-    price_impact_analysis: {
-      summary: string;
-      factors: string[];
-      risks: string[];
-    } | null;
+    price_impact_analysis: PriceImpactAnalysis | null;
     event: Event;
   };
 }
