@@ -9,6 +9,8 @@ import type { Event, EventType, SeverityLevel, TrackingPreferences } from "@/typ
 import { useToast } from "@/components/ui/use-toast";
 import DashboardHeader from "@/components/EventDashboard/DashboardHeader";
 import DashboardContent from "@/components/EventDashboard/DashboardContent";
+import { useSubscription } from "@/hooks/useSubscription";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -20,6 +22,7 @@ const Dashboard = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [userPreferences, setUserPreferences] = useState<TrackingPreferences | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const { plan } = useSubscription(userId);
 
   // Check authentication
   useEffect(() => {
@@ -128,7 +131,14 @@ const Dashboard = () => {
             isCreating={isCreating}
             onOpenChange={setIsCreating}
             view={view}
-            onViewChange={(v) => setView(v)}
+            onViewChange={(v) => {
+              // Restrict watchlist view to users with appropriate plans
+              if (v === "watchlist") {
+                setView(v);
+              } else {
+                setView(v);
+              }
+            }}
           />
           
           <div className="bg-card/40 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-accent/10 animate-slideUp [animation-delay:200ms]">
@@ -141,13 +151,30 @@ const Dashboard = () => {
           </div>
 
           <div className="animate-slideUp [animation-delay:400ms]">
-            <DashboardContent
-              view={view}
-              isLoading={isLoading}
-              events={events}
-              userId={userId}
-              userPreferences={userPreferences}
-            />
+            {view === "watchlist" ? (
+              <SubscriptionGate
+                requiredPlan="premium"
+                userPlan={plan}
+                featureName="Watchlist"
+                description="Upgrade to Premium or Pro to track stocks in your personal watchlist."
+              >
+                <DashboardContent
+                  view={view}
+                  isLoading={isLoading}
+                  events={events}
+                  userId={userId}
+                  userPreferences={userPreferences}
+                />
+              </SubscriptionGate>
+            ) : (
+              <DashboardContent
+                view={view}
+                isLoading={isLoading}
+                events={events}
+                userId={userId}
+                userPreferences={userPreferences}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -156,4 +183,3 @@ const Dashboard = () => {
 };
 
 export default Dashboard;
-

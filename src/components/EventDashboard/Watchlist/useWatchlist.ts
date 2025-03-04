@@ -3,10 +3,12 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { StockWatch } from "./types";
+import { useSubscription } from "@/hooks/useSubscription";
 
 export const useWatchlist = (userId: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { canAddToWatchlist, plan } = useSubscription(userId);
 
   const { data: watches = [], isLoading } = useQuery({
     queryKey: ["stock-watches", userId],
@@ -94,6 +96,18 @@ export const useWatchlist = (userId: string) => {
     investmentType: "FOLLOW_ONLY" | "INVEST_AND_FOLLOW",
     amount?: number
   ) => {
+    // Check if the user is at their watchlist limit
+    const activeWatches = watches.filter(w => w.status === "WATCHING").length;
+    
+    if (!canAddToWatchlist(activeWatches)) {
+      toast({
+        title: "Watchlist Limit Reached",
+        description: `Your ${plan} plan allows a maximum of ${activeWatches} stocks in your watchlist. Please upgrade to add more.`,
+        variant: "destructive",
+      });
+      return;
+    }
+
     let brokerConnectionId = null;
     
     if (investmentType === "INVEST_AND_FOLLOW") {

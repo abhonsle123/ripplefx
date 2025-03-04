@@ -1,4 +1,3 @@
-
 import { format } from "date-fns";
 import { Eye, TrendingUp, TrendingDown, Calendar, Building2, ArrowRight, RefreshCw, PiggyBank } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -9,21 +8,25 @@ import { useState } from "react";
 import WatchOptionsDialog from "./WatchOptionsDialog";
 import InvestDialog from "./InvestDialog";
 import { useToast } from "@/components/ui/use-toast";
+import { useSubscription } from "@/hooks/useSubscription";
+import SubscriptionGate from "@/components/SubscriptionGate";
 
 interface WatchCardProps {
   watch: StockWatch;
   analyzePriceMutation: UseMutationResult<any, Error, string>;
   onUnwatch: (watchId: string) => void;
   onInvest?: (watchId: string, amount: number) => Promise<void>;
+  userId?: string | null;
 }
 
-const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCardProps) => {
+const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest, userId }: WatchCardProps) => {
   const [showWatchOptions, setShowWatchOptions] = useState(false);
   const [showInvestDialog, setShowInvestDialog] = useState(false);
   const [isInvesting, setIsInvesting] = useState(false);
   const { toast } = useToast();
   const stock = watch.stock_prediction;
   const event = stock.event;
+  const { plan, hasFeature } = useSubscription(userId || null);
 
   const handleInvest = async (amount: number) => {
     if (!onInvest) return;
@@ -75,31 +78,45 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest }: WatchCa
           </CardTitle>
           <div className="flex gap-2">
             {stock.is_positive && onInvest && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowInvestDialog(true)}
-                className="hover:bg-green-100 hover:text-green-600"
-                disabled={isInvesting}
+              <SubscriptionGate
+                requiredPlan="premium"
+                userPlan={plan}
+                featureName="Investment"
+                description="Upgrade to Premium or Pro to invest in stocks directly."
               >
-                <PiggyBank className="h-4 w-4 mr-1" />
-                Invest
-              </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowInvestDialog(true)}
+                  className="hover:bg-green-100 hover:text-green-600"
+                  disabled={isInvesting}
+                >
+                  <PiggyBank className="h-4 w-4 mr-1" />
+                  Invest
+                </Button>
+              </SubscriptionGate>
             )}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                if (!analyzePriceMutation.isPending) {
-                  analyzePriceMutation.mutate(stock.id);
-                }
-              }}
-              disabled={analyzePriceMutation.isPending}
-              className="hover:bg-blue-100 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={analyzePriceMutation.isPending ? "Analysis in progress..." : "Refresh analysis"}
+            <SubscriptionGate
+              requiredPlan="premium"
+              userPlan={plan}
+              featureName="AI Analysis"
+              description="Upgrade to Premium or Pro to refresh AI analysis."
             >
-              <RefreshCw className={`h-4 w-4 ${analyzePriceMutation.isPending ? 'animate-spin' : ''}`} />
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  if (!analyzePriceMutation.isPending) {
+                    analyzePriceMutation.mutate(stock.id);
+                  }
+                }}
+                disabled={analyzePriceMutation.isPending}
+                className="hover:bg-blue-100 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                title={analyzePriceMutation.isPending ? "Analysis in progress..." : "Refresh analysis"}
+              >
+                <RefreshCw className={`h-4 w-4 ${analyzePriceMutation.isPending ? 'animate-spin' : ''}`} />
+              </Button>
+            </SubscriptionGate>
             <Button
               variant="ghost"
               size="sm"
