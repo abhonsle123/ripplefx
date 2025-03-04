@@ -1,8 +1,30 @@
 
 import PricingCard from "@/components/PricingCard";
-import { motion } from "framer-motion";
+import { useSubscription } from "@/hooks/useSubscription";
+import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
 
-const PricingSection = () => {
+interface PricingSectionProps {
+  onSubscribe?: (planId: string) => void;
+}
+
+const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
+  const [userId, setUserId] = useState<string | null>(null);
+  
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+  
+  const { plan: currentPlan } = useSubscription(userId);
+
   const plans = [
     {
       title: "Basic",
@@ -14,6 +36,7 @@ const PricingSection = () => {
         "Daily market summary",
         "Email alerts",
       ],
+      planId: "free"
     },
     {
       title: "Premium",
@@ -27,6 +50,7 @@ const PricingSection = () => {
         "Priority support",
       ],
       recommended: true,
+      planId: "premium"
     },
     {
       title: "Pro",
@@ -41,6 +65,7 @@ const PricingSection = () => {
         "API access",
       ],
       disabled: true,
+      planId: "pro"
     },
   ];
 
@@ -65,7 +90,11 @@ const PricingSection = () => {
               "animate-slideUp [animation-delay:300ms]"
             }`}
           >
-            <PricingCard {...plan} />
+            <PricingCard 
+              {...plan} 
+              current={currentPlan === plan.planId}
+              onSubscribe={() => onSubscribe && onSubscribe(plan.planId)}
+            />
           </div>
         ))}
       </div>
