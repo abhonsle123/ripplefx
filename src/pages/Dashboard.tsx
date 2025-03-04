@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -17,6 +16,7 @@ const Dashboard = () => {
   const queryClient = useQueryClient();
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
   const [severity, setSeverity] = useState<SeverityLevel | "ALL">("ALL");
+  const [searchTerm, setSearchTerm] = useState<string>("");
   const [view, setView] = useState<"grid" | "watchlist">("grid");
   const [isCreating, setIsCreating] = useState(false);
   const [userPreferences, setUserPreferences] = useState<TrackingPreferences | null>(null);
@@ -36,25 +36,50 @@ const Dashboard = () => {
 
   // Fetch events
   const { data: events = [], isLoading } = useQuery({
-    queryKey: ["events", eventType, severity],
+    queryKey: ["events"],
     queryFn: async () => {
       let query = supabase
         .from("events")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (eventType !== "ALL") {
-        query = query.eq("event_type", eventType);
-      }
-      if (severity !== "ALL") {
-        query = query.eq("severity", severity);
-      }
-
       const { data, error } = await query;
       if (error) throw error;
       return data as Event[];
     },
   });
+
+  // Filter events based on selected filters
+  const filteredEvents = useMemo(() => {
+    return events.filter(event => {
+      // Apply event type filter
+      if (eventType !== "ALL" && event.event_type !== eventType) {
+        return false;
+      }
+      
+      // Apply severity filter
+      if (severity !== "ALL" && event.severity !== severity) {
+        return false;
+      }
+      
+      // Apply search term filter
+      if (searchTerm.trim() !== "") {
+        const searchLower = searchTerm.toLowerCase();
+        
+        // Search in title and description
+        const titleMatch = event.title?.toLowerCase().includes(searchLower) || false;
+        const descriptionMatch = event.description?.toLowerCase().includes(searchLower) || false;
+        const countryMatch = event.country?.toLowerCase().includes(searchLower) || false;
+        const cityMatch = event.city?.toLowerCase().includes(searchLower) || false;
+        
+        if (!titleMatch && !descriptionMatch && !countryMatch && !cityMatch) {
+          return false;
+        }
+      }
+      
+      return true;
+    });
+  }, [events, eventType, severity, searchTerm]);
 
   // Set up real-time subscription
   useEffect(() => {
@@ -149,6 +174,8 @@ const Dashboard = () => {
               setEventType={setEventType}
               severity={severity}
               setSeverity={setSeverity}
+              searchTerm={searchTerm}
+              setSearchTerm={setSearchTerm}
             />
           </div>
 
@@ -159,6 +186,7 @@ const Dashboard = () => {
               events={events}
               userId={userId}
               userPreferences={userPreferences}
+              filteredEvents={filteredEvents}
             />
           </div>
         </div>

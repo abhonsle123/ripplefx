@@ -19,6 +19,8 @@ interface EventFiltersProps {
   setEventType: (type: EventType | "ALL") => void;
   severity: SeverityLevel | "ALL";
   setSeverity: (severity: SeverityLevel | "ALL") => void;
+  searchTerm: string;
+  setSearchTerm: (term: string) => void;
 }
 
 const EventFilters = ({
@@ -26,10 +28,13 @@ const EventFilters = ({
   setEventType,
   severity,
   setSeverity,
+  searchTerm,
+  setSearchTerm,
 }: EventFiltersProps) => {
   const handleReset = () => {
     setEventType("ALL");
     setSeverity("ALL");
+    setSearchTerm("");
   };
 
   return (
@@ -41,6 +46,16 @@ const EventFilters = ({
       
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="flex-1 flex flex-col sm:flex-row gap-4">
+          <div className="relative flex-1">
+            <Input
+              placeholder="Search events..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 border-accent/20 bg-card/50 hover:bg-card/60 transition-colors"
+            />
+            <Search className="h-4 w-4 absolute left-3 top-3 text-muted-foreground" />
+          </div>
+          
           <Select value={eventType} onValueChange={setEventType}>
             <SelectTrigger className="w-full sm:w-[180px] border-accent/20 bg-card/50 hover:bg-card/60 transition-colors">
               <SelectValue placeholder="Event Type" />

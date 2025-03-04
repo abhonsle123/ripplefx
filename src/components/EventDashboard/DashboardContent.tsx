@@ -10,6 +10,7 @@ interface DashboardContentProps {
   events: Event[];
   userId: string | null;
   userPreferences: TrackingPreferences | null;
+  filteredEvents: Event[];
 }
 
 const DashboardContent = ({ 
@@ -17,7 +18,8 @@ const DashboardContent = ({
   isLoading, 
   events, 
   userId, 
-  userPreferences 
+  userPreferences,
+  filteredEvents
 }: DashboardContentProps) => {
   if (!userId) {
     return (
@@ -49,9 +51,15 @@ const DashboardContent = ({
       <Tabs defaultValue={view} value={view}>
         <TabsContent value="grid" className="mt-0">
           <EventsGrid 
-            events={events}
+            events={filteredEvents}
             userPreferences={userPreferences}
           />
+          {filteredEvents.length === 0 && !isLoading && (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">No events match your current filters.</p>
+              <p className="text-sm text-muted-foreground mt-1">Try adjusting your filters to see more results.</p>
+            </div>
+          )}
         </TabsContent>
         <TabsContent value="watchlist" className="mt-0">
           {userId && <Watchlist userId={userId} />}
