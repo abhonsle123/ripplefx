@@ -33,7 +33,8 @@ export const useSubscription = (userId: string | null) => {
 
   // Check if a specific feature is available in the current plan
   const hasFeature = (feature: keyof SubscriptionFeatures): boolean => {
-    return features[feature];
+    // Convert the value to boolean explicitly to avoid type issues
+    return Boolean(features[feature]);
   };
 
   // Check if watchlist limit has been reached
