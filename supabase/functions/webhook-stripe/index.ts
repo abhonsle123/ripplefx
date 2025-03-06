@@ -6,6 +6,7 @@ import Stripe from "https://esm.sh/stripe@12.5.0";
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const stripeKey = Deno.env.get("STRIPE_SECRET_KEY")!;
+const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET")!;
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 const stripe = new Stripe(stripeKey, {
@@ -36,20 +37,11 @@ serve(async (req) => {
     // Get the raw request body
     const body = await req.text();
     
-    // Verify the event is from Stripe
-    // In production, you should set your webhook secret in the Stripe dashboard
-    // and use it to verify the signature
-    const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
-    
+    // Verify the event is from Stripe using the webhook secret
     let event;
     try {
-      if (webhookSecret) {
-        event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
-      } else {
-        // For development, parse the JSON directly
-        event = JSON.parse(body);
-        console.warn("Using webhook without signature verification - not recommended for production!");
-      }
+      event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
+      console.log(`Webhook signature verified successfully for event: ${event.type}`);
     } catch (err) {
       console.error(`Webhook signature verification failed:`, err.message);
       return new Response(

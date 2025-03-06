@@ -51,5 +51,5 @@ export const PLAN_FEATURES: Record<SubscriptionPlan, SubscriptionFeatures> = {
 export const AVAILABLE_PLANS: Record<SubscriptionPlan, boolean> = {
   free: true,
   premium: true,
-  pro: false // Pro plan is coming soon
+  pro: true // Pro plan is now available
 };
