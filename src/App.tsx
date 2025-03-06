@@ -15,6 +15,7 @@ import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
 import ConnectBroker from "./pages/ConnectBroker";
 import Pricing from "./pages/Pricing";
+import Contact from "./pages/Contact";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +37,7 @@ const App = () => (
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/connect-broker" element={<ConnectBroker />} />
+              <Route path="/contact" element={<Contact />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </main>
