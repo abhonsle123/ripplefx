@@ -9,7 +9,19 @@ export const useSubscription = (userId: string | null) => {
     queryFn: async (): Promise<SubscriptionPlan> => {
       if (!userId) return "free";
 
-      // Fetch the user's subscription from the profiles table
+      // First check in the subscriptions table for active subscriptions
+      const { data: subscriptionData, error: subscriptionError } = await supabase
+        .from("subscriptions")
+        .select("plan, status")
+        .eq("user_id", userId)
+        .eq("status", "active")
+        .maybeSingle();
+
+      if (subscriptionData && !subscriptionError) {
+        return subscriptionData.plan as SubscriptionPlan;
+      }
+
+      // If no active subscription found, fall back to profile status
       const { data, error } = await supabase
         .from("profiles")
         .select("subscription_status")
