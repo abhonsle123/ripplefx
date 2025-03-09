@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -66,25 +65,26 @@ const Dashboard = () => {
     return () => clearInterval(intervalId);
   }, [queryClient, toast]);
 
-  // Fetch events
+  // Fetch events - fixed the query to avoid deep type instantiation
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events"],
     queryFn: async () => {
       // First get the current user's session
       const { data: { session } } = await supabase.auth.getSession();
       
-      let query = supabase
-        .from("events")
-        .select("*")
-        .order("created_at", { ascending: false });
-      
-      // Only fetch public events or events created by the current user
+      // Fix: Break down the complex query into simpler parts
+      let query = supabase.from("events").select("*");
+
+      // If user is logged in, show public events and their own events
       if (session?.user.id) {
         query = query.or(`is_public.eq.true,user_id.eq.${session.user.id}`);
       } else {
         // If no user is logged in, only fetch public events
         query = query.eq('is_public', true);
       }
+
+      // Add order by at the end
+      query = query.order("created_at", { ascending: false });
 
       const { data, error } = await query;
       if (error) throw error;
