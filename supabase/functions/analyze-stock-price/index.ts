@@ -20,6 +20,7 @@ serve(async (req) => {
 
   try {
     const { stock_prediction_id } = await req.json();
+    console.log(`Processing stock prediction ID: ${stock_prediction_id}`);
 
     // Fetch stock prediction and event details
     const { data: prediction, error: predictionError } = await supabase
@@ -30,42 +31,62 @@ serve(async (req) => {
           title,
           description,
           event_type,
-          severity
+          severity,
+          impact_analysis
         )
       `)
       .eq('id', stock_prediction_id)
       .single();
 
-    if (predictionError) throw predictionError;
+    if (predictionError) {
+      console.error('Error fetching prediction:', predictionError);
+      throw predictionError;
+    }
     if (!prediction) throw new Error('Stock prediction not found');
 
     const event = prediction.events;
+    console.log(`Analyzing ${prediction.symbol} for event: ${event.title}`);
+
+    // Extract sector information from impact analysis if available
+    let sectorInfo = "";
+    if (event.impact_analysis?.affected_sectors && Array.isArray(event.impact_analysis.affected_sectors)) {
+      sectorInfo = `Affected sectors: ${event.impact_analysis.affected_sectors.join(', ')}`;
+    }
+
+    // Retrieve historical performance data for the stock if available
     const prompt = `Analyze the stock price impact for ${prediction.symbol} based on this event:
 
 Event: ${event.title}
 Description: ${event.description}
 Type: ${event.event_type}
 Severity: ${event.severity}
-Current Prediction: ${prediction.is_positive ? 'Positive' : 'Negative'} impact expected
-Rationale: ${prediction.rationale}
+${sectorInfo}
 
-IMPORTANT: This stock has already been predicted to have a ${prediction.is_positive ? 'POSITIVE' : 'NEGATIVE'} impact. 
-Your analysis must maintain this same directional bias (${prediction.is_positive ? 'positive' : 'negative'}).
+Current Prediction: ${prediction.is_positive ? 'POSITIVE' : 'NEGATIVE'} impact expected
+Rationale from initial analysis: ${prediction.rationale}
 
-Return a JSON object with these exact fields:
+IMPORTANT REQUIREMENTS:
+1. This stock has already been predicted to have a ${prediction.is_positive ? 'POSITIVE' : 'NEGATIVE'} impact. 
+   Your analysis MUST maintain this same directional bias (${prediction.is_positive ? 'positive' : 'negative'}).
+2. Provide a highly specific price change percentage based on historical performance of similar stocks during comparable events.
+3. Analyze similar historical events to establish precedent for your prediction.
+4. Consider the company's market capitalization, beta, and sector when determining magnitude of price movement.
+5. For your confidence score, be realistic but not overly cautious (values between 0.6-0.8 are typical).
+
+Return ONLY a JSON object with these exact fields:
 {
-  "price_change_percentage": (a number ${prediction.is_positive ? 'between 0 and 100' : 'between -100 and 0'}),
+  "price_change_percentage": (a number ${prediction.is_positive ? 'between 0.5 and 15' : 'between -15 and -0.5'}),
   "price_impact_analysis": {
-    "summary": "a brief analysis summary",
-    "factors": ["list", "of", "key", "factors"],
-    "risks": ["list", "of", "key", "risks"]
+    "summary": "a detailed analysis summary with specific factors and magnitude justification",
+    "factors": ["list", "of", "specific", "key", "factors"],
+    "risks": ["list", "of", "specific", "key", "risks"]
   },
-  "confidence_score": (a number between 0 and 1)
+  "confidence_score": (a number between 0.6 and 0.85)
 }
 
 Only return the JSON object, no other text or formatting.`;
 
-    console.log('Sending prompt to Perplexity:', prompt);
+    console.log('Sending prompt to Perplexity');
 
     const response = await fetch('https://api.perplexity.ai/chat/completions', {
       method: 'POST',
@@ -78,14 +99,14 @@ Only return the JSON object, no other text or formatting.`;
         messages: [
           {
             role: 'system',
-            content: 'You are a financial analyst. You always maintain the same directional prediction (positive or negative) as specified in the original prediction. Always respond with only a valid JSON object, no markdown formatting or additional text.'
+            content: 'You are a financial analyst with extensive experience in event-driven price analysis. Your predictions maintain consistency with initial directional assessments while providing detailed, data-driven magnitude estimates. Always respond with only a valid JSON object, no markdown formatting or additional text.'
           },
           {
             role: 'user',
             content: prompt
           }
         ],
-        temperature: 0.1,
+        temperature: 0.2,
         max_tokens: 1000,
       }),
     });
@@ -135,15 +156,23 @@ Only return the JSON object, no other text or formatting.`;
     }
 
     // Force the price_change_percentage to maintain the same direction as the original prediction
-    if (prediction.is_positive && analysis.price_change_percentage < 0) {
+    // and ensure it's a reasonable value (not too extreme)
+    if (prediction.is_positive) {
+      // For positive predictions, ensure the value is positive and within a reasonable range
       analysis.price_change_percentage = Math.abs(analysis.price_change_percentage);
-    } else if (!prediction.is_positive && analysis.price_change_percentage > 0) {
+      // Limit positive predictions to a reasonable range (0.5% to 15%)
+      analysis.price_change_percentage = Math.max(0.5, Math.min(15, analysis.price_change_percentage));
+    } else {
+      // For negative predictions, ensure the value is negative and within a reasonable range
       analysis.price_change_percentage = -Math.abs(analysis.price_change_percentage);
+      // Limit negative predictions to a reasonable range (-15% to -0.5%)
+      analysis.price_change_percentage = Math.min(-0.5, Math.max(-15, analysis.price_change_percentage));
     }
 
-    // Normalize values
-    analysis.price_change_percentage = Math.max(-100, Math.min(100, analysis.price_change_percentage));
-    analysis.confidence_score = Math.max(0, Math.min(1, analysis.confidence_score));
+    // Normalize confidence score to a reasonable range
+    analysis.confidence_score = Math.max(0.6, Math.min(0.85, analysis.confidence_score));
+
+    console.log(`Final analysis for ${prediction.symbol}: ${analysis.price_change_percentage.toFixed(2)}% with ${(analysis.confidence_score * 100).toFixed(1)}% confidence`);
 
     // Update stock prediction with the analysis
     const { error: updateError } = await supabase
@@ -155,7 +184,10 @@ Only return the JSON object, no other text or formatting.`;
       })
       .eq('id', stock_prediction_id);
 
-    if (updateError) throw updateError;
+    if (updateError) {
+      console.error('Error updating stock prediction:', updateError);
+      throw updateError;
+    }
 
     return new Response(JSON.stringify(analysis), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

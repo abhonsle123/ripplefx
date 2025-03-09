@@ -26,7 +26,7 @@ export async function generateAnalysis(event: any): Promise<ImpactAnalysis> {
         messages: [
           {
             role: 'system',
-            content: 'You are a financial market analysis AI specializing in predicting market impacts from events, especially natural disasters and infrastructure-related incidents. Your analysis must consider historical precedents, regional economic factors, and industry-specific vulnerabilities. For utility companies during wildfires, factor in historical liability costs, regulatory risks, and infrastructure damage potential. Always maintain strict JSON format in responses with exactly the requested fields. For stock predictions, identify 1-3 most impacted companies in both positive and negative categories with high confidence.'
+            content: 'You are a financial market analysis AI specializing in predicting market impacts from events. You have extensive knowledge of stock markets, financial instruments, economic indicators, and industry sectors. Your analysis must be highly consistent, data-driven, and precise. You should provide conservative confidence scores except in cases with extremely clear historical precedents. Always maintain strict JSON format in responses with exactly the requested fields. For stock predictions, identify 1-3 most impacted companies in both positive and negative categories with detailed, specific rationales that explain magnitude of expected change.'
           },
           {
             role: 'user',
@@ -34,7 +34,7 @@ export async function generateAnalysis(event: any): Promise<ImpactAnalysis> {
           }
         ],
         temperature: 0.1,
-        max_tokens: 1000,
+        max_tokens: 1200, // Increased token limit for more detailed responses
       }),
     });
 

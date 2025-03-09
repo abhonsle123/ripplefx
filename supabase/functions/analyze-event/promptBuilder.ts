@@ -25,6 +25,7 @@ export function buildPrompt(event: any): string {
     2. Ensure each prediction is backed by specific market impact factors
     3. Focus on stocks with direct exposure to the event
     4. Consider both primary and secondary effects on stock prices
+    5. Be HIGHLY CONSISTENT in your directional predictions
 
     Consider all of the following factors when predicting stock movements and market impact:
 
@@ -40,29 +41,39 @@ export function buildPrompt(event: any): string {
        - Historical sector performance during similar events
        - Supply chain vulnerabilities and dependencies
        - Competitive dynamics within affected sectors
+       - Regulatory implications and compliance requirements
 
     3. Market & Financial Data:
        - Stock volatility and beta values
+       - Price-to-earnings ratios and other key valuation metrics
        - Trading volume and liquidity metrics
        - Short interest levels and implications
        - Recent earnings reports and guidance
-       - Technical analysis indicators
+       - Technical analysis indicators including moving averages and support/resistance levels
 
     4. Macroeconomic & Sentiment Factors:
        - News and social media sentiment analysis
        - Government policy and regulatory responses
        - Interest rate and inflation impacts
-       - Investor behavior patterns
+       - Investor behavior patterns during similar events
        - Institutional money flows
        - Market risk appetite indicators
 
     5. Company-Specific Analysis:
        - Revenue exposure to affected regions/sectors
-       - Supply chain resilience
-       - Balance sheet strength
+       - Supply chain resilience and diversification
+       - Balance sheet strength and cash reserves
        - Market position and competitive advantages
        - Historical stock performance during similar events
        - Pending corporate events or announcements
+
+    IMPORTANT REQUIREMENTS FOR CONFIDENCE SCORES:
+    - Assign confidence scores based on quality of available data and historical precedents
+    - Overall prediction score should reflect the cumulative confidence across all factors
+    - Sector impact score should reflect certainty about industry-wide effects
+    - Market direction score should reflect certainty about broader market moves
+    - Use intermediate values (0.65, 0.75) rather than extremes unless extremely certain
+    - Thoroughly justify any confidence score above 0.8 with specific factors
 
     Return ONLY the following JSON structure with NO additional text or markdown:
     {
@@ -77,13 +88,13 @@ export function buildPrompt(event: any): string {
         "positive": [
           {
             "symbol": "TICKER",
-            "rationale": "Clear explanation of positive impact"
+            "rationale": "Clear explanation of positive impact with specific factors and magnitude estimates"
           }
         ],
         "negative": [
           {
             "symbol": "TICKER",
-            "rationale": "Clear explanation of negative impact"
+            "rationale": "Clear explanation of negative impact with specific factors and magnitude estimates"
           }
         ],
         "confidence_scores": {
@@ -115,5 +126,6 @@ export function buildPrompt(event: any): string {
     - Evaluate short interest and potential squeeze scenarios
     - Account for upcoming earnings or corporate events
     - Assess technical analysis indicators
-    - Factor in institutional positioning`;
+    - Factor in institutional positioning
+    - Estimate realistic price change magnitudes based on event severity and company exposure`;
 }

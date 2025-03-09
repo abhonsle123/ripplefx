@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { Badge } from "@/components/ui/badge";
 
 interface PredictionDetailsProps {
   rationale: string;
@@ -19,19 +20,50 @@ const PredictionDetails = ({
       : 'text-red-600'
     : 'text-muted-foreground';
 
+  // Determine confidence level text
+  const getConfidenceLevel = (score: number | null) => {
+    if (score === null) return 'Unknown';
+    if (score >= 0.8) return 'High';
+    if (score >= 0.65) return 'Moderate';
+    if (score >= 0.5) return 'Fair';
+    return 'Low';
+  };
+
+  // Get badge variant based on confidence
+  const getConfidenceBadgeVariant = (score: number | null) => {
+    if (score === null) return 'secondary';
+    if (score >= 0.8) return 'default';
+    if (score >= 0.65) return 'outline';
+    return 'secondary';
+  };
+
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       <h3 className="text-sm font-medium text-muted-foreground">Prediction Details</h3>
       <p className="text-sm">{rationale}</p>
+      
       {priceChangePercentage !== null && (
-        <div className="space-y-1">
-          <p className={`text-sm font-medium ${priceChangeColor}`}>
-            Expected Price Change: {priceChangePercentage > 0 ? '+' : ''}{priceChangePercentage.toFixed(2)}%
-          </p>
+        <div className="space-y-2 mt-2">
+          <div className="flex items-center">
+            <span className="text-sm font-medium mr-2">Expected Price Change:</span>
+            <Badge 
+              variant={priceChangePercentage > 0 ? "success" : "destructive"} 
+              className={`text-xs font-bold ${priceChangeColor}`}
+            >
+              {priceChangePercentage > 0 ? '+' : ''}{Math.abs(priceChangePercentage).toFixed(2)}%
+            </Badge>
+          </div>
+          
           {confidenceScore !== null && (
-            <p className="text-sm text-muted-foreground">
-              Confidence: {(confidenceScore * 100).toFixed(1)}%
-            </p>
+            <div className="flex items-center">
+              <span className="text-sm font-medium mr-2">Prediction Confidence:</span>
+              <Badge 
+                variant={getConfidenceBadgeVariant(confidenceScore)} 
+                className="text-xs"
+              >
+                {getConfidenceLevel(confidenceScore)} ({(confidenceScore * 100).toFixed(0)}%)
+              </Badge>
+            </div>
           )}
         </div>
       )}
