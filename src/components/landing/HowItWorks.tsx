@@ -53,20 +53,22 @@ const HowItWorks = () => {
                 </div>
                 <h3 className="text-xl font-semibold mb-3 text-foreground">{step.title}</h3>
                 <p className="text-muted-foreground">{step.description}</p>
-                
-                {index < steps.length - 1 && (
-                  <div className="hidden md:flex absolute top-1/2 left-0 w-full transform -translate-y-1/2 justify-center pointer-events-none" 
-                    style={{ left: `${(index + 0.5) * (100/3)}%` }}>
-                    <ArrowRight className="w-6 h-6 text-primary/60" />
-                  </div>
-                )}
               </div>
             ))}
+            
+            {/* Correctly positioned arrows between cards */}
+            <div className="hidden md:block absolute top-1/2 left-[33.3%] transform -translate-x-1/2 -translate-y-1/2 z-20">
+              <ArrowRight className="w-6 h-6 text-primary/80" />
+            </div>
+            <div className="hidden md:block absolute top-1/2 left-[66.7%] transform -translate-x-1/2 -translate-y-1/2 z-20">
+              <ArrowRight className="w-6 h-6 text-primary/80" />
+            </div>
           </div>
           
           {/* Mobile arrow indicators */}
-          <div className="md:hidden flex justify-center my-4">
-            <ArrowDown className="w-6 h-6 text-primary/60 animate-floating" />
+          <div className="md:hidden flex flex-col items-center space-y-2 my-2">
+            <ArrowDown className="w-6 h-6 text-primary/80 animate-floating" />
+            <ArrowDown className="w-6 h-6 text-primary/80 animate-floating" style={{ animationDelay: "0.5s" }} />
           </div>
         </div>
 
