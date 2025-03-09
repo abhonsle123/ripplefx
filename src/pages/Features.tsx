@@ -30,6 +30,52 @@ const Features = () => {
   // Section scroll animation
   const { ref: sectionRef, isVisible: sectionVisible } = useScrollAnimation({ threshold: 0.1 });
   
+  // Define the features array
+  const features = [
+    {
+      icon: Bell,
+      title: "Real-Time Event Alerts",
+      description: "Get instant notifications about market-moving events as they happen. Stay informed and never miss crucial opportunities.",
+      color: "from-blue-500/20 to-blue-600/10"
+    },
+    {
+      icon: ChartLine,
+      title: "Stock Impact Predictions",
+      description: "Leverage our AI-powered analysis to understand how events will impact stock prices and market movements.",
+      color: "from-green-500/20 to-green-600/10"
+    },
+    {
+      icon: Brain,
+      title: "AI Market Analysis",
+      description: "Access cutting-edge AI algorithms that help you make data-driven investment decisions with confidence.",
+      color: "from-purple-500/20 to-purple-600/10"
+    },
+    {
+      icon: Zap,
+      title: "Smart Notifications",
+      description: "Customize your alert preferences to receive only the most relevant updates for your investment strategy.",
+      color: "from-yellow-500/20 to-yellow-600/10"
+    },
+    {
+      icon: Target,
+      title: "Sector Tracking",
+      description: "Monitor specific industries and sectors with detailed impact analysis and performance metrics.",
+      color: "from-red-500/20 to-red-600/10"
+    },
+    {
+      icon: Shield,
+      title: "Risk Protection",
+      description: "Stay protected from market volatility with advanced warning systems and risk analysis tools.",
+      color: "from-teal-500/20 to-teal-600/10"
+    },
+    {
+      icon: Gauge,
+      title: "Performance Metrics",
+      description: "Evaluate potential risks and opportunities with our comprehensive market analysis tools.",
+      color: "from-indigo-500/20 to-indigo-600/10"
+    }
+  ];
+  
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90 relative overflow-hidden">
       {/* Background elements */}
