@@ -49,9 +49,12 @@ Severity: ${event.severity}
 Current Prediction: ${prediction.is_positive ? 'Positive' : 'Negative'} impact expected
 Rationale: ${prediction.rationale}
 
+IMPORTANT: This stock has already been predicted to have a ${prediction.is_positive ? 'POSITIVE' : 'NEGATIVE'} impact. 
+Your analysis must maintain this same directional bias (${prediction.is_positive ? 'positive' : 'negative'}).
+
 Return a JSON object with these exact fields:
 {
-  "price_change_percentage": (a number between -100 and 100),
+  "price_change_percentage": (a number ${prediction.is_positive ? 'between 0 and 100' : 'between -100 and 0'}),
   "price_impact_analysis": {
     "summary": "a brief analysis summary",
     "factors": ["list", "of", "key", "factors"],
@@ -75,7 +78,7 @@ Only return the JSON object, no other text or formatting.`;
         messages: [
           {
             role: 'system',
-            content: 'You are a financial analyst. Always respond with only a valid JSON object, no markdown formatting or additional text.'
+            content: 'You are a financial analyst. You always maintain the same directional prediction (positive or negative) as specified in the original prediction. Always respond with only a valid JSON object, no markdown formatting or additional text.'
           },
           {
             role: 'user',
@@ -129,6 +132,13 @@ Only return the JSON object, no other text or formatting.`;
     }
     if (!Array.isArray(analysis.price_impact_analysis.risks)) {
       throw new Error('Invalid risks: must be an array');
+    }
+
+    // Force the price_change_percentage to maintain the same direction as the original prediction
+    if (prediction.is_positive && analysis.price_change_percentage < 0) {
+      analysis.price_change_percentage = Math.abs(analysis.price_change_percentage);
+    } else if (!prediction.is_positive && analysis.price_change_percentage > 0) {
+      analysis.price_change_percentage = -Math.abs(analysis.price_change_percentage);
     }
 
     // Normalize values
