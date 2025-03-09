@@ -126,33 +126,6 @@
   }
 }
 
-/* Section dividers and waves */
-.wave-top {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  overflow: hidden;
-  line-height: 0;
-  transform: rotate(180deg);
-}
-
-.wave-bottom {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  overflow: hidden;
-  line-height: 0;
-}
-
-.wave-top svg,
-.wave-bottom svg {
-  display: block;
-  width: calc(100% + 1.3px);
-  height: 70px;
-}
-
 /* Remove default focus outlines and replace with custom ones */
 :focus {
   outline: none;
