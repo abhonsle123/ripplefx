@@ -35,6 +35,37 @@ const Dashboard = () => {
     });
   }, [navigate]);
 
+  // Trigger fetch-events function every 10 minutes
+  useEffect(() => {
+    const fetchEventsFromAPI = async () => {
+      try {
+        // Call our Supabase Edge Function to fetch the latest events
+        const { error } = await supabase.functions.invoke('fetch-events');
+        
+        if (error) {
+          console.error('Error invoking fetch-events:', error);
+        } else {
+          // Refresh the events data in React Query
+          queryClient.invalidateQueries({ queryKey: ["events"] });
+          toast({
+            title: "Events Updated",
+            description: "The dashboard has been updated with the latest events",
+          });
+        }
+      } catch (error) {
+        console.error('Error fetching events:', error);
+      }
+    };
+    
+    // Fetch events immediately on mount
+    fetchEventsFromAPI();
+    
+    // Set up interval (every 10 minutes)
+    const intervalId = setInterval(fetchEventsFromAPI, 10 * 60 * 1000);
+    
+    return () => clearInterval(intervalId);
+  }, [queryClient, toast]);
+
   // Fetch events
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events"],
@@ -92,20 +123,21 @@ const Dashboard = () => {
         .on(
           "postgres_changes",
           {
-            event: "UPDATE",
+            event: "*", // Listen for all changes - INSERT, UPDATE, DELETE
             schema: "public",
             table: "events",
           },
           (payload) => {
-            const updatedEvent = payload.new as Event;
-            // Only update the events list when an event is updated (not created)
-            if (payload.eventType === "UPDATE" && events) {
-              const updatedEvents = events.map((event) =>
-                event.id === updatedEvent.id ? updatedEvent : event
-              );
-              // We don't setRealTimeEvents anymore, instead we invalidate the query
-              // to get fresh data from the server
-              queryClient.invalidateQueries({ queryKey: ["events"] });
+            // Invalidate query to refresh the data
+            queryClient.invalidateQueries({ queryKey: ["events"] });
+            
+            // Show notification for new events
+            if (payload.eventType === "INSERT") {
+              const newEvent = payload.new as Event;
+              toast({
+                title: "New Event",
+                description: newEvent.title,
+              });
             }
           }
         )
@@ -119,7 +151,7 @@ const Dashboard = () => {
         supabase.removeChannel(channel);
       }
     };
-  }, [events, queryClient]);
+  }, [queryClient, toast]);
 
   // Fetch user preferences
   useEffect(() => {
