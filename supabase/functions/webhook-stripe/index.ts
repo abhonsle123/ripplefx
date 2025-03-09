@@ -8,15 +8,13 @@ const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   httpClient: Stripe.createFetchHttpClient(),
 });
 
-const supabase = createClient(
-  Deno.env.get("SUPABASE_URL") || "",
-  Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "",
-  {
-    global: {
-      headers: { "X-Client-Info": "supabase-webhook-stripe" },
-    },
-  }
-);
+const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  global: {
+    headers: { "X-Client-Info": "supabase-webhook-stripe" },
+  },
+});
 
 const endpointSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET") || "";
 

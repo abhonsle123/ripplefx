@@ -1,6 +1,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@11.18.0?target=deno";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
 
 const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
   apiVersion: "2022-11-15",
@@ -39,6 +40,10 @@ serve(async (req) => {
       );
     }
 
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
     // Get or create customer
     const { data: existingCustomers } = await stripe.customers.search({
       query: `metadata['supabase_user_id']:'${userId}'`,
@@ -49,11 +54,6 @@ serve(async (req) => {
       customerId = existingCustomers[0].id;
     } else {
       // Get user email from Supabase
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL") || "",
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || ""
-      );
-      
       const { data: userData, error: userError } = await supabase
         .from("profiles")
         .select("email")
@@ -113,32 +113,3 @@ serve(async (req) => {
     );
   }
 });
-
-// Helper function to create Supabase client
-function createClient(supabaseUrl: string, supabaseKey: string) {
-  return {
-    from: (table: string) => ({
-      select: (columns: string) => ({
-        eq: (column: string, value: string) => ({
-          single: () => {
-            return fetch(`${supabaseUrl}/rest/v1/${table}?select=${columns}&${column}=eq.${value}&limit=1`, {
-              headers: {
-                'apikey': supabaseKey,
-                'Authorization': `Bearer ${supabaseKey}`,
-              },
-            })
-            .then(res => res.json())
-            .then(data => ({
-              data: data[0] || null,
-              error: null,
-            }))
-            .catch(error => ({
-              data: null,
-              error,
-            }));
-          }
-        })
-      })
-    })
-  };
-}
