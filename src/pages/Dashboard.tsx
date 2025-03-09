@@ -69,10 +69,21 @@ const Dashboard = () => {
   const { data: events = [], isLoading } = useQuery({
     queryKey: ["events"],
     queryFn: async () => {
+      // First get the current user's session
+      const { data: { session } } = await supabase.auth.getSession();
+      
       let query = supabase
         .from("events")
         .select("*")
         .order("created_at", { ascending: false });
+      
+      // Only fetch public events or events created by the current user
+      if (session?.user.id) {
+        query = query.or(`is_public.eq.true,user_id.eq.${session.user.id}`);
+      } else {
+        // If no user is logged in, only fetch public events
+        query = query.eq('is_public', true);
+      }
 
       const { data, error } = await query;
       if (error) throw error;

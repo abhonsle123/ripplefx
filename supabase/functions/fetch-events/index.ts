@@ -128,6 +128,7 @@ async function fetchGDACSEvents(supabaseClient) {
         longitude: parseFloat(event.point.lon),
         source_url: event.link,
         source_api: 'GDACS',
+        is_public: true // Mark API-fetched events as public
       }, {
         onConflict: 'title'
       });
@@ -298,6 +299,7 @@ async function processNewsArticles(articles, supabaseClient, category = null) {
         source_url: article.url,
         source_api: 'NewsAPI',
         affected_organizations: affectedOrganizations.length > 0 ? affectedOrganizations : null,
+        is_public: true // Mark API-fetched events as public
       }, {
         onConflict: 'title'
       });

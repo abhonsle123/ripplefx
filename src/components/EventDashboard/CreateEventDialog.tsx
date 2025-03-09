@@ -36,10 +36,25 @@ const CreateEventDialog = ({ isOpen, onOpenChange }: CreateEventDialogProps) => 
     try {
       setIsProcessing(true);
       
-      // First, create the event
+      // Get current user
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: "Authentication required",
+          description: "You need to be logged in to create events",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // First, create the event with user_id
       const { data: createdEvent, error: createError } = await supabase
         .from("events")
-        .insert([newEvent])
+        .insert([{
+          ...newEvent,
+          user_id: session.user.id,
+          is_public: false // Set to false for user-created events
+        }])
         .select()
         .single();
       
@@ -179,4 +194,3 @@ const CreateEventDialog = ({ isOpen, onOpenChange }: CreateEventDialogProps) => 
 };
 
 export default CreateEventDialog;
-
