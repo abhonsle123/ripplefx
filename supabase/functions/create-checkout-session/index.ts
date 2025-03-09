@@ -77,11 +77,34 @@ serve(async (req) => {
       customerId = customer.id;
     }
 
-    // IMPORTANT: You need to replace these with your actual Stripe price IDs
-    // These IDs should match the products you've created in your Stripe dashboard
-    const priceId = plan === "premium" 
-      ? "price_REPLACE_WITH_YOUR_PREMIUM_PRICE_ID" // Replace with your Premium monthly price ID
-      : "price_REPLACE_WITH_YOUR_PRO_PRICE_ID";    // Replace with your Pro monthly price ID
+    let priceId;
+    
+    if (plan === "premium") {
+      // For premium plan, use the provided product ID to fetch the first active price
+      const productId = "prod_RuNyxB6Ur5SPyI"; // Premium product ID
+      
+      const prices = await stripe.prices.list({
+        product: productId,
+        active: true,
+        limit: 1,
+      });
+      
+      if (prices.data.length === 0) {
+        console.error("No active prices found for the premium product");
+        return new Response(
+          JSON.stringify({ error: "No active price found for the selected plan" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      priceId = prices.data[0].id;
+    } else {
+      // Pro plan is coming soon, but we'll still handle it gracefully
+      return new Response(
+        JSON.stringify({ error: "Pro plan is not available yet" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     console.log(`Creating checkout session for plan: ${plan}, price ID: ${priceId}`);
 
