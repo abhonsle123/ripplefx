@@ -9,6 +9,8 @@ export const useSubscription = (userId: string | null) => {
     queryFn: async (): Promise<SubscriptionPlan> => {
       if (!userId) return "free";
 
+      console.log("Fetching subscription for user:", userId);
+
       // First check in the subscriptions table for active subscriptions
       const { data: subscriptionData, error: subscriptionError } = await supabase
         .from("subscriptions")
@@ -16,6 +18,8 @@ export const useSubscription = (userId: string | null) => {
         .eq("user_id", userId)
         .eq("status", "active")
         .maybeSingle();
+
+      console.log("Subscription data from subscriptions table:", subscriptionData, subscriptionError);
 
       if (subscriptionData && !subscriptionError) {
         return subscriptionData.plan as SubscriptionPlan;
@@ -28,6 +32,8 @@ export const useSubscription = (userId: string | null) => {
         .eq("id", userId)
         .single();
 
+      console.log("Profile subscription status:", data, error);
+
       if (error || !data) {
         console.error("Error fetching subscription:", error);
         return "free";
@@ -38,7 +44,12 @@ export const useSubscription = (userId: string | null) => {
       return ["free", "premium", "pro"].includes(subscription) ? subscription : "free";
     },
     enabled: !!userId,
+    // Reduce caching time to ensure subscription changes are picked up quickly
+    staleTime: 60 * 1000, // 1 minute
+    refetchOnWindowFocus: true
   });
+
+  console.log("Current subscription plan:", plan);
 
   // Get the features available for the current plan
   const features = plan ? PLAN_FEATURES[plan] : PLAN_FEATURES.free;

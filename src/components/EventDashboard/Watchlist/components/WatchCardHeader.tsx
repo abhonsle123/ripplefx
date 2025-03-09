@@ -31,6 +31,7 @@ const WatchCardHeader = ({
   isInvesting
 }: WatchCardHeaderProps) => {
   const { plan, hasFeature } = useSubscription(userId || null);
+  console.log("WatchCardHeader - Current user plan:", plan, "userId:", userId);
 
   return (
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">

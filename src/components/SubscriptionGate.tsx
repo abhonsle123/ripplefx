@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { LockIcon, ArrowRight } from "lucide-react";
 import { SubscriptionPlan } from "@/types/subscription";
+import { useEffect } from "react";
 
 interface SubscriptionGateProps {
   requiredPlan: SubscriptionPlan;
@@ -29,6 +30,13 @@ const SubscriptionGate: React.FC<SubscriptionGateProps> = ({
   };
   
   const hasAccess = planOrder[userPlan] >= planOrder[requiredPlan];
+
+  // Log subscription gate evaluation
+  useEffect(() => {
+    console.log(
+      `SubscriptionGate - Feature: ${featureName}, Required plan: ${requiredPlan}, User plan: ${userPlan}, Has access: ${hasAccess}`
+    );
+  }, [featureName, requiredPlan, userPlan, hasAccess]);
 
   if (hasAccess) {
     return <>{children}</>;

@@ -1,5 +1,5 @@
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import type { EventType, SeverityLevel } from "@/types/event";
 import DashboardHeader from "@/components/EventDashboard/DashboardHeader";
 import EventFilters from "@/components/EventDashboard/EventFilters";
@@ -11,6 +11,7 @@ import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useAuthentication } from "@/hooks/useAuthentication";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useSubscription } from "@/hooks/useSubscription";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
@@ -21,7 +22,7 @@ const Dashboard = () => {
   
   const { userId } = useAuthentication();
   const userPreferences = useUserPreferences(userId);
-  const { plan } = useSubscription(userId);
+  const { plan, isLoading: subscriptionLoading } = useSubscription(userId);
   const { events, filteredEvents, isLoading, refreshEvents } = useEvents(eventType, severity, searchTerm);
   
   // Set up realtime subscriptions for events
@@ -30,6 +31,19 @@ const Dashboard = () => {
   // Set up auto refresh for events every 2 minutes
   const refreshEventsCallback = useCallback(refreshEvents, [refreshEvents]);
   useAutoRefresh(refreshEventsCallback, 120);
+
+  // Log subscription status when it changes
+  useEffect(() => {
+    if (!subscriptionLoading) {
+      console.log("Dashboard - Current subscription plan:", plan, "for user:", userId);
+      if (plan === "premium" || plan === "pro") {
+        toast.success(`You are on the ${plan} plan`, {
+          id: "subscription-status",
+          duration: 3000
+        });
+      }
+    }
+  }, [plan, subscriptionLoading, userId]);
 
   return (
     <DashboardContainer>
