@@ -14,6 +14,7 @@ const PricingSection = () => {
         "Daily market summary",
         "Email alerts",
       ],
+      planId: "free" as const,
     },
     {
       title: "Premium",
@@ -27,6 +28,7 @@ const PricingSection = () => {
         "Priority support",
       ],
       recommended: true,
+      planId: "premium" as const,
     },
     {
       title: "Pro",
@@ -41,6 +43,7 @@ const PricingSection = () => {
         "API access",
       ],
       disabled: true,
+      planId: "pro" as const,
     },
   ];
 

@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,12 @@ const Auth = () => {
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
+  
+  // Get redirect parameter
+  const searchParams = new URLSearchParams(location.search);
+  const redirect = searchParams.get('redirect');
 
   // Check if user is already logged in
   useEffect(() => {
@@ -25,7 +30,7 @@ const Auth = () => {
         return;
       }
       if (session) {
-        navigate('/');
+        handleRedirect();
       }
     };
 
@@ -36,7 +41,7 @@ const Auth = () => {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === 'SIGNED_IN' && session) {
-        navigate('/');
+        handleRedirect();
       } else if (event === 'SIGNED_OUT') {
         navigate('/auth');
       } else if (event === 'TOKEN_REFRESHED') {
@@ -47,7 +52,15 @@ const Auth = () => {
     return () => {
       subscription.unsubscribe();
     };
-  }, [navigate]);
+  }, [navigate, redirect]);
+
+  const handleRedirect = () => {
+    if (redirect === 'pricing') {
+      navigate('/?scrollTo=pricing');
+    } else {
+      navigate('/');
+    }
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -77,7 +90,7 @@ const Auth = () => {
             title: "Success!",
             description: "Account created successfully. You can now sign in.",
           });
-          navigate('/');
+          handleRedirect();
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({
@@ -86,7 +99,7 @@ const Auth = () => {
         });
         
         if (error) throw error;
-        navigate('/');
+        handleRedirect();
       }
     } catch (error: any) {
       toast({

@@ -1,6 +1,10 @@
 
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { useState } from "react";
 
 interface PricingCardProps {
   title: string;
@@ -9,6 +13,7 @@ interface PricingCardProps {
   features: string[];
   recommended?: boolean;
   disabled?: boolean;
+  planId?: "free" | "premium" | "pro";
 }
 
 const PricingCard = ({
@@ -18,7 +23,55 @@ const PricingCard = ({
   features,
   recommended = false,
   disabled = false,
+  planId = "free",
 }: PricingCardProps) => {
+  const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleSubscribe = async () => {
+    if (disabled) return;
+
+    setIsLoading(true);
+
+    try {
+      // Check if user is logged in
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // Redirect to auth page with redirect back to pricing
+        navigate('/auth?redirect=pricing');
+        return;
+      }
+
+      // Free plan doesn't need checkout
+      if (planId === "free") {
+        toast.success("You are now on the Free plan!");
+        return;
+      }
+
+      // Create checkout session for paid plans
+      const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+        body: { plan: planId, userId: session.user.id },
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      // Redirect to Stripe Checkout
+      if (data?.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error("No checkout URL returned");
+      }
+    } catch (error) {
+      console.error("Subscription error:", error);
+      toast.error("Failed to start subscription. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   return (
     <div
       className={`relative p-8 rounded-xl transition-all duration-300 ${
@@ -57,9 +110,14 @@ const PricingCard = ({
           recommended ? "bg-primary hover:bg-primary/90 shadow-md" : "bg-transparent border border-primary/50 text-primary hover:bg-primary/10"
         }`}
         variant={recommended ? "default" : "outline"}
-        disabled={disabled}
+        disabled={disabled || isLoading}
+        onClick={handleSubscribe}
       >
-        {disabled ? "Coming Soon" : "Get Started"}
+        {isLoading 
+          ? "Processing..." 
+          : disabled 
+            ? "Coming Soon" 
+            : "Get Started"}
       </Button>
     </div>
   );
