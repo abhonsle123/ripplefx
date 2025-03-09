@@ -1,8 +1,9 @@
 
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import Hero from "@/components/landing/Hero";
+import HowItWorks from "@/components/landing/HowItWorks";
 import FeatureGrid from "@/components/landing/FeatureGrid";
 import PricingSection from "@/components/landing/PricingSection";
 import FAQ from "@/components/landing/FAQ";
@@ -38,6 +39,7 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       <Hero />
+      <HowItWorks />
       <FeatureGrid />
       <PricingSection />
       <FAQ />
