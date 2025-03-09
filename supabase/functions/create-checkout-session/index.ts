@@ -77,10 +77,13 @@ serve(async (req) => {
       customerId = customer.id;
     }
 
-    // Map plan to price ID - THESE ARE LIVE PRICE IDs
+    // IMPORTANT: You need to replace these with your actual Stripe price IDs
+    // These IDs should match the products you've created in your Stripe dashboard
     const priceId = plan === "premium" 
-      ? "price_1P8yN8GGGajqXXOQm9x6lkRJ" // Premium monthly price ID
-      : "price_1P8yNbGGGajqXXOQAQcXcIdt"; // Pro monthly price ID
+      ? "price_REPLACE_WITH_YOUR_PREMIUM_PRICE_ID" // Replace with your Premium monthly price ID
+      : "price_REPLACE_WITH_YOUR_PRO_PRICE_ID";    // Replace with your Pro monthly price ID
+
+    console.log(`Creating checkout session for plan: ${plan}, price ID: ${priceId}`);
 
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
