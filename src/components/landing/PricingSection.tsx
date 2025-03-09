@@ -1,30 +1,8 @@
 
 import PricingCard from "@/components/PricingCard";
-import { useSubscription } from "@/hooks/useSubscription";
-import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { motion } from "framer-motion";
 
-interface PricingSectionProps {
-  onSubscribe?: (planId: string) => void;
-}
-
-const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
-  const [userId, setUserId] = useState<string | null>(null);
-  
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUserId(session?.user?.id ?? null);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUserId(session?.user?.id ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-  
-  const { plan: currentPlan } = useSubscription(userId);
-
+const PricingSection = () => {
   const plans = [
     {
       title: "Basic",
@@ -36,7 +14,6 @@ const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
         "Daily market summary",
         "Email alerts",
       ],
-      planId: "free"
     },
     {
       title: "Premium",
@@ -50,7 +27,6 @@ const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
         "Priority support",
       ],
       recommended: true,
-      planId: "premium"
     },
     {
       title: "Pro",
@@ -65,7 +41,6 @@ const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
         "API access",
       ],
       disabled: true,
-      planId: "pro"
     },
   ];
 
@@ -90,11 +65,7 @@ const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
               "animate-slideUp [animation-delay:300ms]"
             }`}
           >
-            <PricingCard 
-              {...plan} 
-              current={currentPlan === plan.planId}
-              onSubscribe={() => onSubscribe && onSubscribe(plan.planId)}
-            />
+            <PricingCard {...plan} />
           </div>
         ))}
       </div>

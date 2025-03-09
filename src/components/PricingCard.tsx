@@ -9,9 +9,6 @@ interface PricingCardProps {
   features: string[];
   recommended?: boolean;
   disabled?: boolean;
-  current?: boolean;
-  planId?: string;
-  onSubscribe?: () => void;
 }
 
 const PricingCard = ({
@@ -21,8 +18,6 @@ const PricingCard = ({
   features,
   recommended = false,
   disabled = false,
-  current = false,
-  onSubscribe,
 }: PricingCardProps) => {
   return (
     <div
@@ -40,11 +35,6 @@ const PricingCard = ({
       {disabled && (
         <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-secondary px-4 py-1 rounded-full text-sm font-medium shadow-sm">
           Coming Soon
-        </div>
-      )}
-      {current && !disabled && (
-        <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-green-500 px-4 py-1 rounded-full text-sm font-medium text-white shadow-sm">
-          Current Plan
         </div>
       )}
       <div className="text-center mb-8">
@@ -67,10 +57,9 @@ const PricingCard = ({
           recommended ? "bg-primary hover:bg-primary/90 shadow-md" : "bg-transparent border border-primary/50 text-primary hover:bg-primary/10"
         }`}
         variant={recommended ? "default" : "outline"}
-        disabled={disabled || current}
-        onClick={onSubscribe}
+        disabled={disabled}
       >
-        {current ? "Current Plan" : disabled ? "Coming Soon" : "Subscribe"}
+        {disabled ? "Coming Soon" : "Get Started"}
       </Button>
     </div>
   );
