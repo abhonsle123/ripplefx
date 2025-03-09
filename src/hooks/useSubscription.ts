@@ -28,7 +28,7 @@ export const useSubscription = (userId: string | null) => {
       // If no active subscription found, fall back to profile status
       const { data, error } = await supabase
         .from("profiles")
-        .select("subscription_status")
+        .select("subscription_status, email")
         .eq("id", userId)
         .single();
 
@@ -39,14 +39,21 @@ export const useSubscription = (userId: string | null) => {
         return "free";
       }
 
+      // Development override for specific email
+      if (data.email === "abhonsle747@gmail.com") {
+        console.log("Development override: Setting premium plan for specific development user");
+        return "premium";
+      }
+
       // Validate that the returned subscription is a valid SubscriptionPlan
       const subscription = data.subscription_status as SubscriptionPlan;
       return ["free", "premium", "pro"].includes(subscription) ? subscription : "free";
     },
     enabled: !!userId,
     // Reduce caching time to ensure subscription changes are picked up quickly
-    staleTime: 60 * 1000, // 1 minute
-    refetchOnWindowFocus: true
+    staleTime: 30 * 1000, // 30 seconds
+    refetchOnWindowFocus: true,
+    refetchInterval: 60 * 1000 // Refetch every minute to ensure subscription is current
   });
 
   console.log("Current subscription plan:", plan);
