@@ -22,10 +22,10 @@ const HowItWorks = () => {
   ];
 
   return (
-    <div className="relative py-16 overflow-hidden bg-background">
+    <div className="bg-background py-24 relative overflow-hidden">
       {/* Background decorative elements */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-0 right-0 w-1/2 h-32 bg-gradient-radial from-primary/5 to-transparent blur-2xl opacity-70"></div>
+        <div className="absolute top-0 left-1/3 w-2/3 h-32 bg-gradient-radial from-primary/10 to-transparent blur-2xl opacity-50"></div>
         <div className="absolute bottom-0 right-0 w-1/2 h-32 bg-gradient-radial from-primary/10 to-transparent blur-2xl opacity-50"></div>
         <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(59,130,246,0.05)_1px,transparent_1px)] bg-[size:40px_40px] opacity-10"></div>
       </div>
@@ -67,9 +67,6 @@ const HowItWorks = () => {
           </a>
         </div>
       </div>
-      
-      {/* Subtle angled gradient transition to next section */}
-      <div className="absolute bottom-0 left-0 w-full h-16 bg-gradient-to-br from-background via-background to-background/90"></div>
     </div>
   );
 };

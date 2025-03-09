@@ -50,12 +50,6 @@ const Hero = () => {
           </div>
         </div>
       </div>
-      
-      {/* Elegant curved shape divider with gradient */}
-      <div className="absolute bottom-0 left-0 w-full h-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent to-background"></div>
-        <div className="absolute bottom-0 w-full h-16 bg-background rounded-t-[50%] transform scale-x-150"></div>
-      </div>
     </div>
   );
 };
