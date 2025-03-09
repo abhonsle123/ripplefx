@@ -147,11 +147,28 @@ async function fetchNewsEvents(supabaseClient) {
   }
   
   try {
-    // Fetch top business and geopolitical news
-    const categories = ['business', 'politics', 'technology'];
+    // Fetch top headlines from various categories
+    const categories = ['business', 'politics', 'technology', 'health', 'science'];
+    const countries = ['us', 'gb', 'ca', 'au', 'in', 'jp', 'de', 'fr'];
     
+    // First, get top headlines from selected countries
+    for (const country of countries) {
+      const url = `https://newsapi.org/v2/top-headlines?country=${country}&pageSize=10&apiKey=${NEWS_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status !== 'ok') {
+        console.error(`Error fetching news for country ${country}:`, data.message);
+        continue;
+      }
+      
+      console.log(`Processing ${data.articles.length} top headlines from ${country}`);
+      await processNewsArticles(data.articles, supabaseClient);
+    }
+    
+    // Then, get category-specific news
     for (const category of categories) {
-      const url = `https://newsapi.org/v2/top-headlines?category=${category}&language=en&apiKey=${NEWS_API_KEY}`;
+      const url = `https://newsapi.org/v2/top-headlines?category=${category}&language=en&pageSize=10&apiKey=${NEWS_API_KEY}`;
       const response = await fetch(url);
       const data = await response.json();
       
@@ -161,69 +178,132 @@ async function fetchNewsEvents(supabaseClient) {
       }
       
       console.log(`Processing ${data.articles.length} news articles for category: ${category}`);
-      
-      for (const article of data.articles) {
-        if (!article.title || !article.description) continue;
-        
-        // Map news categories to our event types
-        let eventType: 'NATURAL_DISASTER' | 'GEOPOLITICAL' | 'ECONOMIC' | 'OTHER';
-        if (category === 'business') {
-          eventType = 'ECONOMIC';
-        } else if (category === 'politics') {
-          eventType = 'GEOPOLITICAL';
-        } else {
-          eventType = 'OTHER';
-        }
-        
-        // Determine severity based on content analysis (basic implementation)
-        // In a real app, this would use more sophisticated NLP
-        const content = (article.content || article.description || '').toLowerCase();
-        const highImpactWords = ['crisis', 'emergency', 'disaster', 'catastrophe', 'collapse', 'crash'];
-        const mediumImpactWords = ['decline', 'drop', 'fall', 'conflict', 'dispute', 'tension'];
-        
-        let severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
-        
-        if (highImpactWords.some(word => content.includes(word))) {
-          severity = 'HIGH';
-        } else if (mediumImpactWords.some(word => content.includes(word))) {
-          severity = 'MEDIUM';
-        }
-        
-        // Extract country (simple implementation)
-        const mainCountries = [
-          'USA', 'United States', 'China', 'Russia', 'UK', 'India', 'Japan', 
-          'Germany', 'France', 'Brazil', 'Canada', 'Australia', 'Italy'
-        ];
-        
-        let country = null;
-        for (const c of mainCountries) {
-          if (article.title.includes(c) || article.description.includes(c)) {
-            country = c;
-            break;
-          }
-        }
-        
-        // Insert into Supabase
-        const { error } = await supabaseClient
-          .from('events')
-          .upsert({
-            title: article.title,
-            description: article.description,
-            event_type: eventType,
-            severity: severity,
-            country: country,
-            source_url: article.url,
-            source_api: 'NewsAPI',
-          }, {
-            onConflict: 'title'
-          });
-        
-        if (error) {
-          console.error('Error inserting news event:', error);
-        }
-      }
+      await processNewsArticles(data.articles, supabaseClient, category);
     }
+    
+    // Finally, get everything with relevant keywords for better coverage
+    const keywords = ['market', 'economy', 'crisis', 'disaster', 'innovation', 'breakthrough', 'conflict'];
+    for (const keyword of keywords) {
+      const url = `https://newsapi.org/v2/everything?q=${keyword}&language=en&sortBy=relevancy&pageSize=5&apiKey=${NEWS_API_KEY}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      
+      if (data.status !== 'ok') {
+        console.error(`Error fetching news for keyword ${keyword}:`, data.message);
+        continue;
+      }
+      
+      console.log(`Processing ${data.articles.length} news articles for keyword: ${keyword}`);
+      await processNewsArticles(data.articles, supabaseClient);
+    }
+    
   } catch (error) {
     console.error('Error in fetchNewsEvents:', error);
+  }
+}
+
+async function processNewsArticles(articles, supabaseClient, category = null) {
+  for (const article of articles) {
+    if (!article.title || !article.description) continue;
+    
+    // Skip articles that are just ads or metadata
+    if (article.title.toLowerCase().includes('removed') || 
+        article.description.toLowerCase().includes('removed') ||
+        article.title.length < 10) {
+      continue;
+    }
+    
+    // Map news categories to our event types
+    let eventType: 'NATURAL_DISASTER' | 'GEOPOLITICAL' | 'ECONOMIC' | 'OTHER';
+    
+    if (category === 'business' || 
+        article.title.toLowerCase().includes('economy') || 
+        article.title.toLowerCase().includes('market') ||
+        article.title.toLowerCase().includes('stock') ||
+        article.title.toLowerCase().includes('financial')) {
+      eventType = 'ECONOMIC';
+    } else if (category === 'politics' || 
+               article.title.toLowerCase().includes('government') ||
+               article.title.toLowerCase().includes('president') ||
+               article.title.toLowerCase().includes('minister') ||
+               article.title.toLowerCase().includes('election')) {
+      eventType = 'GEOPOLITICAL';
+    } else if (article.title.toLowerCase().includes('disaster') ||
+               article.title.toLowerCase().includes('earthquake') ||
+               article.title.toLowerCase().includes('flood') ||
+               article.title.toLowerCase().includes('hurricane') ||
+               article.title.toLowerCase().includes('tornado')) {
+      eventType = 'NATURAL_DISASTER';
+    } else {
+      eventType = 'OTHER';
+    }
+    
+    // Determine severity based on content analysis
+    const content = (article.title + ' ' + article.description).toLowerCase();
+    const highImpactWords = ['crisis', 'emergency', 'disaster', 'catastrophe', 'collapse', 'crash', 'plunge', 'surge'];
+    const mediumImpactWords = ['decline', 'drop', 'fall', 'conflict', 'dispute', 'tension', 'rise', 'increase'];
+    
+    let severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' = 'LOW';
+    
+    if (highImpactWords.some(word => content.includes(word))) {
+      severity = 'HIGH';
+    } else if (mediumImpactWords.some(word => content.includes(word))) {
+      severity = 'MEDIUM';
+    }
+    
+    // Extract country from article
+    let country = null;
+    const mainCountries = [
+      'USA', 'United States', 'China', 'Russia', 'UK', 'United Kingdom', 'India', 'Japan', 
+      'Germany', 'France', 'Brazil', 'Canada', 'Australia', 'Italy', 'Spain'
+    ];
+    
+    for (const c of mainCountries) {
+      if (content.includes(c.toLowerCase())) {
+        country = c;
+        break;
+      }
+    }
+    
+    // Extract affected organizations/companies
+    const companyKeywords = ['company', 'corporation', 'inc', 'corp', 'ltd', 'llc'];
+    let affectedOrganizations = [];
+    
+    // Check for company names in title and description
+    const contentWords = content.split(/\s+/);
+    for (let i = 0; i < contentWords.length - 1; i++) {
+      if (contentWords[i].length > 1 && 
+          contentWords[i][0] === contentWords[i][0].toUpperCase() && 
+          companyKeywords.some(keyword => contentWords[i+1].toLowerCase().includes(keyword))) {
+        affectedOrganizations.push(contentWords[i]);
+      }
+    }
+    
+    // Check article source as potentially affected organization
+    if (article.source && article.source.name) {
+      if (!affectedOrganizations.includes(article.source.name)) {
+        affectedOrganizations.push(article.source.name);
+      }
+    }
+    
+    // Insert into Supabase
+    const { error } = await supabaseClient
+      .from('events')
+      .upsert({
+        title: article.title,
+        description: article.description,
+        event_type: eventType,
+        severity: severity,
+        country: country,
+        source_url: article.url,
+        source_api: 'NewsAPI',
+        affected_organizations: affectedOrganizations.length > 0 ? affectedOrganizations : null,
+      }, {
+        onConflict: 'title'
+      });
+    
+    if (error) {
+      console.error('Error inserting news event:', error);
+    }
   }
 }
