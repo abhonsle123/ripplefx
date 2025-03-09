@@ -3,11 +3,11 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
--- Schedule the function to run every 15 minutes
+-- Schedule the function to run every 2 minutes (changed from 15 minutes)
 select
 cron.schedule(
   'fetch-natural-disasters',
-  '*/15 * * * *',
+  '*/2 * * * *',
   $$
   select
     net.http_post(

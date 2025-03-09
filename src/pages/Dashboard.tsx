@@ -1,4 +1,3 @@
-
 import { useEffect, useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -35,7 +34,7 @@ const Dashboard = () => {
     });
   }, [navigate]);
 
-  // Trigger fetch-events function every 10 minutes
+  // Trigger fetch-events function every 2 minutes (changed from 10 minutes)
   useEffect(() => {
     const fetchEventsFromAPI = async () => {
       try {
@@ -60,8 +59,8 @@ const Dashboard = () => {
     // Fetch events immediately on mount
     fetchEventsFromAPI();
     
-    // Set up interval (every 10 minutes)
-    const intervalId = setInterval(fetchEventsFromAPI, 10 * 60 * 1000);
+    // Set up interval (every 2 minutes - changed from 10 minutes)
+    const intervalId = setInterval(fetchEventsFromAPI, 2 * 60 * 1000);
     
     return () => clearInterval(intervalId);
   }, [queryClient, toast]);
