@@ -47,7 +47,7 @@ const PredictionDetails = ({
           <div className="flex items-center">
             <span className="text-sm font-medium mr-2">Expected Price Change:</span>
             <Badge 
-              variant={priceChangePercentage > 0 ? "success" : "destructive"} 
+              variant={priceChangePercentage > 0 ? "default" : "destructive"} 
               className={`text-xs font-bold ${priceChangeColor}`}
             >
               {priceChangePercentage > 0 ? '+' : ''}{Math.abs(priceChangePercentage).toFixed(2)}%
