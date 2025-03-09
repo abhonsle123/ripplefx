@@ -69,14 +69,14 @@ export default {
           '100%': { backgroundPosition: '0% 50%' }
         },
         floating: {
-          '0%, 100%': { transform: 'translateY(0)' },
-          '50%': { transform: 'translateY(-10px)' }
+          '0%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-10px)' },
+          '100%': { transform: 'translateY(0)' }
         },
         shimmer: {
           '0%': { backgroundPosition: '200% 0' },
           '100%': { backgroundPosition: '-200% 0' }
         },
-        // New animations for scroll effects
         fadeInUp: {
           '0%': { opacity: '0', transform: 'translateY(30px)' },
           '100%': { opacity: '1', transform: 'translateY(0)' }
@@ -92,6 +92,27 @@ export default {
         revealRight: {
           '0%': { transform: 'translateX(30px)', opacity: '0' },
           '100%': { transform: 'translateX(0)', opacity: '1' }
+        },
+        // New smoother animations
+        pulse: {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.7' }
+        },
+        bounce: {
+          '0%, 100%': { transform: 'translateY(0)' },
+          '50%': { transform: 'translateY(-5px)' }
+        },
+        wave: {
+          '0%': { transform: 'rotate(0deg)' },
+          '20%': { transform: 'rotate(20deg)' },
+          '40%': { transform: 'rotate(0deg)' },
+          '60%': { transform: 'rotate(-20deg)' },
+          '80%': { transform: 'rotate(0deg)' },
+          '100%': { transform: 'rotate(0deg)' }
+        },
+        breathe: {
+          '0%, 100%': { transform: 'scale(1)' },
+          '50%': { transform: 'scale(1.05)' }
         }
       },
       animation: {
@@ -100,11 +121,20 @@ export default {
         gradientShift: 'gradientShift 15s ease infinite',
         floating: 'floating 3s ease-in-out infinite',
         shimmer: 'shimmer 8s ease-in-out infinite',
-        // New animations for scroll effects
-        fadeInUp: 'fadeInUp 0.8s ease-out forwards',
-        scaleIn: 'scaleIn 0.6s ease-out forwards',
-        revealLeft: 'revealLeft 0.6s ease-out forwards',
-        revealRight: 'revealRight 0.6s ease-out forwards'
+        fadeInUp: 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        scaleIn: 'scaleIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        revealLeft: 'revealLeft 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        revealRight: 'revealRight 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+        // New smoother animations
+        pulse: 'pulse 2s ease-in-out infinite',
+        bounce: 'bounce 2s ease-in-out infinite',
+        wave: 'wave 2.5s ease-in-out infinite',
+        breathe: 'breathe 4s ease-in-out infinite'
+      },
+      transitionTimingFunction: {
+        'smooth': 'cubic-bezier(0.16, 1, 0.3, 1)',
+        'bounce': 'cubic-bezier(0.87, 0, 0.13, 1)',
+        'spring': 'cubic-bezier(0.43, 0.13, 0.23, 0.96)'
       }
     }
   },

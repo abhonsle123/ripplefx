@@ -42,17 +42,17 @@ const HowItWorks = () => {
             
             {/* Correctly positioned arrows between cards */}
             <div className="hidden md:block absolute top-1/2 left-[33.3%] transform -translate-x-1/2 -translate-y-1/2 z-20">
-              <ArrowRight className="w-6 h-6 text-primary/80" />
+              <ArrowRight className="w-6 h-6 text-primary/80 animate-bounce" />
             </div>
             <div className="hidden md:block absolute top-1/2 left-[66.7%] transform -translate-x-1/2 -translate-y-1/2 z-20">
-              <ArrowRight className="w-6 h-6 text-primary/80" />
+              <ArrowRight className="w-6 h-6 text-primary/80 animate-bounce" style={{ animationDelay: "0.5s" }} />
             </div>
           </div>
           
           {/* Mobile arrow indicators */}
           <div className="md:hidden flex flex-col items-center space-y-2 my-2">
-            <ArrowDown className="w-6 h-6 text-primary/80 animate-floating" />
-            <ArrowDown className="w-6 h-6 text-primary/80 animate-floating" style={{ animationDelay: "0.5s" }} />
+            <ArrowDown className="w-6 h-6 text-primary/80 animate-bounce" />
+            <ArrowDown className="w-6 h-6 text-primary/80 animate-bounce" style={{ animationDelay: "0.5s" }} />
           </div>
         </div>
 
@@ -60,10 +60,10 @@ const HowItWorks = () => {
         <div className="text-center mt-16">
           <a 
             href="#pricing-section" 
-            className="inline-flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-6 py-3 rounded-full transition-all duration-300 group"
+            className="inline-flex items-center gap-2 bg-primary/10 hover:bg-primary/20 text-primary px-6 py-3 rounded-full transition-all duration-500 group hover:shadow-lg hover:shadow-primary/20"
           >
             See how RippleFX can help you
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-300" />
           </a>
         </div>
       </div>
@@ -73,17 +73,13 @@ const HowItWorks = () => {
 
 // Section title with scroll animation
 const SectionTitle = () => {
-  const { ref, isVisible } = useScrollAnimation(0.2);
+  const { ref, animationClasses } = useScrollAnimation({
+    threshold: 0.2,
+    variant: 'fadeUp'
+  });
   
   return (
-    <div 
-      ref={ref} 
-      className={`text-center mb-16 transition-all duration-700 transform ${
-        isVisible 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-10'
-      }`}
-    >
+    <div ref={ref} className={`text-center mb-16 ${animationClasses}`}>
       <h2 className="text-3xl font-bold text-foreground mb-4">
         How <span className="text-primary">RippleFX</span> Works
       </h2>
@@ -96,19 +92,19 @@ const SectionTitle = () => {
 
 // Individual step card with scroll animation
 const StepCard = ({ step, index }: { step: any, index: number }) => {
-  const { ref, isVisible } = useScrollAnimation(0.1);
+  const { ref, animationClasses, style } = useScrollAnimation({
+    threshold: 0.1,
+    variant: 'scaleIn',
+    delay: index * 150
+  });
   
   return (
     <div 
       ref={ref} 
-      className={`bg-card/60 backdrop-blur-sm p-8 rounded-xl border border-white/5 flex flex-col items-center text-center hover:bg-card/80 transition-all duration-500 hover:translate-y-[-8px] ${
-        isVisible 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-16'
-      }`}
-      style={{ transitionDelay: `${index * 150}ms` }}
+      className={`bg-card/60 backdrop-blur-sm p-8 rounded-xl border border-white/5 flex flex-col items-center text-center hover:bg-card/80 transition-all duration-500 hover:translate-y-[-8px] hover:shadow-lg ${animationClasses}`}
+      style={style}
     >
-      <div className="p-4 rounded-full bg-primary/10 mb-6">
+      <div className="p-4 rounded-full bg-primary/10 mb-6 animate-pulse">
         {step.icon}
       </div>
       <h3 className="text-xl font-semibold mb-3 text-foreground">{step.title}</h3>

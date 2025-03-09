@@ -40,16 +40,16 @@ const Index = () => {
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       <Hero />
-      <ScrollAnimationWrapper>
+      <ScrollAnimationWrapper variant="fadeUp">
         <HowItWorks />
       </ScrollAnimationWrapper>
-      <ScrollAnimationWrapper>
+      <ScrollAnimationWrapper variant="scaleIn">
         <FeatureGrid />
       </ScrollAnimationWrapper>
-      <ScrollAnimationWrapper>
+      <ScrollAnimationWrapper variant="fadeUp">
         <PricingSection />
       </ScrollAnimationWrapper>
-      <ScrollAnimationWrapper>
+      <ScrollAnimationWrapper variant="scaleIn">
         <FAQ />
       </ScrollAnimationWrapper>
     </div>
@@ -57,18 +57,20 @@ const Index = () => {
 };
 
 // ScrollAnimationWrapper component that uses the useScrollAnimation hook
-const ScrollAnimationWrapper = ({ children }: { children: React.ReactNode }) => {
-  const { ref, isVisible } = useScrollAnimation(0.1);
+const ScrollAnimationWrapper = ({ 
+  children, 
+  variant = 'default' 
+}: { 
+  children: React.ReactNode, 
+  variant?: 'fadeUp' | 'scaleIn' | 'revealLeft' | 'revealRight' | 'default' 
+}) => {
+  const { ref, animationClasses } = useScrollAnimation({ 
+    threshold: 0.1,
+    variant
+  });
   
   return (
-    <div 
-      ref={ref} 
-      className={`transition-all duration-1000 transform ${
-        isVisible 
-          ? 'opacity-100 translate-y-0' 
-          : 'opacity-0 translate-y-16'
-      }`}
-    >
+    <div ref={ref} className={animationClasses}>
       {children}
     </div>
   );

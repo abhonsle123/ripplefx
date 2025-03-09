@@ -1,3 +1,4 @@
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -98,4 +99,45 @@
   body {
     @apply bg-background text-foreground;
   }
+  
+  /* Smooth scrolling for the entire site */
+  html {
+    scroll-behavior: smooth;
+  }
+  
+  /* Default transition for interactive elements */
+  a, button, input, select, textarea {
+    @apply transition-all duration-300;
+  }
+  
+  /* Smooth animation defaults */
+  .animate-all {
+    @apply transition-all duration-500 ease-smooth;
+  }
+  
+  /* Hover effect for cards */
+  .card-hover {
+    @apply transition-all duration-300 hover:translate-y-[-5px] hover:shadow-lg;
+  }
+  
+  /* Pulse animation for attention */
+  .pulse-gentle {
+    @apply animate-pulse;
+  }
+}
+
+/* Remove default focus outlines and replace with custom ones */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  @apply ring-2 ring-primary ring-opacity-50;
+}
+
+/* Smoother transition for all elements */
+* {
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
