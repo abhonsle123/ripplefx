@@ -28,8 +28,8 @@ const About = () => {
     }
   };
   
-  // Section scroll animation
-  const { ref: sectionRef, isVisible: sectionVisible } = useScrollAnimation(0.1);
+  // Section scroll animation - fix by passing an object with threshold property
+  const { ref: sectionRef, isVisible: sectionVisible } = useScrollAnimation({ threshold: 0.1 });
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90 relative overflow-hidden">
@@ -113,14 +113,14 @@ const About = () => {
   );
 };
 
-// Feature card with scroll animation
+// Feature card with scroll animation - fix by passing an object with threshold property
 const FeatureCard = ({ icon, title, description, delay }: { 
   icon: React.ReactNode,
   title: string,
   description: string,
   delay: number
 }) => {
-  const { ref, isVisible } = useScrollAnimation(0.1);
+  const { ref, isVisible } = useScrollAnimation({ threshold: 0.1 });
   
   return (
     <div 
