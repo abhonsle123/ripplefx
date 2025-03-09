@@ -3,8 +3,6 @@ import PricingCard from "@/components/PricingCard";
 import { useSubscription } from "@/hooks/useSubscription";
 import { supabase } from "@/integrations/supabase/client";
 import { useState, useEffect } from "react";
-import { toast } from "sonner";
-import { useNavigate } from "react-router-dom";
 
 interface PricingSectionProps {
   onSubscribe?: (planId: string) => void;
@@ -12,8 +10,6 @@ interface PricingSectionProps {
 
 const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
   const [userId, setUserId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const navigate = useNavigate();
   
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -28,48 +24,6 @@ const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
   }, []);
   
   const { plan: currentPlan } = useSubscription(userId);
-
-  const handleSubscribe = async (planId: string) => {
-    if (!userId) {
-      toast("Please login first", {
-        description: "You need to sign in to subscribe to a plan",
-      });
-      navigate("/auth");
-      return;
-    }
-
-    if (planId === "free") {
-      toast("Already on Free plan", {
-        description: "You are already on the free plan.",
-      });
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await supabase.functions.invoke("create-checkout-session", {
-        body: {
-          planId,
-          userId,
-          returnUrl: `${window.location.origin}/pricing`,
-        },
-      });
-
-      if (response.error) {
-        throw new Error(response.error.message || "Failed to create checkout session");
-      }
-
-      // Redirect to Stripe checkout
-      window.location.href = response.data.url;
-    } catch (error) {
-      console.error("Error creating checkout session:", error);
-      toast("Subscription Error", {
-        description: error.message || "An error occurred. Please try again.",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const plans = [
     {
@@ -100,7 +54,7 @@ const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
     },
     {
       title: "Pro",
-      price: "$49/mo",
+      price: "Coming Soon",
       description: "Complete solution for professional traders",
       features: [
         "Instant event notifications",
@@ -110,7 +64,7 @@ const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
         "24/7 priority support",
         "API access",
       ],
-      disabled: false,
+      disabled: true,
       planId: "pro"
     },
   ];
@@ -139,7 +93,7 @@ const PricingSection = ({ onSubscribe }: PricingSectionProps) => {
             <PricingCard 
               {...plan} 
               current={currentPlan === plan.planId}
-              onSubscribe={() => isLoading ? null : (onSubscribe ? onSubscribe(plan.planId) : handleSubscribe(plan.planId))}
+              onSubscribe={() => onSubscribe && onSubscribe(plan.planId)}
             />
           </div>
         ))}
