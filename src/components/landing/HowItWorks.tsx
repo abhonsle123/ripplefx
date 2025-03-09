@@ -1,5 +1,6 @@
 
 import { ArrowDown, ArrowRight, BellRing, LineChart, Zap } from "lucide-react";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const HowItWorks = () => {
   const steps = [
@@ -30,30 +31,13 @@ const HowItWorks = () => {
       </div>
 
       <div className="container px-4">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold text-foreground mb-4">
-            How <span className="text-primary">RippleFX</span> Works
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Our AI-powered platform helps you stay ahead of market movements with real-time analysis and alerts
-          </p>
-        </div>
+        <SectionTitle />
 
         <div className="relative max-w-4xl mx-auto">
           {/* Process steps */}
           <div className="grid md:grid-cols-3 gap-6 md:gap-8 relative z-10">
             {steps.map((step, index) => (
-              <div 
-                key={index}
-                className="bg-card/60 backdrop-blur-sm p-8 rounded-xl border border-white/5 flex flex-col items-center text-center hover:bg-card/80 transition-all duration-300 animate-slideUp hover:translate-y-[-8px]"
-                style={{ animationDelay: `${index * 150}ms` }}
-              >
-                <div className="p-4 rounded-full bg-primary/10 mb-6">
-                  {step.icon}
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-foreground">{step.title}</h3>
-                <p className="text-muted-foreground">{step.description}</p>
-              </div>
+              <StepCard key={index} step={step} index={index} />
             ))}
             
             {/* Correctly positioned arrows between cards */}
@@ -83,6 +67,52 @@ const HowItWorks = () => {
           </a>
         </div>
       </div>
+    </div>
+  );
+};
+
+// Section title with scroll animation
+const SectionTitle = () => {
+  const { ref, isVisible } = useScrollAnimation(0.2);
+  
+  return (
+    <div 
+      ref={ref} 
+      className={`text-center mb-16 transition-all duration-700 transform ${
+        isVisible 
+          ? 'opacity-100 translate-y-0' 
+          : 'opacity-0 translate-y-10'
+      }`}
+    >
+      <h2 className="text-3xl font-bold text-foreground mb-4">
+        How <span className="text-primary">RippleFX</span> Works
+      </h2>
+      <p className="text-muted-foreground max-w-2xl mx-auto">
+        Our AI-powered platform helps you stay ahead of market movements with real-time analysis and alerts
+      </p>
+    </div>
+  );
+};
+
+// Individual step card with scroll animation
+const StepCard = ({ step, index }: { step: any, index: number }) => {
+  const { ref, isVisible } = useScrollAnimation(0.1);
+  
+  return (
+    <div 
+      ref={ref} 
+      className={`bg-card/60 backdrop-blur-sm p-8 rounded-xl border border-white/5 flex flex-col items-center text-center hover:bg-card/80 transition-all duration-500 hover:translate-y-[-8px] ${
+        isVisible 
+          ? 'opacity-100 translate-y-0' 
+          : 'opacity-0 translate-y-16'
+      }`}
+      style={{ transitionDelay: `${index * 150}ms` }}
+    >
+      <div className="p-4 rounded-full bg-primary/10 mb-6">
+        {step.icon}
+      </div>
+      <h3 className="text-xl font-semibold mb-3 text-foreground">{step.title}</h3>
+      <p className="text-muted-foreground">{step.description}</p>
     </div>
   );
 };

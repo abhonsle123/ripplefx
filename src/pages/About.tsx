@@ -3,6 +3,7 @@ import { ArrowRight, Users, LineChart, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const About = () => {
   const navigate = useNavigate();
@@ -26,6 +27,9 @@ const About = () => {
       transition: { duration: 0.5, ease: "easeOut" }
     }
   };
+  
+  // Section scroll animation
+  const { ref: sectionRef, isVisible: sectionVisible } = useScrollAnimation(0.1);
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90 relative overflow-hidden">
@@ -59,52 +63,34 @@ const About = () => {
             to capitalize on market trends.
           </motion.p>
           
-          <motion.div 
-            className="space-y-12 pt-8"
-            variants={itemVariants}
+          <div 
+            ref={sectionRef}
+            className={`space-y-12 pt-8 transition-all duration-1000 transform ${
+              sectionVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-20'
+            }`}
           >
             <div className="grid md:grid-cols-3 gap-8">
-              <motion.div 
-                className="p-8 rounded-xl bg-card/40 backdrop-blur-sm border border-accent/10 hover:scale-[1.03] transition-all duration-300 shadow-lg shadow-primary/5 group"
-                whileHover={{ y: -5 }}
-                variants={itemVariants}
-              >
-                <div className="p-3 bg-primary/10 rounded-lg inline-flex mb-4 group-hover:bg-primary/20 transition-all duration-300">
-                  <Users className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-foreground">Real-Time Insights</h3>
-                <p className="text-muted-foreground">
-                  Get instant notifications about market-moving events as they happen, keeping you ahead of the curve.
-                </p>
-              </motion.div>
+              {/* Feature cards with individual scroll animations */}
+              <FeatureCard
+                icon={<Users className="w-8 h-8 text-primary" />}
+                title="Real-Time Insights"
+                description="Get instant notifications about market-moving events as they happen, keeping you ahead of the curve."
+                delay={0}
+              />
               
-              <motion.div 
-                className="p-8 rounded-xl bg-card/40 backdrop-blur-sm border border-accent/10 hover:scale-[1.03] transition-all duration-300 shadow-lg shadow-primary/5 group"
-                whileHover={{ y: -5 }}
-                variants={itemVariants}
-              >
-                <div className="p-3 bg-primary/10 rounded-lg inline-flex mb-4 group-hover:bg-primary/20 transition-all duration-300">
-                  <LineChart className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-foreground">AI-Powered Analysis</h3>
-                <p className="text-muted-foreground">
-                  Our advanced AI algorithms analyze events and predict potential market impacts with high accuracy.
-                </p>
-              </motion.div>
+              <FeatureCard
+                icon={<LineChart className="w-8 h-8 text-primary" />}
+                title="AI-Powered Analysis"
+                description="Our advanced AI algorithms analyze events and predict potential market impacts with high accuracy."
+                delay={200}
+              />
               
-              <motion.div 
-                className="p-8 rounded-xl bg-card/40 backdrop-blur-sm border border-accent/10 hover:scale-[1.03] transition-all duration-300 shadow-lg shadow-primary/5 group"
-                whileHover={{ y: -5 }}
-                variants={itemVariants}
-              >
-                <div className="p-3 bg-primary/10 rounded-lg inline-flex mb-4 group-hover:bg-primary/20 transition-all duration-300">
-                  <Shield className="w-8 h-8 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold mb-3 text-foreground">Smart Alerts</h3>
-                <p className="text-muted-foreground">
-                  Customize your alert preferences and receive notifications that matter most to your investment strategy.
-                </p>
-              </motion.div>
+              <FeatureCard
+                icon={<Shield className="w-8 h-8 text-primary" />}
+                title="Smart Alerts"
+                description="Customize your alert preferences and receive notifications that matter most to your investment strategy."
+                delay={400}
+              />
             </div>
             
             <motion.div
@@ -120,9 +106,37 @@ const About = () => {
                 <ArrowRight className="ml-2 w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </Button>
             </motion.div>
-          </motion.div>
+          </div>
         </motion.div>
       </div>
+    </div>
+  );
+};
+
+// Feature card with scroll animation
+const FeatureCard = ({ icon, title, description, delay }: { 
+  icon: React.ReactNode,
+  title: string,
+  description: string,
+  delay: number
+}) => {
+  const { ref, isVisible } = useScrollAnimation(0.1);
+  
+  return (
+    <div 
+      ref={ref} 
+      className={`p-8 rounded-xl bg-card/40 backdrop-blur-sm border border-accent/10 hover:scale-[1.03] transition-all duration-700 transform shadow-lg shadow-primary/5 group ${
+        isVisible 
+          ? 'opacity-100 translate-y-0' 
+          : 'opacity-0 translate-y-16'
+      }`}
+      style={{ transitionDelay: `${delay}ms` }}
+    >
+      <div className="p-3 bg-primary/10 rounded-lg inline-flex mb-4 group-hover:bg-primary/20 transition-all duration-300">
+        {icon}
+      </div>
+      <h3 className="text-xl font-semibold mb-3 text-foreground">{title}</h3>
+      <p className="text-muted-foreground">{description}</p>
     </div>
   );
 };

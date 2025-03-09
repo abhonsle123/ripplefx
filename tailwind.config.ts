@@ -75,6 +75,23 @@ export default {
         shimmer: {
           '0%': { backgroundPosition: '200% 0' },
           '100%': { backgroundPosition: '-200% 0' }
+        },
+        // New animations for scroll effects
+        fadeInUp: {
+          '0%': { opacity: '0', transform: 'translateY(30px)' },
+          '100%': { opacity: '1', transform: 'translateY(0)' }
+        },
+        scaleIn: {
+          '0%': { opacity: '0', transform: 'scale(0.95)' },
+          '100%': { opacity: '1', transform: 'scale(1)' }
+        },
+        revealLeft: {
+          '0%': { transform: 'translateX(-30px)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' }
+        },
+        revealRight: {
+          '0%': { transform: 'translateX(30px)', opacity: '0' },
+          '100%': { transform: 'translateX(0)', opacity: '1' }
         }
       },
       animation: {
@@ -82,7 +99,12 @@ export default {
         slideUp: 'slideUp 0.8s ease-out forwards',
         gradientShift: 'gradientShift 15s ease infinite',
         floating: 'floating 3s ease-in-out infinite',
-        shimmer: 'shimmer 8s ease-in-out infinite'
+        shimmer: 'shimmer 8s ease-in-out infinite',
+        // New animations for scroll effects
+        fadeInUp: 'fadeInUp 0.8s ease-out forwards',
+        scaleIn: 'scaleIn 0.6s ease-out forwards',
+        revealLeft: 'revealLeft 0.6s ease-out forwards',
+        revealRight: 'revealRight 0.6s ease-out forwards'
       }
     }
   },

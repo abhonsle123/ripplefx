@@ -2,6 +2,7 @@
 import { Bell, ChartLine, Brain, Zap, Target, Shield, Gauge } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { useScrollAnimation } from "@/hooks/useScrollAnimation";
 
 const Features = () => {
   const navigate = useNavigate();
@@ -93,34 +94,46 @@ const Features = () => {
             </p>
           </motion.div>
 
-          <motion.div 
-            className="grid md:grid-cols-2 lg:grid-cols-3 gap-8"
-            variants={containerVariants}
-          >
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
             {features.map((feature, index) => (
-              <motion.div
+              <FeatureCard
                 key={feature.title}
-                className="p-8 rounded-xl bg-card/40 backdrop-blur-sm border border-accent/10 hover:scale-[1.03] transition-all duration-300 shadow-lg shadow-primary/5 group"
-                variants={itemVariants}
-                whileHover={{ y: -5 }}
-                custom={index}
-                transition={{ type: "spring", stiffness: 300 }}
-              >
-                <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-6 group-hover:shadow-md transition-all duration-300`}>
-                  <feature.icon className="w-7 h-7 text-primary" />
-                </div>
-                <h3 className="text-xl font-semibold text-foreground mb-4">
-                  {feature.title}
-                </h3>
-                <p className="text-muted-foreground">
-                  {feature.description}
-                </p>
-              </motion.div>
+                feature={feature}
+                index={index}
+              />
             ))}
-          </motion.div>
+          </div>
         </motion.div>
       </div>
     </div>
+  );
+};
+
+// Feature card with scroll animation
+const FeatureCard = ({ feature, index }: { feature: any, index: number }) => {
+  const { ref, isVisible } = useScrollAnimation(0.1);
+  
+  return (
+    <motion.div
+      ref={ref}
+      className={`p-8 rounded-xl bg-card/40 backdrop-blur-sm border border-accent/10 transform transition-all duration-700 shadow-lg shadow-primary/5 group hover:scale-[1.03] ${
+        isVisible 
+        ? 'opacity-100 translate-y-0' 
+        : 'opacity-0 translate-y-16'
+      }`}
+      style={{ transitionDelay: `${index * 100}ms` }}
+      custom={index}
+    >
+      <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-6 group-hover:shadow-md transition-all duration-300`}>
+        <feature.icon className="w-7 h-7 text-primary" />
+      </div>
+      <h3 className="text-xl font-semibold text-foreground mb-4">
+        {feature.title}
+      </h3>
+      <p className="text-muted-foreground">
+        {feature.description}
+      </p>
+    </motion.div>
   );
 };
 
