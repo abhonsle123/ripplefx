@@ -60,6 +60,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           impact_analysis: Json | null
+          is_public: boolean | null
           latitude: number | null
           longitude: number | null
           severity: Database["public"]["Enums"]["severity_level"]
@@ -67,6 +68,7 @@ export type Database = {
           source_url: string | null
           title: string
           updated_at: string | null
+          user_id: string | null
         }
         Insert: {
           affected_organizations?: Json | null
@@ -77,6 +79,7 @@ export type Database = {
           event_type: Database["public"]["Enums"]["event_type"]
           id?: string
           impact_analysis?: Json | null
+          is_public?: boolean | null
           latitude?: number | null
           longitude?: number | null
           severity: Database["public"]["Enums"]["severity_level"]
@@ -84,6 +87,7 @@ export type Database = {
           source_url?: string | null
           title: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Update: {
           affected_organizations?: Json | null
@@ -94,6 +98,7 @@ export type Database = {
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           impact_analysis?: Json | null
+          is_public?: boolean | null
           latitude?: number | null
           longitude?: number | null
           severity?: Database["public"]["Enums"]["severity_level"]
@@ -101,6 +106,7 @@ export type Database = {
           source_url?: string | null
           title?: string
           updated_at?: string | null
+          user_id?: string | null
         }
         Relationships: []
       }
