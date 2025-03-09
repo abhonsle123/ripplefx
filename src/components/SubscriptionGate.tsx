@@ -29,10 +29,10 @@ const SubscriptionGate: React.FC<SubscriptionGateProps> = ({
     pro: 2,
   };
   
-  // Force-upgrade specific email to premium for development
-  const hasAccess = 
-    userPlan === "premium" || userPlan === "pro" || 
-    planOrder[userPlan] >= planOrder[requiredPlan];
+  // Check if user has access to the required plan
+  // A user with premium plan should have access to premium features
+  // A user with pro plan should have access to both premium and pro features
+  const hasAccess = planOrder[userPlan] >= planOrder[requiredPlan];
 
   // Log subscription gate evaluation
   useEffect(() => {

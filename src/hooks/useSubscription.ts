@@ -51,9 +51,9 @@ export const useSubscription = (userId: string | null) => {
     },
     enabled: !!userId,
     // Reduce caching time to ensure subscription changes are picked up quickly
-    staleTime: 30 * 1000, // 30 seconds
+    staleTime: 5 * 1000, // 5 seconds
     refetchOnWindowFocus: true,
-    refetchInterval: 60 * 1000 // Refetch every minute to ensure subscription is current
+    refetchInterval: 30 * 1000 // Refetch every 30 seconds to ensure subscription is current
   });
 
   console.log("Current subscription plan:", plan);

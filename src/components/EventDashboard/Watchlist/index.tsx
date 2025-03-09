@@ -85,6 +85,7 @@ const Watchlist = ({
           analyzePriceMutation={analyzePriceMutation}
           onUnwatch={handleUnwatch}
           onInvest={handleInvest}
+          userId={userId}
         />
       ))}
     </div>
