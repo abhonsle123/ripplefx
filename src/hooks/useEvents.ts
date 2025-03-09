@@ -20,15 +20,34 @@ export const useEvents = (
       // First get the current user's session
       const { data: { session } } = await supabase.auth.getSession();
       
+      if (!session?.user.id) {
+        // If no user is logged in, return an empty array
+        return [];
+      }
+
+      // Check if the user has created any events
+      const { count, error: countError } = await supabase
+        .from("events")
+        .select("*", { count: 'exact', head: true })
+        .eq('user_id', session.user.id);
+
+      if (countError) {
+        console.error("Error checking user events:", countError);
+        return [];
+      }
+
+      // Determine if user has created any events
+      const hasCreatedEvents = count && count > 0;
+      
       // Break down the complex query into simpler parts
       let query = supabase.from("events").select("*");
 
-      // If user is logged in, show public events and their own events
-      if (session?.user.id) {
+      // For users who have created events, show public events and their own events
+      // For new users who haven't created events yet, only show their own events (which will be none)
+      if (hasCreatedEvents) {
         query = query.or(`is_public.eq.true,user_id.eq.${session.user.id}`);
       } else {
-        // If no user is logged in, only fetch public events
-        query = query.eq('is_public', true);
+        query = query.eq('user_id', session.user.id);
       }
 
       // Add order by at the end
