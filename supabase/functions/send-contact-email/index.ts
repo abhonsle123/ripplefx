@@ -35,8 +35,8 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields");
     }
 
-    // Send email to site owner
-    const emailResponse = await resend.emails.send({
+    // First, send the message to the site owner
+    const notificationEmail = await resend.emails.send({
       from: "Contact Form <onboarding@resend.dev>",
       to: "abhonsle@tmsacademy.org",
       subject: `New Contact Form Submission from ${name}`,
@@ -49,10 +49,10 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Email sent successfully:", emailResponse);
+    console.log("Notification email sent successfully:", notificationEmail);
 
-    // Also send a confirmation email to the submitter
-    await resend.emails.send({
+    // Then, send the confirmation email to the submitter
+    const confirmationEmail = await resend.emails.send({
       from: "RippleEffect <onboarding@resend.dev>",
       to: email,
       subject: "We've received your message",
@@ -65,9 +65,16 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
+    console.log("Confirmation email sent successfully:", confirmationEmail);
+
     // Return success response
     return new Response(
-      JSON.stringify({ success: true, message: "Email sent successfully" }),
+      JSON.stringify({
+        success: true,
+        message: "Emails sent successfully",
+        notificationId: notificationEmail.id,
+        confirmationId: confirmationEmail.id,
+      }),
       {
         status: 200,
         headers: {
