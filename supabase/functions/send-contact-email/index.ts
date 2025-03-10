@@ -38,7 +38,7 @@ const handler = async (req: Request): Promise<Response> => {
     // Send the message to the site owner
     const notificationResult = await resend.emails.send({
       from: "RippleEffect <onboarding@resend.dev>",
-      to: "abhonsle747@gmail.com", // Updated recipient email
+      to: "abhonsle747@gmail.com", 
       subject: `New Contact Form Submission from ${name}`,
       html: `
         <h1>New Contact Form Submission</h1>
@@ -51,10 +51,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Notification email sent:", notificationResult);
 
-    // Send the confirmation email to the submitter
+    // Ensure we're really sending the confirmation to the submitter's email
+    console.log(`Sending confirmation email to submitter: ${email}`);
+    
+    // Send the confirmation email to the submitter with explicit email address
     const confirmationResult = await resend.emails.send({
       from: "RippleEffect <onboarding@resend.dev>",
-      to: email,
+      to: email, // This should be the submitter's email from the form
       subject: "We've received your message",
       html: `
         <h1>Thank you for contacting us, ${name}!</h1>
@@ -65,7 +68,12 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Confirmation email sent:", confirmationResult);
+    console.log("Confirmation email result:", confirmationResult);
+
+    // If the confirmation email failed, log the error but don't fail the whole request
+    if (!confirmationResult.id) {
+      console.error("Failed to send confirmation email:", confirmationResult);
+    }
 
     // Return success response with detailed information
     return new Response(
@@ -73,7 +81,7 @@ const handler = async (req: Request): Promise<Response> => {
         success: true,
         message: "Emails sent successfully",
         notificationId: notificationResult.id,
-        confirmationId: confirmationResult.id,
+        confirmationId: confirmationResult?.id,
         details: {
           notification: notificationResult,
           confirmation: confirmationResult
