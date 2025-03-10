@@ -32,8 +32,7 @@ const Hero = () => {
               className="w-full sm:w-auto group bg-primary text-primary-foreground hover:bg-primary/90 animate-slideUp [animation-delay:400ms] transition-all duration-300 hover:translate-y-[-2px] hover:shadow-md" 
               size="lg"
               onClick={() => {
-                navigate("/auth");
-                localStorage.setItem("authMode", "signup");
+                navigate("/pricing?scrollTo=pricing");
               }}
             >
               Start Free Trial
