@@ -44,6 +44,38 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Check if user is on free trial
+    const { data: profileData, error: profileError } = await supabase
+      .from("profiles")
+      .select("free_trial_started_at, free_trial_ends_at, free_trial_used")
+      .eq("id", userId)
+      .single();
+
+    if (profileError) {
+      console.error("Error checking free trial status:", profileError);
+      return new Response(
+        JSON.stringify({ error: "Error checking free trial status" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If user is on an active free trial, they shouldn't be charged yet
+    const now = new Date();
+    const onFreeTrial = profileData.free_trial_started_at && 
+                     profileData.free_trial_ends_at && 
+                     new Date(profileData.free_trial_ends_at) > now &&
+                     !profileData.free_trial_used;
+
+    if (onFreeTrial) {
+      return new Response(
+        JSON.stringify({ 
+          message: "You are currently on a free trial. You'll be able to subscribe once your trial ends.",
+          freeTrialEndsAt: profileData.free_trial_ends_at
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Get or create customer
     const { data: existingCustomers } = await stripe.customers.search({
       query: `metadata['supabase_user_id']:'${userId}'`,

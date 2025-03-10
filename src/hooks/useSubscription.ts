@@ -4,10 +4,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { SubscriptionPlan, PLAN_FEATURES, SubscriptionFeatures } from "@/types/subscription";
 
 export const useSubscription = (userId: string | null) => {
-  const { data: plan = "free" as SubscriptionPlan, isLoading } = useQuery({
+  const { data: subscriptionData, isLoading } = useQuery({
     queryKey: ["subscription", userId],
-    queryFn: async (): Promise<SubscriptionPlan> => {
-      if (!userId) return "free";
+    queryFn: async () => {
+      if (!userId) return { plan: "free" as SubscriptionPlan, onFreeTrial: false, freeTrialEndsAt: null };
 
       console.log("Fetching subscription for user:", userId);
 
@@ -22,32 +22,58 @@ export const useSubscription = (userId: string | null) => {
       console.log("Subscription data from subscriptions table:", subscriptionData, subscriptionError);
 
       if (subscriptionData && !subscriptionError) {
-        return subscriptionData.plan as SubscriptionPlan;
+        return { 
+          plan: subscriptionData.plan as SubscriptionPlan,
+          onFreeTrial: false,
+          freeTrialEndsAt: null 
+        };
       }
 
-      // If no active subscription found, fall back to profile status
+      // If no active subscription found, check for free trial status
       const { data, error } = await supabase
         .from("profiles")
-        .select("subscription_status, email")
+        .select("subscription_status, email, free_trial_used, free_trial_started_at, free_trial_ends_at")
         .eq("id", userId)
         .single();
 
-      console.log("Profile subscription status:", data, error);
+      console.log("Profile subscription status and free trial info:", data, error);
 
       if (error || !data) {
         console.error("Error fetching subscription:", error);
-        return "free";
+        return { plan: "free" as SubscriptionPlan, onFreeTrial: false, freeTrialEndsAt: null };
       }
 
       // Development override for specific email
       if (data.email === "abhonsle747@gmail.com") {
         console.log("Development override: Setting premium plan for specific development user");
-        return "premium";
+        return { 
+          plan: "premium" as SubscriptionPlan,
+          onFreeTrial: false,
+          freeTrialEndsAt: null 
+        };
+      }
+
+      // Check if user is on free trial
+      const now = new Date();
+      const onFreeTrial = data.free_trial_started_at && data.free_trial_ends_at && 
+                         new Date(data.free_trial_ends_at) > now && !data.free_trial_used;
+      
+      // If on free trial, return premium plan
+      if (onFreeTrial) {
+        return { 
+          plan: "premium" as SubscriptionPlan, 
+          onFreeTrial: true,
+          freeTrialEndsAt: data.free_trial_ends_at
+        };
       }
 
       // Validate that the returned subscription is a valid SubscriptionPlan
       const subscription = data.subscription_status as SubscriptionPlan;
-      return ["free", "premium", "pro"].includes(subscription) ? subscription : "free";
+      return { 
+        plan: ["free", "premium", "pro"].includes(subscription) ? subscription : "free",
+        onFreeTrial: false,
+        freeTrialEndsAt: null
+      };
     },
     enabled: !!userId,
     // Reduce caching time to ensure subscription changes are picked up quickly
@@ -56,7 +82,11 @@ export const useSubscription = (userId: string | null) => {
     refetchInterval: 30 * 1000 // Refetch every 30 seconds to ensure subscription is current
   });
 
-  console.log("Current subscription plan:", plan);
+  const plan = subscriptionData?.plan || "free";
+  const onFreeTrial = subscriptionData?.onFreeTrial || false;
+  const freeTrialEndsAt = subscriptionData?.freeTrialEndsAt;
+
+  console.log("Current subscription plan:", plan, "On free trial:", onFreeTrial);
 
   // Get the features available for the current plan
   const features = plan ? PLAN_FEATURES[plan] : PLAN_FEATURES.free;
@@ -78,5 +108,7 @@ export const useSubscription = (userId: string | null) => {
     features,
     hasFeature,
     canAddToWatchlist,
+    onFreeTrial,
+    freeTrialEndsAt
   };
 };

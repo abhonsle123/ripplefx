@@ -71,6 +71,19 @@ serve(async (req) => {
           console.error("Error updating subscription in database:", error);
         }
 
+        // Mark free trial as used if they're signing up after a trial
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            free_trial_used: true,
+          })
+          .eq("id", userId)
+          .is("free_trial_started_at", "not.null");
+
+        if (profileError) {
+          console.error("Error updating free trial status:", profileError);
+        }
+
         break;
       }
 

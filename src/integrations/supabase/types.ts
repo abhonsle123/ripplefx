@@ -147,6 +147,9 @@ export type Database = {
           avatar_url: string | null
           created_at: string
           email: string | null
+          free_trial_ends_at: string | null
+          free_trial_started_at: string | null
+          free_trial_used: boolean | null
           full_name: string | null
           id: string
           preferences: Json | null
@@ -160,6 +163,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           email?: string | null
+          free_trial_ends_at?: string | null
+          free_trial_started_at?: string | null
+          free_trial_used?: boolean | null
           full_name?: string | null
           id: string
           preferences?: Json | null
@@ -173,6 +179,9 @@ export type Database = {
           avatar_url?: string | null
           created_at?: string
           email?: string | null
+          free_trial_ends_at?: string | null
+          free_trial_started_at?: string | null
+          free_trial_used?: boolean | null
           full_name?: string | null
           id?: string
           preferences?: Json | null

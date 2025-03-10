@@ -49,6 +49,48 @@ const PricingCard = ({
         return;
       }
 
+      if (planId === "premium") {
+        // Check if the user is eligible for a free trial
+        const { data: profileData, error: profileError } = await supabase
+          .from("profiles")
+          .select("free_trial_used, free_trial_started_at")
+          .eq("id", session.user.id)
+          .single();
+
+        if (profileError) {
+          console.error("Error checking free trial eligibility:", profileError);
+          throw new Error("Unable to check free trial eligibility");
+        }
+
+        // If user hasn't used free trial yet, offer it
+        if (!profileData.free_trial_used && !profileData.free_trial_started_at) {
+          // Ask user if they want to start free trial
+          const startTrial = window.confirm(
+            "Would you like to start your 7-day free trial of the Premium plan?"
+          );
+
+          if (startTrial) {
+            // Update the user's profile to start the free trial
+            const now = new Date().toISOString();
+            const { error: updateError } = await supabase
+              .from("profiles")
+              .update({
+                free_trial_started_at: now,
+              })
+              .eq("id", session.user.id);
+
+            if (updateError) {
+              console.error("Error starting free trial:", updateError);
+              throw new Error("Unable to start free trial");
+            }
+
+            toast.success("Your 7-day free trial has started! Enjoy premium features.");
+            navigate('/dashboard');
+            return;
+          }
+        }
+      }
+
       // Create checkout session for paid plans
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
         body: { plan: planId, userId: session.user.id },
@@ -94,6 +136,9 @@ const PricingCard = ({
         <h3 className="text-xl font-semibold mb-2">{title}</h3>
         <p className="text-4xl font-bold mb-2">{price}</p>
         <p className="text-muted-foreground">{description}</p>
+        {planId === "premium" && (
+          <p className="mt-2 text-sm text-primary font-medium">Try free for 7 days!</p>
+        )}
       </div>
       <ul className="space-y-4 mb-8">
         {features.map((feature, index) => (
@@ -117,7 +162,9 @@ const PricingCard = ({
           ? "Processing..." 
           : disabled 
             ? "Coming Soon" 
-            : "Get Started"}
+            : planId === "premium" 
+              ? "Start Free Trial" 
+              : "Get Started"}
       </Button>
     </div>
   );

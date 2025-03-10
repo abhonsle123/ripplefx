@@ -11,6 +11,7 @@ interface SubscriptionGateProps {
   featureName: string;
   description?: string;
   children: React.ReactNode;
+  onFreeTrial?: boolean;
 }
 
 const SubscriptionGate: React.FC<SubscriptionGateProps> = ({
@@ -19,6 +20,7 @@ const SubscriptionGate: React.FC<SubscriptionGateProps> = ({
   featureName,
   description,
   children,
+  onFreeTrial = false,
 }) => {
   const navigate = useNavigate();
   
@@ -37,9 +39,9 @@ const SubscriptionGate: React.FC<SubscriptionGateProps> = ({
   // Log subscription gate evaluation
   useEffect(() => {
     console.log(
-      `SubscriptionGate - Feature: ${featureName}, Required plan: ${requiredPlan}, User plan: ${userPlan}, Has access: ${hasAccess}`
+      `SubscriptionGate - Feature: ${featureName}, Required plan: ${requiredPlan}, User plan: ${userPlan}, Has access: ${hasAccess}, On free trial: ${onFreeTrial}`
     );
-  }, [featureName, requiredPlan, userPlan, hasAccess]);
+  }, [featureName, requiredPlan, userPlan, hasAccess, onFreeTrial]);
 
   if (hasAccess) {
     return <>{children}</>;
@@ -56,7 +58,7 @@ const SubscriptionGate: React.FC<SubscriptionGateProps> = ({
         onClick={() => navigate("/pricing")} 
         className="mt-2"
       >
-        Upgrade Plan
+        {onFreeTrial ? "Start Free Trial" : "Upgrade Plan"}
         <ArrowRight className="ml-2 h-4 w-4" />
       </Button>
     </div>

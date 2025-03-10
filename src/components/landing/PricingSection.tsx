@@ -26,6 +26,7 @@ const PricingSection = () => {
         "AI-powered stock analysis",
         "SMS & Email alerts",
         "Priority support",
+        "7-day free trial available",
       ],
       recommended: true,
       planId: "premium" as const,
@@ -55,9 +56,12 @@ const PricingSection = () => {
         <div className="absolute bottom-0 right-0 w-60 h-60 bg-primary/5 rounded-full blur-3xl"></div>
       </div>
       
-      <h2 className="text-3xl font-bold text-center mb-16 text-foreground relative">
+      <h2 className="text-3xl font-bold text-center mb-2 text-foreground relative">
         Choose Your <span className="text-primary">Plan</span>
       </h2>
+      <p className="text-center text-muted-foreground mb-16 max-w-xl mx-auto">
+        Start with a <span className="font-semibold text-primary">7-day free trial</span> of our Premium plan – no credit card required.
+      </p>
       <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
         {plans.map((plan, index) => (
           <div

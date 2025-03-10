@@ -30,8 +30,8 @@ const WatchCardHeader = ({
   onInvest,
   isInvesting
 }: WatchCardHeaderProps) => {
-  const { plan, hasFeature } = useSubscription(userId || null);
-  console.log("WatchCardHeader - Current user plan:", plan, "userId:", userId);
+  const { plan, hasFeature, onFreeTrial } = useSubscription(userId || null);
+  console.log("WatchCardHeader - Current user plan:", plan, "userId:", userId, "onFreeTrial:", onFreeTrial);
 
   return (
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -50,6 +50,7 @@ const WatchCardHeader = ({
             userPlan={plan}
             featureName="Investment"
             description="Upgrade to Premium or Pro to invest in stocks directly."
+            onFreeTrial={onFreeTrial}
           >
             <Button
               variant="outline"
@@ -68,6 +69,7 @@ const WatchCardHeader = ({
           userPlan={plan}
           featureName="AI Analysis"
           description="Upgrade to Premium or Pro to refresh AI analysis."
+          onFreeTrial={onFreeTrial}
         >
           <Button
             variant="ghost"
