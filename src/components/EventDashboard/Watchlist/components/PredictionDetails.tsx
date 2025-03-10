@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Badge } from "@/components/ui/badge";
 
@@ -13,13 +12,8 @@ const PredictionDetails = ({
   priceChangePercentage, 
   confidenceScore 
 }: PredictionDetailsProps) => {
-  // Determine text color based on price change direction
-  const priceChangeColor = priceChangePercentage
-    ? priceChangePercentage > 0
-      ? 'text-green-600'
-      : 'text-red-600'
-    : 'text-muted-foreground';
-
+  // Remove the old priceChangeColor logic since we're using white text
+  
   // Determine confidence level text
   const getConfidenceLevel = (score: number | null) => {
     if (score === null) return 'Unknown';
@@ -48,7 +42,7 @@ const PredictionDetails = ({
             <span className="text-sm font-medium mr-2">Expected Price Change:</span>
             <Badge 
               variant={priceChangePercentage > 0 ? "default" : "destructive"} 
-              className={`text-xs font-bold ${priceChangeColor}`}
+              className="text-xs font-bold text-white"
             >
               {priceChangePercentage > 0 ? '+' : ''}{Math.abs(priceChangePercentage).toFixed(2)}%
             </Badge>
