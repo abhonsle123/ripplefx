@@ -1,4 +1,3 @@
-
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useEffect, useState } from "react";
@@ -35,8 +34,18 @@ const Navigation = () => {
   }, []);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/auth");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Error signing out:", error.message);
+        return;
+      }
+      // Clear user state and redirect to auth page
+      setUser(null);
+      navigate("/auth");
+    } catch (error) {
+      console.error("Unexpected error during sign out:", error);
+    }
   };
   
   const isActive = (path: string) => {
