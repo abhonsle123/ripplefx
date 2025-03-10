@@ -222,7 +222,7 @@ const Profile = () => {
         return (
           <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-md">
             <h3 className="text-lg font-semibold text-green-700 flex items-center">
-              <Badge variant="success" className="mr-2 bg-green-500">Active</Badge>
+              <Badge variant="default" className="mr-2 bg-green-500">Active</Badge>
               Premium Free Trial
             </h3>
             <p className="text-sm text-green-600 mt-1">
