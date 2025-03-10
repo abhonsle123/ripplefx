@@ -35,10 +35,10 @@ const handler = async (req: Request): Promise<Response> => {
       throw new Error("Missing required fields");
     }
 
-    // First, send the message to the site owner
-    const notificationEmail = await resend.emails.send({
-      from: "Contact Form <onboarding@resend.dev>",
-      to: "abhonsle@tmsacademy.org",
+    // Send the message to the site owner
+    const notificationResult = await resend.emails.send({
+      from: "RippleEffect <onboarding@resend.dev>",
+      to: "abhonsle747@gmail.com", // Updated recipient email
       subject: `New Contact Form Submission from ${name}`,
       html: `
         <h1>New Contact Form Submission</h1>
@@ -49,10 +49,10 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Notification email sent successfully:", notificationEmail);
+    console.log("Notification email sent:", notificationResult);
 
-    // Then, send the confirmation email to the submitter
-    const confirmationEmail = await resend.emails.send({
+    // Send the confirmation email to the submitter
+    const confirmationResult = await resend.emails.send({
       from: "RippleEffect <onboarding@resend.dev>",
       to: email,
       subject: "We've received your message",
@@ -65,15 +65,19 @@ const handler = async (req: Request): Promise<Response> => {
       `,
     });
 
-    console.log("Confirmation email sent successfully:", confirmationEmail);
+    console.log("Confirmation email sent:", confirmationResult);
 
-    // Return success response
+    // Return success response with detailed information
     return new Response(
       JSON.stringify({
         success: true,
         message: "Emails sent successfully",
-        notificationId: notificationEmail.id,
-        confirmationId: confirmationEmail.id,
+        notificationId: notificationResult.id,
+        confirmationId: confirmationResult.id,
+        details: {
+          notification: notificationResult,
+          confirmation: confirmationResult
+        }
       }),
       {
         status: 200,
