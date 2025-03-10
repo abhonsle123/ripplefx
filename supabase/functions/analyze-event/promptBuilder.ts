@@ -35,6 +35,8 @@ export function buildPrompt(event: any): string {
        - Expected duration of impact
        - Geographic proximity to key financial/industrial centers
        - Immediate and secondary effects on business operations
+       - Historical precedents of similar events (e.g., natural disasters, geopolitical conflicts)
+       - Timing relative to market hours and trading days
 
     2. Sector & Industry Analysis:
        - Direct and indirect industry exposure
@@ -42,6 +44,8 @@ export function buildPrompt(event: any): string {
        - Supply chain vulnerabilities and dependencies
        - Competitive dynamics within affected sectors
        - Regulatory implications and compliance requirements
+       - Sector volatility metrics and historical performance
+       - Cross-sector correlations during market stress
 
     3. Market & Financial Data:
        - Stock volatility and beta values
@@ -50,6 +54,9 @@ export function buildPrompt(event: any): string {
        - Short interest levels and implications
        - Recent earnings reports and guidance
        - Technical analysis indicators including moving averages and support/resistance levels
+       - Market breadth indices and sector rotation patterns
+       - Options market implied volatility
+       - Yield curve dynamics and credit spread indicators
 
     4. Macroeconomic & Sentiment Factors:
        - News and social media sentiment analysis
@@ -58,6 +65,9 @@ export function buildPrompt(event: any): string {
        - Investor behavior patterns during similar events
        - Institutional money flows
        - Market risk appetite indicators
+       - Safe haven asset movements (gold, Treasury bonds, etc.)
+       - Currency market reactions and forex implications
+       - VIX and other fear gauge metrics
 
     5. Company-Specific Analysis:
        - Revenue exposure to affected regions/sectors
@@ -66,6 +76,18 @@ export function buildPrompt(event: any): string {
        - Market position and competitive advantages
        - Historical stock performance during similar events
        - Pending corporate events or announcements
+       - Executive leadership statements and crisis management history
+       - Hedging strategies and risk management practices
+       - Revenue diversification and business segment concentration
+
+    6. Financial Market Impact Benchmarks:
+       - Average sector drawdown during similar historical events
+       - Typical recovery timeline for affected industries
+       - Expected volatility increase patterns
+       - Correlation changes between asset classes during crisis events
+       - Liquidity contraction metrics in similar scenarios
+       - Mean reversion tendencies post-event
+       - Institutional rebalancing effects
 
     IMPORTANT REQUIREMENTS FOR CONFIDENCE SCORES:
     - Assign confidence scores based on quality of available data and historical precedents
@@ -127,5 +149,9 @@ export function buildPrompt(event: any): string {
     - Account for upcoming earnings or corporate events
     - Assess technical analysis indicators
     - Factor in institutional positioning
-    - Estimate realistic price change magnitudes based on event severity and company exposure`;
+    - Estimate realistic price change magnitudes based on event severity and company exposure
+    - For natural disasters: prioritize insurance, construction, utilities, and emergency services sectors
+    - For economic events: focus on financial institutions, cyclical stocks, and interest-rate sensitive sectors
+    - For geopolitical events: analyze defense contractors, energy companies, and regional exposure
+    - For technological disruptions: evaluate direct competitors and supply chain participants`;
 }
