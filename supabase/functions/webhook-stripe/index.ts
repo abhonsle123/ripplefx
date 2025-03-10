@@ -46,6 +46,7 @@ serve(async (req) => {
         const planName = session.metadata?.plan;
         const customerId = session.customer;
         const subscriptionId = session.subscription;
+        const isFreeTrial = session.metadata?.is_free_trial === "true";
 
         if (!userId || !planName || !customerId || !subscriptionId) {
           console.error("Missing required metadata in checkout session");
@@ -71,19 +72,55 @@ serve(async (req) => {
           console.error("Error updating subscription in database:", error);
         }
 
-        // Mark free trial as used if they're signing up after a trial
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({
-            free_trial_used: true,
-          })
-          .eq("id", userId)
-          .is("free_trial_started_at", "not.null");
+        // Mark free trial as used if they're signing up with a trial
+        if (isFreeTrial) {
+          const { error: profileError } = await supabase
+            .from("profiles")
+            .update({
+              free_trial_used: true,
+            })
+            .eq("id", userId);
 
-        if (profileError) {
-          console.error("Error updating free trial status:", profileError);
+          if (profileError) {
+            console.error("Error updating free trial status:", profileError);
+          }
         }
 
+        break;
+      }
+
+      case "customer.subscription.created": {
+        const subscription = event.data.object;
+        const metadata = subscription.metadata || {};
+        const userId = metadata.supabase_user_id;
+        
+        if (!userId) {
+          console.error("Missing supabase_user_id in subscription metadata");
+          break;
+        }
+        
+        // Check if this is a trial subscription
+        const status = subscription.status;
+        const hasTrialEnd = subscription.trial_end && subscription.trial_end > Math.floor(Date.now() / 1000);
+        
+        if (status === 'trialing' && hasTrialEnd) {
+          console.log(`User ${userId} started a subscription trial`);
+          
+          // Update profile to mark free trial as started and used
+          const { error } = await supabase
+            .from("profiles")
+            .update({
+              free_trial_started_at: new Date().toISOString(),
+              free_trial_used: true,
+              free_trial_ends_at: new Date(subscription.trial_end * 1000).toISOString(),
+            })
+            .eq("id", userId);
+            
+          if (error) {
+            console.error("Error updating free trial status:", error);
+          }
+        }
+        
         break;
       }
 
@@ -114,6 +151,12 @@ serve(async (req) => {
 
         if (error) {
           console.error("Error updating subscription status:", error);
+        }
+
+        // If transitioning from trial to active, update free trial info
+        if (subscription.status === 'active' && subscription.trial_end && 
+            subscription.trial_end < Math.floor(Date.now() / 1000)) {
+          console.log(`User ${subData.user_id} trial has ended and subscription is now active`);
         }
 
         break;
@@ -148,6 +191,21 @@ serve(async (req) => {
           console.error("Error updating subscription status:", error);
         }
 
+        break;
+      }
+
+      case "invoice.payment_succeeded": {
+        const invoice = event.data.object;
+        // If this is for a subscription and the subscription was previously trialing,
+        // it means the trial has converted to a paid subscription
+        if (invoice.subscription && invoice.billing_reason === 'subscription_cycle') {
+          const subscription = await stripe.subscriptions.retrieve(invoice.subscription);
+          
+          // If the subscription was on trial before (checking metadata)
+          if (subscription.metadata && subscription.metadata.had_trial === 'true') {
+            console.log(`Trial has converted to paid subscription for ${subscription.id}`);
+          }
+        }
         break;
       }
     }

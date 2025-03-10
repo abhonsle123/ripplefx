@@ -49,6 +49,7 @@ const PricingCard = ({
         return;
       }
 
+      // For premium plan, handle start trial or subscribe
       if (planId === "premium") {
         // Check if the user is eligible for a free trial
         const { data: profileData, error: profileError } = await supabase
@@ -62,38 +63,48 @@ const PricingCard = ({
           throw new Error("Unable to check free trial eligibility");
         }
 
-        // If user hasn't used free trial yet, offer it
+        // If user hasn't used free trial yet, start with free trial
         if (!profileData.free_trial_used && !profileData.free_trial_started_at) {
           // Ask user if they want to start free trial
           const startTrial = window.confirm(
-            "Would you like to start your 7-day free trial of the Premium plan?"
+            "Would you like to start your 7-day free trial of the Premium plan? Your payment method will be charged automatically after the trial period unless you cancel."
           );
 
           if (startTrial) {
-            // Update the user's profile to start the free trial
-            const now = new Date().toISOString();
-            const { error: updateError } = await supabase
-              .from("profiles")
-              .update({
-                free_trial_started_at: now,
-              })
-              .eq("id", session.user.id);
+            // Create checkout session with trial flag
+            const { data, error } = await supabase.functions.invoke("create-checkout-session", {
+              body: { 
+                plan: planId, 
+                userId: session.user.id,
+                startFreeTrial: true
+              },
+            });
 
-            if (updateError) {
-              console.error("Error starting free trial:", updateError);
-              throw new Error("Unable to start free trial");
+            if (error) {
+              throw error;
             }
 
-            toast.success("Your 7-day free trial has started! Enjoy premium features.");
-            navigate('/dashboard');
+            // Redirect to Stripe Checkout
+            if (data?.url) {
+              window.location.href = data.url;
+              return;
+            } else {
+              throw new Error("No checkout URL returned");
+            }
+          } else {
+            setIsLoading(false);
             return;
           }
         }
       }
 
-      // Create checkout session for paid plans
+      // Create regular checkout session (no trial)
       const { data, error } = await supabase.functions.invoke("create-checkout-session", {
-        body: { plan: planId, userId: session.user.id },
+        body: { 
+          plan: planId, 
+          userId: session.user.id,
+          startFreeTrial: false
+        },
       });
 
       if (error) {

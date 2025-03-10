@@ -22,7 +22,7 @@ serve(async (req) => {
   }
 
   try {
-    const { plan, userId } = await req.json();
+    const { plan, userId, startFreeTrial } = await req.json();
     
     // Validate plan
     if (!["premium", "pro"].includes(plan)) {
@@ -43,38 +43,6 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
     const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Check if user is on free trial
-    const { data: profileData, error: profileError } = await supabase
-      .from("profiles")
-      .select("free_trial_started_at, free_trial_ends_at, free_trial_used")
-      .eq("id", userId)
-      .single();
-
-    if (profileError) {
-      console.error("Error checking free trial status:", profileError);
-      return new Response(
-        JSON.stringify({ error: "Error checking free trial status" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // If user is on an active free trial, they shouldn't be charged yet
-    const now = new Date();
-    const onFreeTrial = profileData.free_trial_started_at && 
-                     profileData.free_trial_ends_at && 
-                     new Date(profileData.free_trial_ends_at) > now &&
-                     !profileData.free_trial_used;
-
-    if (onFreeTrial) {
-      return new Response(
-        JSON.stringify({ 
-          message: "You are currently on a free trial. You'll be able to subscribe once your trial ends.",
-          freeTrialEndsAt: profileData.free_trial_ends_at
-        }),
-        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
 
     // Get or create customer
     const { data: existingCustomers } = await stripe.customers.search({
@@ -139,8 +107,8 @@ serve(async (req) => {
     }
 
     console.log(`Creating checkout session for plan: ${plan}, price ID: ${priceId}`);
-
-    // Create checkout session
+    
+    // Create checkout session with trial period
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       payment_method_types: ["card"],
@@ -153,11 +121,26 @@ serve(async (req) => {
       mode: "subscription",
       success_url: `${siteUrl}/dashboard?success=true`,
       cancel_url: `${siteUrl}/?canceled=true`,
+      subscription_data: startFreeTrial ? {
+        trial_period_days: 7,
+      } : undefined,
       metadata: {
         supabase_user_id: userId,
         plan: plan,
+        is_free_trial: startFreeTrial ? "true" : "false",
       },
     });
+
+    // If starting free trial, update free trial status in the database
+    if (startFreeTrial) {
+      const now = new Date().toISOString();
+      await supabase
+        .from("profiles")
+        .update({
+          free_trial_started_at: now,
+        })
+        .eq("id", userId);
+    }
 
     return new Response(
       JSON.stringify({ url: session.url }),

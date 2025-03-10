@@ -31,6 +31,9 @@ export const FreeTrialStatus = ({ status }: FreeTrialStatusProps) => {
           <p className="text-sm text-green-600 mt-1">
             Your free trial ends {formatDistanceToNow(endDate, { addSuffix: true })}
           </p>
+          <p className="text-xs text-green-600 mt-1">
+            Your payment method will be automatically charged when the trial ends unless you cancel.
+          </p>
         </div>
       );
     } else {
@@ -41,7 +44,7 @@ export const FreeTrialStatus = ({ status }: FreeTrialStatusProps) => {
             Free Trial
           </h3>
           <p className="text-sm text-gray-600 mt-1">
-            Your free trial has ended. Upgrade to Premium to continue enjoying premium features.
+            Your free trial has ended. If you provided payment information, your subscription has been activated.
           </p>
           <Button 
             variant="outline" 
@@ -62,7 +65,7 @@ export const FreeTrialStatus = ({ status }: FreeTrialStatusProps) => {
           Free Trial
         </h3>
         <p className="text-sm text-gray-600 mt-1">
-          You've already used your free trial. Upgrade to Premium to enjoy premium features.
+          You've already used your free trial. Check your subscription status or upgrade to Premium to enjoy premium features.
         </p>
         <Button 
           variant="outline" 
@@ -84,6 +87,9 @@ export const FreeTrialStatus = ({ status }: FreeTrialStatusProps) => {
       </h3>
       <p className="text-sm text-blue-600 mt-1">
         You're eligible for a 7-day free trial of our Premium plan!
+      </p>
+      <p className="text-xs text-blue-600 mt-1">
+        Payment information will be required, but you won't be charged until your trial ends.
       </p>
       <Button 
         size="sm" 
