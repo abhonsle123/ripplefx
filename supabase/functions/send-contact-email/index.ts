@@ -51,50 +51,66 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log("Notification email sent:", notificationResult);
 
-    // Ensure we're really sending the confirmation to the submitter's email
-    console.log(`Sending confirmation email to submitter: ${email}`);
-    
-    // Send the confirmation email to the submitter with explicit email address
-    const confirmationResult = await resend.emails.send({
-      from: "RippleEffect <onboarding@resend.dev>",
-      to: email, // This should be the submitter's email from the form
-      subject: "We've received your message",
-      html: `
-        <h1>Thank you for contacting us, ${name}!</h1>
-        <p>We have received your message and will get back to you as soon as possible.</p>
-        <p>For your records, here's a copy of your message:</p>
-        <p>${message.replace(/\n/g, "<br/>")}</p>
-        <p>Best regards,<br>The RippleEffect Team</p>
-      `,
-    });
+    try {
+      // For domain verification reasons with Resend, we need to use a verified sender
+      // But we'll make it clear who the confirmation is for
+      console.log(`Attempting to send confirmation email on behalf of: ${email}`);
+      
+      const confirmationResult = await resend.emails.send({
+        from: "RippleEffect <onboarding@resend.dev>",
+        to: email, // Send to the submitter's email
+        reply_to: "abhonsle747@gmail.com", // Site owner's email for replies
+        subject: "We've received your message",
+        html: `
+          <h1>Thank you for contacting us, ${name}!</h1>
+          <p>We have received your message and will get back to you as soon as possible.</p>
+          <p>For your records, here's a copy of your message:</p>
+          <p>${message.replace(/\n/g, "<br/>")}</p>
+          <p>Best regards,<br>The RippleEffect Team</p>
+        `,
+      });
 
-    console.log("Confirmation email result:", confirmationResult);
+      console.log("Confirmation email status:", confirmationResult);
 
-    // If the confirmation email failed, log the error but don't fail the whole request
-    if (!confirmationResult.id) {
-      console.error("Failed to send confirmation email:", confirmationResult);
-    }
-
-    // Return success response with detailed information
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: "Emails sent successfully",
-        notificationId: notificationResult.id,
-        confirmationId: confirmationResult?.id,
-        details: {
-          notification: notificationResult,
-          confirmation: confirmationResult
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Emails sent successfully",
+          notificationId: notificationResult.id,
+          confirmationId: confirmationResult?.id,
+          details: {
+            notification: notificationResult,
+            confirmation: confirmationResult
+          }
+        }),
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
         }
-      }),
-      {
-        status: 200,
-        headers: {
-          "Content-Type": "application/json",
-          ...corsHeaders,
-        },
-      }
-    );
+      );
+    } catch (confirmError: any) {
+      console.error("Error sending confirmation email:", confirmError);
+      
+      // Return partial success - we at least got the notification email sent
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: "Notification sent but failed to send confirmation email",
+          error: confirmError.message,
+          notificationId: notificationResult.id,
+        }),
+        {
+          status: 207, // Partial success
+          headers: {
+            "Content-Type": "application/json",
+            ...corsHeaders,
+          },
+        }
+      );
+    }
   } catch (error: any) {
     console.error("Error sending email:", error);
     
