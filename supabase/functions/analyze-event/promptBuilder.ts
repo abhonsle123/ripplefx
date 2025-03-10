@@ -89,6 +89,25 @@ export function buildPrompt(event: any): string {
        - Mean reversion tendencies post-event
        - Institutional rebalancing effects
 
+    7. Historical Market Data Context:
+       - How similar events affected markets historically (last 5, 10, 20 years)
+       - Specific historical examples with percentage moves for relevant sectors/stocks
+       - Post-event recovery periods from comparable historical scenarios
+       - Statistical patterns in volatility spikes following similar events
+       - Sector rotation patterns observed after comparable historical events
+       - Market breadth changes during similar historical periods
+       - Typical trading volume changes observed in historical parallels
+       - Price action patterns (gaps, reversals, consolidations) in comparable events
+
+    8. Historical Market Analogs:
+       - Identify 2-3 most comparable historical market scenarios to this event
+       - Quantify market movements in those historical analogs (including duration and magnitude)
+       - Compare current market conditions to those during historical analogs
+       - Analyze differences in monetary policy, fiscal response, and investor sentiment
+       - Examine how market structure differences might affect outcomes
+       - Consider differences in sector weights and market concentration versus historical periods
+       - Evaluate the applicability of historical patterns to current market dynamics
+
     IMPORTANT REQUIREMENTS FOR CONFIDENCE SCORES:
     - Assign confidence scores based on quality of available data and historical precedents
     - Overall prediction score should reflect the cumulative confidence across all factors
@@ -153,5 +172,13 @@ export function buildPrompt(event: any): string {
     - For natural disasters: prioritize insurance, construction, utilities, and emergency services sectors
     - For economic events: focus on financial institutions, cyclical stocks, and interest-rate sensitive sectors
     - For geopolitical events: analyze defense contractors, energy companies, and regional exposure
-    - For technological disruptions: evaluate direct competitors and supply chain participants`;
+    - For technological disruptions: evaluate direct competitors and supply chain participants
+    
+    HISTORICAL MARKET REACTION GUIDELINES:
+    - Natural Disasters: Examine insurance carriers' stock movements following comparable events (e.g., Hurricane Katrina -15% sector impact)
+    - Geopolitical Conflicts: Analyze defense and energy stock reactions during similar tensions (e.g., Russia-Ukraine crisis +8% defense sector)
+    - Economic Policy Changes: Reference rate-sensitive stocks during similar policy shifts (e.g., 2013 Taper Tantrum -12% for REITs)
+    - Supply Chain Disruptions: Consider semiconductor stocks during prior shortages (e.g., 2021 chip shortage +45% for manufacturers)
+    - Health Crises: Review biotech/pharma performances during past outbreaks (e.g., COVID-19 +120% for vaccine makers)
+    - Regulatory Changes: Examine affected industries during similar regulatory shifts (e.g., 2022 Inflation Reduction Act +25% for clean energy)`;
 }
