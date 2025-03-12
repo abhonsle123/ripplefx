@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import type { EventType, SeverityLevel } from "@/types/event";
 import DashboardHeader from "@/components/EventDashboard/DashboardHeader";
@@ -19,7 +20,6 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [view, setView] = useState<"grid" | "watchlist">("grid");
   const [isCreating, setIsCreating] = useState(false);
-  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const { userId } = useAuthentication();
   const userPreferences = useUserPreferences(userId);
@@ -29,15 +29,14 @@ const Dashboard = () => {
     filteredEvents, 
     isLoading, 
     refreshEvents, 
+    isRefreshingManually,
     timeSinceLastRefresh 
   } = useEvents(eventType, severity, searchTerm);
   
   useRealtimeEvents();
   
   const refreshEventsCallback = useCallback(async () => {
-    setIsRefreshing(true);
     await refreshEvents();
-    setIsRefreshing(false);
   }, [refreshEvents]);
   
   useAutoRefresh(refreshEventsCallback, 120);
@@ -51,14 +50,12 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
-    if (!subscriptionLoading) {
+    if (!subscriptionLoading && plan && (plan === "premium" || plan === "pro")) {
       console.log("Dashboard - Current subscription plan:", plan, "for user:", userId);
-      if (plan === "premium" || plan === "pro") {
-        toast.success(`You are on the ${plan} plan`, {
-          id: "subscription-status",
-          duration: 3000
-        });
-      }
+      toast.success(`You are on the ${plan} plan`, {
+        id: "subscription-status",
+        duration: 3000
+      });
     }
   }, [plan, subscriptionLoading, userId]);
 
@@ -80,10 +77,10 @@ const Dashboard = () => {
         </div>
         <button 
           onClick={refreshEventsCallback} 
-          disabled={isRefreshing}
+          disabled={isRefreshingManually}
           className="text-xs text-primary hover:underline flex items-center gap-1"
         >
-          {isRefreshing ? (
+          {isRefreshingManually ? (
             <>
               <RefreshCw size={12} className="animate-spin" />
               <span>Refreshing...</span>

@@ -1,5 +1,5 @@
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -7,13 +7,20 @@ import type { Event } from "@/types/event";
 
 export const useRealtimeEvents = () => {
   const queryClient = useQueryClient();
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    let channel: RealtimeChannel;
-
+    let isSubscribed = true;
+    
     const setupRealtimeSubscription = async () => {
       try {
-        channel = supabase
+        // Clean up any existing subscription to prevent duplicates
+        if (channelRef.current) {
+          await supabase.removeChannel(channelRef.current);
+        }
+        
+        // Set up new subscription
+        const channel = supabase
           .channel("events-channel")
           .on(
             "postgres_changes",
@@ -23,6 +30,8 @@ export const useRealtimeEvents = () => {
               table: "events",
             },
             (payload) => {
+              if (!isSubscribed) return;
+              
               // Invalidate query to refresh the data
               queryClient.invalidateQueries({ queryKey: ["events"] });
               
@@ -34,9 +43,14 @@ export const useRealtimeEvents = () => {
             }
           )
           .subscribe((status) => {
-            console.log("Realtime subscription status:", status);
+            if (status === "SUBSCRIBED") {
+              console.log("Realtime subscription active");
+            } else {
+              console.log("Realtime subscription status:", status);
+            }
           });
           
+        channelRef.current = channel;
         console.log("Realtime events subscription set up successfully");
       } catch (error) {
         console.error("Error setting up realtime subscription:", error);
@@ -46,9 +60,11 @@ export const useRealtimeEvents = () => {
     setupRealtimeSubscription();
 
     return () => {
-      if (channel) {
+      isSubscribed = false;
+      if (channelRef.current) {
         console.log("Removing realtime subscription");
-        supabase.removeChannel(channel);
+        supabase.removeChannel(channelRef.current);
+        channelRef.current = null;
       }
     };
   }, [queryClient]);

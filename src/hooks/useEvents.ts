@@ -1,9 +1,9 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Event, EventType, SeverityLevel } from "@/types/event";
-import { useToast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 export const useEvents = (
   eventType: EventType | "ALL", 
@@ -11,8 +11,9 @@ export const useEvents = (
   searchTerm: string
 ) => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
+  const [isRefreshingManually, setIsRefreshingManually] = useState(false);
+  const errorNotificationShown = useRef(false);
 
   // Fetch events with improved error handling
   const { data: events = [], isLoading, refetch } = useQuery({
@@ -41,6 +42,9 @@ export const useEvents = (
           console.error("Error fetching events from database:", error);
           throw error;
         }
+        
+        // Reset error notification flag on successful fetch
+        errorNotificationShown.current = false;
         
         // Update last refreshed timestamp on successful fetch
         setLastRefreshed(new Date());
@@ -112,6 +116,12 @@ export const useEvents = (
   // Function to trigger event refresh with improved error handling
   const refreshEvents = async () => {
     try {
+      if (isRefreshingManually) {
+        // Prevent multiple simultaneous refreshes
+        return;
+      }
+      
+      setIsRefreshingManually(true);
       console.log("Starting manual refresh of events...");
       
       // First try to refetch events from the database
@@ -124,10 +134,15 @@ export const useEvents = (
       
       if (error) {
         console.error('Error invoking fetch-events:', error);
-        toast({
-          variant: "destructive",
-          description: "Failed to update events. Please try again later.",
-        });
+        // Only show error toast if we haven't shown one recently
+        if (!errorNotificationShown.current) {
+          toast({
+            variant: "destructive",
+            description: "Failed to update events. Please try again later.",
+          });
+          errorNotificationShown.current = true;
+        }
+        setIsRefreshingManually(false);
         return;
       }
 
@@ -139,14 +154,21 @@ export const useEvents = (
       
       // Update last refreshed timestamp
       setLastRefreshed(new Date());
+      errorNotificationShown.current = false;
       
       console.log("Manual refresh completed successfully");
     } catch (error) {
       console.error('Error in refreshEvents:', error);
-      toast({
-        variant: "destructive",
-        description: "Failed to refresh events. Please try again later.",
-      });
+      // Only show error toast if we haven't shown one recently
+      if (!errorNotificationShown.current) {
+        toast({
+          variant: "destructive",
+          description: "Failed to refresh events. Please try again later.",
+        });
+        errorNotificationShown.current = true;
+      }
+    } finally {
+      setIsRefreshingManually(false);
     }
   };
 
@@ -155,6 +177,7 @@ export const useEvents = (
     filteredEvents,
     isLoading,
     refreshEvents,
+    isRefreshingManually,
     lastRefreshed,
     timeSinceLastRefresh: getTimeSinceLastRefresh()
   };

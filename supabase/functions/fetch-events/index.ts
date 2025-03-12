@@ -34,15 +34,12 @@ serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     )
 
-    // Fetch news for US market
-    console.log("Fetching news for country: us");
-    
-    // Add proper logging and error handling for the news API calls
+    // Fetch news for US market (simplified implementation)
     try {
-      // Implement your news fetching logic here
-      // This function is currently a placeholder since the actual news fetching implementation is not shown
-      // We'll just return a success message
+      // In a real implementation, this would call an external API
+      // and insert the results into the database
       
+      // For now, we'll just return a success response
       const response = new Response(
         JSON.stringify({ 
           success: true,
