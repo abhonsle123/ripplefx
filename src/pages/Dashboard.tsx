@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import type { EventType, SeverityLevel } from "@/types/event";
 import DashboardHeader from "@/components/EventDashboard/DashboardHeader";
@@ -33,10 +32,8 @@ const Dashboard = () => {
     timeSinceLastRefresh 
   } = useEvents(eventType, severity, searchTerm);
   
-  // Set up realtime subscriptions for events
   useRealtimeEvents();
   
-  // Set up auto refresh for events every 2 minutes
   const refreshEventsCallback = useCallback(async () => {
     setIsRefreshing(true);
     await refreshEvents();
@@ -45,7 +42,14 @@ const Dashboard = () => {
   
   useAutoRefresh(refreshEventsCallback, 120);
 
-  // Log subscription status when it changes
+  useEffect(() => {
+    const fullPageRefreshInterval = setInterval(() => {
+      window.location.reload();
+    }, 120000); // 2 minutes in milliseconds
+    
+    return () => clearInterval(fullPageRefreshInterval);
+  }, []);
+
   useEffect(() => {
     if (!subscriptionLoading) {
       console.log("Dashboard - Current subscription plan:", plan, "for user:", userId);
@@ -65,7 +69,6 @@ const Dashboard = () => {
         onOpenChange={setIsCreating}
         view={view}
         onViewChange={(v) => {
-          // Allow all users to access the watchlist view
           setView(v);
         }}
       />
