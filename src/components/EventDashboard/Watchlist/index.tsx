@@ -23,7 +23,8 @@ const Watchlist = ({
     isLoading, 
     analyzePriceMutation, 
     handleUnwatch,
-    handleInvest
+    handleInvest,
+    hasBeenAnalyzed
   } = useWatchlist(userId);
 
   // Filter watches based on search term and other filters
@@ -86,6 +87,7 @@ const Watchlist = ({
           onUnwatch={handleUnwatch}
           onInvest={handleInvest}
           userId={userId}
+          isAnalyzed={hasBeenAnalyzed(watch.stock_prediction.id)}
         />
       ))}
     </div>

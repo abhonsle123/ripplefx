@@ -6,6 +6,7 @@ import { CardHeader, CardTitle } from "@/components/ui/card";
 import { useSubscription } from "@/hooks/useSubscription";
 import SubscriptionGate from "@/components/SubscriptionGate";
 import { UseMutationResult } from "@tanstack/react-query";
+import { toast } from "@/components/ui/use-toast";
 
 interface WatchCardHeaderProps {
   symbol: string;
@@ -17,6 +18,7 @@ interface WatchCardHeaderProps {
   userId: string | null;
   onInvest?: boolean;
   isInvesting: boolean;
+  isAnalyzed?: boolean;
 }
 
 const WatchCardHeader = ({
@@ -28,10 +30,25 @@ const WatchCardHeader = ({
   stockId,
   userId,
   onInvest,
-  isInvesting
+  isInvesting,
+  isAnalyzed = false
 }: WatchCardHeaderProps) => {
   const { plan, hasFeature, onFreeTrial } = useSubscription(userId || null);
   console.log("WatchCardHeader - Current user plan:", plan, "userId:", userId, "onFreeTrial:", onFreeTrial);
+
+  const handleAnalyzeClick = () => {
+    if (isAnalyzed) {
+      toast({
+        title: "Already Analyzed",
+        description: "This stock has already been analyzed and can only be analyzed once.",
+      });
+      return;
+    }
+
+    if (!analyzePriceMutation.isPending) {
+      analyzePriceMutation.mutate(stockId);
+    }
+  };
 
   return (
     <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -74,14 +91,16 @@ const WatchCardHeader = ({
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => {
-              if (!analyzePriceMutation.isPending) {
-                analyzePriceMutation.mutate(stockId);
-              }
-            }}
-            disabled={analyzePriceMutation.isPending}
-            className="hover:bg-blue-100 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
-            title={analyzePriceMutation.isPending ? "Analysis in progress..." : "Refresh analysis"}
+            onClick={handleAnalyzeClick}
+            disabled={analyzePriceMutation.isPending || isAnalyzed}
+            className={`hover:bg-blue-100 hover:text-blue-600 disabled:opacity-50 disabled:cursor-not-allowed ${isAnalyzed ? 'bg-gray-100' : ''}`}
+            title={
+              isAnalyzed 
+                ? "Analysis already performed" 
+                : analyzePriceMutation.isPending 
+                  ? "Analysis in progress..." 
+                  : "Refresh analysis"
+            }
           >
             <RefreshCw className={`h-4 w-4 ${analyzePriceMutation.isPending ? 'animate-spin' : ''}`} />
           </Button>

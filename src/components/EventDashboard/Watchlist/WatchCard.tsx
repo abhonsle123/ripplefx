@@ -17,9 +17,17 @@ interface WatchCardProps {
   onUnwatch: (watchId: string) => void;
   onInvest?: (watchId: string, amount: number) => Promise<void>;
   userId?: string | null;
+  isAnalyzed?: boolean;
 }
 
-const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest, userId }: WatchCardProps) => {
+const WatchCard = ({ 
+  watch, 
+  analyzePriceMutation, 
+  onUnwatch, 
+  onInvest, 
+  userId,
+  isAnalyzed = false
+}: WatchCardProps) => {
   const [showWatchOptions, setShowWatchOptions] = useState(false);
   const [showInvestDialog, setShowInvestDialog] = useState(false);
   const [isInvesting, setIsInvesting] = useState(false);
@@ -60,6 +68,7 @@ const WatchCard = ({ watch, analyzePriceMutation, onUnwatch, onInvest, userId }:
           userId={userId || null}
           onInvest={!!onInvest}
           isInvesting={isInvesting}
+          isAnalyzed={isAnalyzed}
         />
         
         <CardContent className="space-y-4">

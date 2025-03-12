@@ -3,6 +3,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/components/ui/use-toast";
 import { StockWatch } from "./types";
 import { useSubscription } from "@/hooks/useSubscription";
+import { useState } from "react";
 import { 
   fetchUserWatches, 
   unwatchStock, 
@@ -18,6 +19,7 @@ export const useWatchlist = (userId: string) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { canAddToWatchlist, plan } = useSubscription(userId);
+  const [analyzedStocks, setAnalyzedStocks] = useState<Set<string>>(new Set());
 
   const { data: watches = [], isLoading } = useQuery({
     queryKey: ["stock-watches", userId],
@@ -68,7 +70,21 @@ export const useWatchlist = (userId: string) => {
   };
 
   const analyzePriceMutation = useMutation({
-    mutationFn: (stockPredictionId: string) => analyzeStockPrice(stockPredictionId),
+    mutationFn: (stockPredictionId: string) => {
+      // Check if this stock has already been analyzed
+      if (analyzedStocks.has(stockPredictionId)) {
+        throw new Error("This stock has already been analyzed");
+      }
+      
+      // Mark as analyzed before the API call
+      setAnalyzedStocks(prev => {
+        const updated = new Set(prev);
+        updated.add(stockPredictionId);
+        return updated;
+      });
+      
+      return analyzeStockPrice(stockPredictionId);
+    },
     onMutate: (stockPredictionId) => {
       console.log('Starting mutation for prediction:', stockPredictionId);
       toast({
@@ -83,15 +99,41 @@ export const useWatchlist = (userId: string) => {
         description: "The stock price prediction has been updated.",
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       console.error('Error analyzing stock:', error);
-      toast({
-        title: "Error",
-        description: "Failed to analyze stock price. Please try again.",
-        variant: "destructive",
-      });
+      
+      // If the error is that the stock was already analyzed, show a specific message
+      if (error.message === "This stock has already been analyzed") {
+        toast({
+          title: "Already Analyzed",
+          description: "This stock has already been analyzed and can only be analyzed once.",
+          variant: "default",
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to analyze stock price. Please try again.",
+          variant: "destructive",
+        });
+        
+        // If it's a real error (not our "already analyzed" error), 
+        // remove the stock from analyzedStocks to allow retry
+        setAnalyzedStocks(prev => {
+          const stockId = [...analyzePriceMutation.variables].pop();
+          if (!stockId) return prev;
+          
+          const updated = new Set(prev);
+          updated.delete(stockId);
+          return updated;
+        });
+      }
     },
   });
+
+  // Check if a stock has been analyzed
+  const hasBeenAnalyzed = (stockPredictionId: string) => {
+    return analyzedStocks.has(stockPredictionId);
+  };
 
   const handleUnwatch = async (watchId: string) => {
     try {
@@ -159,5 +201,6 @@ export const useWatchlist = (userId: string) => {
     handleUnwatch,
     handleInvest,
     addToWatchlist,
+    hasBeenAnalyzed,
   };
 };
