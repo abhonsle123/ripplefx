@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -46,7 +45,7 @@ export const useEvents = (
         throw error;
       }
     },
-    refetchInterval: 120000, // Changed from 60000 to 120000 (2 minutes)
+    refetchInterval: 120000, // Ensure this is 2 minutes (120000ms)
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     meta: {
@@ -149,4 +148,3 @@ export const useEvents = (
     timeSinceLastRefresh: getTimeSinceLastRefresh()
   };
 };
-

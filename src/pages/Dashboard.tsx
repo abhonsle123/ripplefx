@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import type { EventType, SeverityLevel } from "@/types/event";
 import DashboardHeader from "@/components/EventDashboard/DashboardHeader";
