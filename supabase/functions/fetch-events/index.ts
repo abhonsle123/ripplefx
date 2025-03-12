@@ -59,7 +59,6 @@ serve(async (req) => {
   }
 
   try {
-    // Extract request data
     const body = await req.json().catch(e => {
       console.error("Error parsing JSON:", e);
       return { source: "unknown" };
@@ -75,7 +74,7 @@ serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     )
 
-    // Fetch news from News API
+    // Fetch news from News API with proper error handling
     const newsApiKey = Deno.env.get('NEWS_API_KEY');
     if (!newsApiKey) {
       throw new Error('NEWS_API_KEY not configured');
@@ -91,15 +90,53 @@ serve(async (req) => {
     );
 
     if (!newsResponse.ok) {
+      if (newsResponse.status === 429) {
+        console.error('News API rate limit exceeded');
+        return new Response(
+          JSON.stringify({
+            success: false,
+            error: 'Rate limit exceeded',
+            message: 'The News API rate limit has been reached. Please try again in a few minutes.'
+          }),
+          {
+            status: 429,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      
       throw new Error(`News API error: ${newsResponse.statusText}`);
     }
 
     const newsData = await newsResponse.json();
     console.log(`Fetched ${newsData.articles?.length || 0} articles from News API`);
 
+    if (!newsData.articles || newsData.articles.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'No new articles to process',
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    let createdCount = 0;
+    let skippedCount = 0;
+
     // Process each news article and create events
-    for (const article of newsData.articles || []) {
+    for (const article of newsData.articles) {
       try {
+        if (!article.title || !article.description) {
+          console.log('Skipping article with missing title or description');
+          skippedCount++;
+          continue;
+        }
+
         // Check if an event with this title already exists
         const { data: existingEvents } = await supabaseClient
           .from('events')
@@ -109,6 +146,7 @@ serve(async (req) => {
 
         if (existingEvents && existingEvents.length > 0) {
           console.log(`Event already exists for article: ${article.title}`);
+          skippedCount++;
           continue;
         }
 
@@ -131,12 +169,15 @@ serve(async (req) => {
 
         if (insertError) {
           console.error(`Error creating event for article: ${article.title}`, insertError);
+          skippedCount++;
           continue;
         }
 
+        createdCount++;
         console.log(`Created new event from article: ${article.title}`);
       } catch (error) {
         console.error('Error processing article:', error);
+        skippedCount++;
         continue;
       }
     }
@@ -144,7 +185,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true,
-        message: 'Events fetched and created successfully',
+        message: `Events processed successfully. Created: ${createdCount}, Skipped: ${skippedCount}`,
         timestamp: new Date().toISOString()
       }),
       { 
@@ -156,14 +197,17 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in fetch-events function:', error);
     
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const statusCode = errorMessage.includes('rate limit') ? 429 : 500;
+    
     return new Response(
       JSON.stringify({ 
         success: false,
-        error: 'Internal Server Error',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        error: statusCode === 429 ? 'Rate Limit Exceeded' : 'Internal Server Error',
+        message: errorMessage
       }),
       { 
-        status: 500,
+        status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       }
     )
