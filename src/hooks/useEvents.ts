@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -12,7 +13,7 @@ export const useEvents = (
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch events
+  // Fetch events with improved error handling
   const { data: events = [], isLoading, refetch } = useQuery({
     queryKey: ["events"],
     queryFn: async () => {
@@ -40,7 +41,7 @@ export const useEvents = (
           throw error;
         }
         
-        console.log(`Fetched ${data?.length || 0} events from database`);
+        console.log(`Successfully fetched ${data?.length || 0} events from database`);
         return data as Event[];
       } catch (error) {
         console.error("Error in queryFn:", error);
@@ -48,8 +49,8 @@ export const useEvents = (
       }
     },
     refetchInterval: 60000, // Refetch every minute
-    retry: 3, // Retry failed requests 3 times
-    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Exponential backoff
+    retry: 3,
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
   });
 
   // Filter events based on selected filters
@@ -84,17 +85,17 @@ export const useEvents = (
     });
   }, [events, eventType, severity, searchTerm]);
 
-  // Function to trigger event refresh
+  // Function to trigger event refresh with improved error handling
   const refreshEvents = async () => {
     try {
-      console.log("Manually refreshing events...");
+      console.log("Starting manual refresh of events...");
       
       // First try to refetch events from the database
       await refetch();
       
       // Then call our Supabase Edge Function to fetch new events from external APIs
       const { error } = await supabase.functions.invoke('fetch-events', {
-        body: { source: 'manual-refresh' },
+        body: { source: 'manual-refresh' }
       });
       
       if (error) {
@@ -106,6 +107,9 @@ export const useEvents = (
         });
         return;
       }
+
+      // Wait a moment for the database to update
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
       // Refetch the events after successful API fetch
       await queryClient.invalidateQueries({ queryKey: ["events"] });
@@ -114,8 +118,10 @@ export const useEvents = (
         title: "Events Updated",
         description: "The dashboard has been updated with the latest events",
       });
+      
+      console.log("Manual refresh completed successfully");
     } catch (error) {
-      console.error('Error fetching events:', error);
+      console.error('Error in refreshEvents:', error);
       toast({
         title: "Error Updating Events",
         description: "Failed to refresh events. Please try again later.",
