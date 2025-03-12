@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -118,4 +119,39 @@ export const useEvents = (
         console.error('Error invoking fetch-events:', error);
         toast.error("Failed to update events. Please try again later.", {
           id: "refresh-error",
+        });
+        setIsRefreshingManually(false);
+        refreshInProgress.current = false;
+        return;
+      }
 
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      await queryClient.invalidateQueries({ queryKey: ["events"] });
+      setLastRefreshed(new Date());
+      errorNotificationShown.current = false;
+      
+      console.log("Manual refresh completed successfully");
+      toast.success("Events updated successfully", {
+        id: "refresh-success",
+      });
+    } catch (error) {
+      console.error('Error in refreshEvents:', error);
+      toast.error("Failed to refresh events. Please try again later.", {
+        id: "refresh-error",
+      });
+    } finally {
+      setIsRefreshingManually(false);
+      refreshInProgress.current = false;
+    }
+  };
+
+  return {
+    events,
+    filteredEvents,
+    isLoading,
+    refreshEvents,
+    isRefreshingManually,
+    lastRefreshed,
+    timeSinceLastRefresh: getTimeSinceLastRefresh()
+  };
+};
