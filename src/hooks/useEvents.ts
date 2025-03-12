@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -96,7 +95,6 @@ export const useEvents = (
       // Then call our Supabase Edge Function to fetch new events from external APIs
       const { error } = await supabase.functions.invoke('fetch-events', {
         body: { source: 'manual-refresh' },
-        timeout: 30000 // Increase timeout to 30 seconds for API fetch operations
       });
       
       if (error) {
