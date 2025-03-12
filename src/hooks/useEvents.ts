@@ -54,9 +54,11 @@ export const useEvents = (
     refetchInterval: 60000, // Refetch every minute
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
-    onError: (error) => {
-      console.error("Query error:", error);
-      // We don't show toasts for automatic query errors to avoid spamming
+    meta: {
+      errorHandler: (error: any) => {
+        console.error("Query error:", error);
+        // We don't show toasts for automatic query errors to avoid spamming
+      }
     }
   });
 

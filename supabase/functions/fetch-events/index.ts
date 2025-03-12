@@ -19,8 +19,13 @@ serve(async (req) => {
 
   try {
     // Extract request data
-    const { source } = await req.json()
-    console.log(`Processing fetch-events request from source: ${source}`)
+    const body = await req.json().catch(e => {
+      console.error("Error parsing JSON:", e);
+      return { source: "unknown" };
+    });
+    
+    const source = body.source || "unknown";
+    console.log(`Processing fetch-events request from source: ${source}`);
 
     // Create Supabase client
     const supabaseClient = createClient(
@@ -30,7 +35,7 @@ serve(async (req) => {
     )
 
     // Fetch news for US market
-    console.log("Fetching news for country: us")
+    console.log("Fetching news for country: us");
     
     // Add proper logging and error handling for the news API calls
     try {
@@ -52,11 +57,11 @@ serve(async (req) => {
 
       return response
     } catch (error) {
-      console.error('Error fetching news:', error)
-      throw error
+      console.error('Error fetching news:', error);
+      throw error;
     }
   } catch (error) {
-    console.error('Error in fetch-events function:', error)
+    console.error('Error in fetch-events function:', error);
     
     return new Response(
       JSON.stringify({ 

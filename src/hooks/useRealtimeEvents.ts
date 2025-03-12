@@ -12,33 +12,42 @@ export const useRealtimeEvents = () => {
     let channel: RealtimeChannel;
 
     const setupRealtimeSubscription = async () => {
-      channel = supabase
-        .channel("events-channel")
-        .on(
-          "postgres_changes",
-          {
-            event: "*", // Listen for all changes - INSERT, UPDATE, DELETE
-            schema: "public",
-            table: "events",
-          },
-          (payload) => {
-            // Invalidate query to refresh the data
-            queryClient.invalidateQueries({ queryKey: ["events"] });
-            
-            // Log new events but don't show toast notifications
-            if (payload.eventType === "INSERT") {
-              const newEvent = payload.new as Event;
-              console.log("New event received:", newEvent.title);
+      try {
+        channel = supabase
+          .channel("events-channel")
+          .on(
+            "postgres_changes",
+            {
+              event: "*", // Listen for all changes - INSERT, UPDATE, DELETE
+              schema: "public",
+              table: "events",
+            },
+            (payload) => {
+              // Invalidate query to refresh the data
+              queryClient.invalidateQueries({ queryKey: ["events"] });
+              
+              // Log new events but don't show notifications
+              if (payload.eventType === "INSERT") {
+                const newEvent = payload.new as Event;
+                console.log("New event received via realtime:", newEvent.title);
+              }
             }
-          }
-        )
-        .subscribe();
+          )
+          .subscribe((status) => {
+            console.log("Realtime subscription status:", status);
+          });
+          
+        console.log("Realtime events subscription set up successfully");
+      } catch (error) {
+        console.error("Error setting up realtime subscription:", error);
+      }
     };
 
     setupRealtimeSubscription();
 
     return () => {
       if (channel) {
+        console.log("Removing realtime subscription");
         supabase.removeChannel(channel);
       }
     };

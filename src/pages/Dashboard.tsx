@@ -12,7 +12,7 @@ import { useAuthentication } from "@/hooks/useAuthentication";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
-import { Info } from "lucide-react";
+import { Info, RefreshCw } from "lucide-react";
 
 const Dashboard = () => {
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
@@ -20,6 +20,7 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [view, setView] = useState<"grid" | "watchlist">("grid");
   const [isCreating, setIsCreating] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   
   const { userId } = useAuthentication();
   const userPreferences = useUserPreferences(userId);
@@ -36,7 +37,12 @@ const Dashboard = () => {
   useRealtimeEvents();
   
   // Set up auto refresh for events every 2 minutes
-  const refreshEventsCallback = useCallback(refreshEvents, [refreshEvents]);
+  const refreshEventsCallback = useCallback(async () => {
+    setIsRefreshing(true);
+    await refreshEvents();
+    setIsRefreshing(false);
+  }, [refreshEvents]);
+  
   useAutoRefresh(refreshEventsCallback, 120);
 
   // Log subscription status when it changes
@@ -70,10 +76,21 @@ const Dashboard = () => {
           <span>Last updated: {timeSinceLastRefresh}</span>
         </div>
         <button 
-          onClick={refreshEvents} 
-          className="text-xs text-primary hover:underline"
+          onClick={refreshEventsCallback} 
+          disabled={isRefreshing}
+          className="text-xs text-primary hover:underline flex items-center gap-1"
         >
-          Refresh now
+          {isRefreshing ? (
+            <>
+              <RefreshCw size={12} className="animate-spin" />
+              <span>Refreshing...</span>
+            </>
+          ) : (
+            <>
+              <RefreshCw size={12} />
+              <span>Refresh now</span>
+            </>
+          )}
         </button>
       </div>
       
