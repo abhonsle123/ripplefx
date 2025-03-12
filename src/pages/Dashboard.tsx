@@ -1,3 +1,4 @@
+
 import { useState, useCallback, useEffect } from "react";
 import type { EventType, SeverityLevel } from "@/types/event";
 import DashboardHeader from "@/components/EventDashboard/DashboardHeader";
@@ -35,18 +36,24 @@ const Dashboard = () => {
   useRealtimeEvents();
   
   const refreshEventsCallback = useCallback(async () => {
-    await refreshEvents();
-  }, [refreshEvents]);
+    // Only call the refresh function if we're not already refreshing
+    if (!isRefreshingManually) {
+      await refreshEvents();
+    }
+  }, [refreshEvents, isRefreshingManually]);
   
+  // Set up auto refresh with 120 seconds interval
   useAutoRefresh(refreshEventsCallback, 120);
 
-  useEffect(() => {
-    const fullPageRefreshInterval = setInterval(() => {
-      window.location.reload();
-    }, 120000); // 2 minutes in milliseconds
-    
-    return () => clearInterval(fullPageRefreshInterval);
-  }, []);
+  // We're removing this auto-refresh interval since it's duplicating the functionality in useAutoRefresh
+  // and causing too many refresh calls
+  // useEffect(() => {
+  //  const fullPageRefreshInterval = setInterval(() => {
+  //    window.location.reload();
+  //  }, 120000); // 2 minutes in milliseconds
+  //  
+  //  return () => clearInterval(fullPageRefreshInterval);
+  // }, []);
 
   useEffect(() => {
     if (!subscriptionLoading && plan && (plan === "premium" || plan === "pro")) {

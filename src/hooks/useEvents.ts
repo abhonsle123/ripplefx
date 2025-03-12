@@ -13,6 +13,7 @@ export const useEvents = (
   const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
   const [isRefreshingManually, setIsRefreshingManually] = useState(false);
   const errorNotificationShown = useRef(false);
+  const refreshInProgress = useRef(false);
 
   const { data: events = [], isLoading, refetch } = useQuery({
     queryKey: ["events"],
@@ -98,10 +99,12 @@ export const useEvents = (
 
   const refreshEvents = async () => {
     try {
-      if (isRefreshingManually) {
+      if (refreshInProgress.current || isRefreshingManually) {
+        console.log("Refresh already in progress, skipping this request");
         return;
       }
       
+      refreshInProgress.current = true;
       setIsRefreshingManually(true);
       console.log("Starting manual refresh of events...");
       
@@ -113,38 +116,6 @@ export const useEvents = (
       
       if (error) {
         console.error('Error invoking fetch-events:', error);
-        if (!errorNotificationShown.current) {
-          toast("Failed to update events. Please try again later.");
-          errorNotificationShown.current = true;
-        }
-        setIsRefreshingManually(false);
-        return;
-      }
+        toast.error("Failed to update events. Please try again later.", {
+          id: "refresh-error",
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      await queryClient.invalidateQueries({ queryKey: ["events"] });
-      setLastRefreshed(new Date());
-      errorNotificationShown.current = false;
-      
-      console.log("Manual refresh completed successfully");
-    } catch (error) {
-      console.error('Error in refreshEvents:', error);
-      if (!errorNotificationShown.current) {
-        toast("Failed to refresh events. Please try again later.");
-        errorNotificationShown.current = true;
-      }
-    } finally {
-      setIsRefreshingManually(false);
-    }
-  };
-
-  return {
-    events,
-    filteredEvents,
-    isLoading,
-    refreshEvents,
-    isRefreshingManually,
-    lastRefreshed,
-    timeSinceLastRefresh: getTimeSinceLastRefresh()
-  };
-};
