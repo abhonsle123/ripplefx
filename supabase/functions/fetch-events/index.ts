@@ -1,3 +1,4 @@
+
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1'
 
@@ -34,11 +35,19 @@ serve(async (req) => {
     // Add proper logging and error handling for the news API calls
     try {
       // Implement your news fetching logic here
-      // Make sure to handle rate limits and API errors properly
+      // This function is currently a placeholder since the actual news fetching implementation is not shown
+      // We'll just return a success message
       
       const response = new Response(
-        JSON.stringify({ message: 'Events fetched successfully' }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ 
+          success: true,
+          message: 'Events fetched successfully',
+          timestamp: new Date().toISOString()
+        }),
+        { 
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+        }
       )
 
       return response
@@ -50,7 +59,11 @@ serve(async (req) => {
     console.error('Error in fetch-events function:', error)
     
     return new Response(
-      JSON.stringify({ error: 'Internal Server Error' }),
+      JSON.stringify({ 
+        success: false,
+        error: 'Internal Server Error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      }),
       { 
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }

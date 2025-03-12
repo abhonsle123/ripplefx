@@ -12,6 +12,7 @@ import { useAuthentication } from "@/hooks/useAuthentication";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
+import { Info } from "lucide-react";
 
 const Dashboard = () => {
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
@@ -23,7 +24,13 @@ const Dashboard = () => {
   const { userId } = useAuthentication();
   const userPreferences = useUserPreferences(userId);
   const { plan, isLoading: subscriptionLoading } = useSubscription(userId);
-  const { events, filteredEvents, isLoading, refreshEvents } = useEvents(eventType, severity, searchTerm);
+  const { 
+    events, 
+    filteredEvents, 
+    isLoading, 
+    refreshEvents, 
+    timeSinceLastRefresh 
+  } = useEvents(eventType, severity, searchTerm);
   
   // Set up realtime subscriptions for events
   useRealtimeEvents();
@@ -56,6 +63,19 @@ const Dashboard = () => {
           setView(v);
         }}
       />
+      
+      <div className="flex justify-between items-center text-xs text-muted-foreground mb-2 px-2">
+        <div className="flex items-center gap-1">
+          <Info size={12} />
+          <span>Last updated: {timeSinceLastRefresh}</span>
+        </div>
+        <button 
+          onClick={refreshEvents} 
+          className="text-xs text-primary hover:underline"
+        >
+          Refresh now
+        </button>
+      </div>
       
       <div className="bg-card/40 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-accent/10 animate-slideUp [animation-delay:200ms]">
         <EventFilters

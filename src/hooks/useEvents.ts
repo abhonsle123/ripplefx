@@ -1,6 +1,6 @@
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Event, EventType, SeverityLevel } from "@/types/event";
 import { useToast } from "@/components/ui/use-toast";
@@ -12,6 +12,7 @@ export const useEvents = (
 ) => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const [lastRefreshed, setLastRefreshed] = useState<Date>(new Date());
 
   // Fetch events with improved error handling
   const { data: events = [], isLoading, refetch } = useQuery({
@@ -41,6 +42,8 @@ export const useEvents = (
           throw error;
         }
         
+        // Update last refreshed timestamp on successful fetch
+        setLastRefreshed(new Date());
         console.log(`Successfully fetched ${data?.length || 0} events from database`);
         return data as Event[];
       } catch (error) {
@@ -51,6 +54,10 @@ export const useEvents = (
     refetchInterval: 60000, // Refetch every minute
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
+    onError: (error) => {
+      console.error("Query error:", error);
+      // We don't show toasts for automatic query errors to avoid spamming
+    }
   });
 
   // Filter events based on selected filters
@@ -85,6 +92,21 @@ export const useEvents = (
     });
   }, [events, eventType, severity, searchTerm]);
 
+  // Function to format the time since last refresh
+  const getTimeSinceLastRefresh = (): string => {
+    const now = new Date();
+    const diffMs = now.getTime() - lastRefreshed.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    
+    if (diffMins < 1) {
+      return 'Just now';
+    } else if (diffMins === 1) {
+      return '1 minute ago';
+    } else {
+      return `${diffMins} minutes ago`;
+    }
+  };
+
   // Function to trigger event refresh with improved error handling
   const refreshEvents = async () => {
     try {
@@ -101,9 +123,8 @@ export const useEvents = (
       if (error) {
         console.error('Error invoking fetch-events:', error);
         toast({
-          title: "Error Updating Events",
-          description: "There was an error fetching the latest events. Please try again later.",
-          variant: "destructive"
+          variant: "destructive",
+          description: "Failed to update events. Please try again later.",
         });
         return;
       }
@@ -114,18 +135,15 @@ export const useEvents = (
       // Refetch the events after successful API fetch
       await queryClient.invalidateQueries({ queryKey: ["events"] });
       
-      toast({
-        title: "Events Updated",
-        description: "The dashboard has been updated with the latest events",
-      });
+      // Update last refreshed timestamp
+      setLastRefreshed(new Date());
       
       console.log("Manual refresh completed successfully");
     } catch (error) {
       console.error('Error in refreshEvents:', error);
       toast({
-        title: "Error Updating Events",
+        variant: "destructive",
         description: "Failed to refresh events. Please try again later.",
-        variant: "destructive"
       });
     }
   };
@@ -134,6 +152,8 @@ export const useEvents = (
     events,
     filteredEvents,
     isLoading,
-    refreshEvents
+    refreshEvents,
+    lastRefreshed,
+    timeSinceLastRefresh: getTimeSinceLastRefresh()
   };
 };

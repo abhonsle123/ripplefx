@@ -3,12 +3,10 @@ import { useEffect } from "react";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/components/ui/use-toast";
 import type { Event } from "@/types/event";
 
 export const useRealtimeEvents = () => {
   const queryClient = useQueryClient();
-  const { toast } = useToast();
 
   useEffect(() => {
     let channel: RealtimeChannel;
@@ -27,13 +25,10 @@ export const useRealtimeEvents = () => {
             // Invalidate query to refresh the data
             queryClient.invalidateQueries({ queryKey: ["events"] });
             
-            // Show notification for new events
+            // Log new events but don't show toast notifications
             if (payload.eventType === "INSERT") {
               const newEvent = payload.new as Event;
-              toast({
-                title: "New Event",
-                description: newEvent.title,
-              });
+              console.log("New event received:", newEvent.title);
             }
           }
         )
@@ -47,7 +42,7 @@ export const useRealtimeEvents = () => {
         supabase.removeChannel(channel);
       }
     };
-  }, [queryClient, toast]);
+  }, [queryClient]);
 
   return null; // This hook just sets up side effects
 };
