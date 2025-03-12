@@ -20,43 +20,30 @@ export const useEvents = (
       // First get the current user's session
       const { data: { session } } = await supabase.auth.getSession();
       
-      if (!session?.user.id) {
-        // If no user is logged in, return an empty array
-        return [];
-      }
-
-      // Check if the user has created any events
-      const { count, error: countError } = await supabase
-        .from("events")
-        .select("*", { count: 'exact', head: true })
-        .eq('user_id', session.user.id);
-
-      if (countError) {
-        console.error("Error checking user events:", countError);
-        return [];
-      }
-
-      // Determine if user has created any events
-      const hasCreatedEvents = count && count > 0;
-      
       // Break down the complex query into simpler parts
       let query = supabase.from("events").select("*");
 
-      // For users who have created events, show public events and their own events
-      // For new users who haven't created events yet, only show their own events (which will be none)
-      if (hasCreatedEvents) {
+      if (session?.user.id) {
+        // If user is logged in, show public events and their own events
         query = query.or(`is_public.eq.true,user_id.eq.${session.user.id}`);
       } else {
-        query = query.eq('user_id', session.user.id);
+        // If no user is logged in, show only public events
+        query = query.eq('is_public', true);
       }
 
       // Add order by at the end
       query = query.order("created_at", { ascending: false });
 
       const { data, error } = await query;
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching events:", error);
+        throw error;
+      }
+      
+      console.log(`Fetched ${data?.length || 0} events`);
       return data as Event[];
     },
+    refetchInterval: 60000, // Refetch every minute
   });
 
   // Filter events based on selected filters
@@ -94,11 +81,17 @@ export const useEvents = (
   // Function to trigger event refresh
   const refreshEvents = async () => {
     try {
+      console.log("Manually refreshing events...");
       // Call our Supabase Edge Function to fetch the latest events
       const { error } = await supabase.functions.invoke('fetch-events');
       
       if (error) {
         console.error('Error invoking fetch-events:', error);
+        toast({
+          title: "Error Updating Events",
+          description: "There was an error fetching the latest events. Please try again later.",
+          variant: "destructive"
+        });
       } else {
         // Refresh the events data in React Query
         queryClient.invalidateQueries({ queryKey: ["events"] });
@@ -109,6 +102,11 @@ export const useEvents = (
       }
     } catch (error) {
       console.error('Error fetching events:', error);
+      toast({
+        title: "Error Updating Events",
+        description: "Failed to refresh events. Please try again later.",
+        variant: "destructive"
+      });
     }
   };
 
