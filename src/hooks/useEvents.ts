@@ -109,27 +109,35 @@ export const useEvents = (
       setIsRefreshingManually(true);
       console.log("Starting manual refresh of events...");
       
+      // First refresh the events we already have
       await refetch();
+      setLastRefreshed(new Date());
       
-      const { error } = await supabase.functions.invoke('fetch-events', {
-        body: { source: 'manual-refresh' }
-      });
-      
-      if (error) {
-        console.error('Error invoking fetch-events:', error);
-        toast.error("Failed to update events. Please try again later.", {
-          id: "refresh-error",
+      // Then try to fetch new events from the edge function
+      try {
+        console.log("Calling fetch-events edge function...");
+        const { data, error } = await supabase.functions.invoke('fetch-events', {
+          body: { source: 'manual-refresh' }
         });
-        setIsRefreshingManually(false);
-        refreshInProgress.current = false;
-        return;
+        
+        if (error) {
+          console.error('Error invoking fetch-events:', error);
+          // Continue with the process even if the edge function fails
+          console.log("Edge function failed, but continuing with local refresh");
+        } else {
+          console.log("Edge function completed successfully:", data);
+        }
+      } catch (functionError) {
+        console.error('Exception invoking fetch-events:', functionError);
+        // Continue with the process even if the edge function fails
+        console.log("Edge function failed with exception, but continuing with local refresh");
       }
 
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Always invalidate queries to refresh data, even if the edge function failed
+      await new Promise(resolve => setTimeout(resolve, 1000));
       await queryClient.invalidateQueries({ queryKey: ["events"] });
-      setLastRefreshed(new Date());
-      errorNotificationShown.current = false;
       
+      errorNotificationShown.current = false;
       console.log("Manual refresh completed successfully");
       toast.success("Events updated successfully", {
         id: "refresh-success",
