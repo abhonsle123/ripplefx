@@ -1,7 +1,7 @@
 
 import { Card, CardContent, CardFooter, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Edit, Trash2, Server } from "lucide-react";
+import { Edit, Trash2, Server, Loader2 } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
 
 type BrokerConnection = Database["public"]["Tables"]["broker_connections"]["Row"];
@@ -10,12 +10,14 @@ interface BrokerConnectionCardProps {
   connection: BrokerConnection;
   onEdit: () => void;
   onDelete: () => void;
+  isDeleting?: boolean;
 }
 
 const BrokerConnectionCard = ({
   connection,
   onEdit,
   onDelete,
+  isDeleting = false,
 }: BrokerConnectionCardProps) => {
   return (
     <Card className="bg-card/40 backdrop-blur-sm border-accent/10">
@@ -54,10 +56,20 @@ const BrokerConnectionCard = ({
           variant="outline"
           size="sm"
           onClick={onDelete}
+          disabled={isDeleting}
           className="hover:bg-destructive hover:text-destructive-foreground"
         >
-          <Trash2 className="h-4 w-4 mr-2" />
-          Delete
+          {isDeleting ? (
+            <>
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              Deleting...
+            </>
+          ) : (
+            <>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Delete
+            </>
+          )}
         </Button>
       </CardFooter>
     </Card>

@@ -18,6 +18,7 @@ const ConnectBroker = () => {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [connectionToEdit, setConnectionToEdit] = useState<BrokerConnection | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Check authentication
   supabase.auth.getSession().then(({ data: { session } }) => {
@@ -53,6 +54,8 @@ const ConnectBroker = () => {
 
   const handleDelete = async (connectionId: string) => {
     try {
+      setIsDeleting(true);
+      
       const { error } = await supabase
         .from("broker_connections")
         .delete()
@@ -66,8 +69,9 @@ const ConnectBroker = () => {
       toast({
         title: "Success",
         description: "Broker connection deleted successfully",
-        variant: "default",
       });
+      
+      console.log("Broker connection deleted successfully");
     } catch (error: any) {
       toast({
         title: "Error deleting broker connection",
@@ -75,6 +79,8 @@ const ConnectBroker = () => {
         variant: "destructive",
       });
       console.error("Error deleting broker connection:", error);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -129,6 +135,7 @@ const ConnectBroker = () => {
                   connection={connection}
                   onEdit={() => handleEdit(connection)}
                   onDelete={() => handleDelete(connection.id)}
+                  isDeleting={isDeleting}
                 />
               ))
             )}
