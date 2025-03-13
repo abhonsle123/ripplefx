@@ -8,8 +8,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Search, FilterX, Filter } from "lucide-react";
+import { Search, FilterX, Filter, AlertCircle } from "lucide-react";
 import type { Database } from "@/integrations/supabase/types";
+import { Badge } from "@/components/ui/badge";
 
 type EventType = Database["public"]["Enums"]["event_type"];
 type SeverityLevel = Database["public"]["Enums"]["severity_level"];
@@ -21,6 +22,7 @@ interface EventFiltersProps {
   setSeverity: (severity: SeverityLevel | "ALL") => void;
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  hideLowImpact?: boolean;
 }
 
 const EventFilters = ({
@@ -30,6 +32,7 @@ const EventFilters = ({
   setSeverity,
   searchTerm,
   setSearchTerm,
+  hideLowImpact = false,
 }: EventFiltersProps) => {
   const handleReset = () => {
     setEventType("ALL");
@@ -42,6 +45,12 @@ const EventFilters = ({
       <div className="flex items-center gap-2 mb-4">
         <Filter className="h-5 w-5 text-primary" />
         <h2 className="text-lg font-medium">Event Filters</h2>
+        {hideLowImpact && (
+          <Badge variant="outline" className="ml-2 bg-orange-500/10 text-orange-500 border-orange-500/20">
+            <AlertCircle className="h-3 w-3 mr-1" />
+            Low impact events hidden
+          </Badge>
+        )}
       </div>
       
       <div className="flex flex-col sm:flex-row gap-4">
@@ -78,7 +87,7 @@ const EventFilters = ({
               <SelectItem value="CRITICAL">Critical</SelectItem>
               <SelectItem value="HIGH">High</SelectItem>
               <SelectItem value="MEDIUM">Medium</SelectItem>
-              <SelectItem value="LOW">Low</SelectItem>
+              {!hideLowImpact && <SelectItem value="LOW">Low</SelectItem>}
             </SelectContent>
           </Select>
         </div>

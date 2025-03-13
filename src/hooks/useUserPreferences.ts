@@ -17,14 +17,19 @@ export const useUserPreferences = (userId: string | null) => {
         .single();
       
       if (!error && data?.preferences) {
-        const prefs = data.preferences as { tracking?: { industries: string[]; companies: string[]; event_types: string[]; } };
-        if (prefs.tracking) {
-          setUserPreferences({
-            industries: prefs.tracking.industries,
-            companies: prefs.tracking.companies,
-            event_types: prefs.tracking.event_types,
-          });
-        }
+        const prefs = data.preferences as { 
+          tracking?: { industries: string[]; companies: string[]; event_types: string[]; },
+          filters?: { hideLowImpact: boolean; }
+        };
+        
+        setUserPreferences({
+          industries: prefs.tracking?.industries || [],
+          companies: prefs.tracking?.companies || [],
+          event_types: prefs.tracking?.event_types || [],
+          filters: {
+            hideLowImpact: Boolean(prefs.filters?.hideLowImpact)
+          }
+        });
       }
     };
 

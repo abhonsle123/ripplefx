@@ -21,6 +21,9 @@ const defaultPreferences = {
       lowSeverity: false,
     },
   },
+  filters: {
+    hideLowImpact: false,
+  },
   tracking: {
     industries: [],
     companies: [],
@@ -72,6 +75,9 @@ export const useProfileData = () => {
               mediumSeverity: Boolean(prefs.notifications?.sms?.mediumSeverity ?? false),
               lowSeverity: Boolean(prefs.notifications?.sms?.lowSeverity ?? false),
             },
+          },
+          filters: {
+            hideLowImpact: Boolean(prefs.filters?.hideLowImpact ?? false),
           },
           tracking: {
             industries: Array.isArray(prefs.tracking?.industries) ? prefs.tracking.industries : [],

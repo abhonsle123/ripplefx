@@ -1,3 +1,4 @@
+
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +28,19 @@ export const useEvents = (
           query = query.or(`is_public.eq.true,user_id.eq.${session.user.id}`);
         } else {
           query = query.eq('is_public', true);
+        }
+
+        // Apply severity filter at the database level if needed
+        if (severity !== "ALL") {
+          // Special handling for severity
+          // If LOW is excluded, filter to only MEDIUM, HIGH, CRITICAL
+          if (severity === "MEDIUM") {
+            query = query.in("severity", ["MEDIUM", "HIGH", "CRITICAL"]);
+          } else if (severity === "HIGH") {
+            query = query.in("severity", ["HIGH", "CRITICAL"]);
+          } else if (severity === "CRITICAL") {
+            query = query.eq("severity", "CRITICAL");
+          }
         }
 
         query = query.order("created_at", { ascending: false });
@@ -62,10 +76,6 @@ export const useEvents = (
         return false;
       }
       
-      if (severity !== "ALL" && event.severity !== severity) {
-        return false;
-      }
-      
       if (searchTerm.trim() !== "") {
         const searchLower = searchTerm.toLowerCase();
         
@@ -81,7 +91,7 @@ export const useEvents = (
       
       return true;
     });
-  }, [events, eventType, severity, searchTerm]);
+  }, [events, eventType, searchTerm]);
 
   const getTimeSinceLastRefresh = (): string => {
     const now = new Date();

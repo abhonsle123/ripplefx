@@ -26,6 +26,11 @@ const Dashboard = () => {
   const { userId } = useAuthentication();
   const userPreferences = useUserPreferences(userId);
   const { plan, isLoading: subscriptionLoading } = useSubscription(userId);
+  
+  // Apply user's preference to hide low impact events
+  const hideLowImpact = userPreferences?.filters?.hideLowImpact || false;
+  const effectiveSeverity = hideLowImpact && severity === "ALL" ? "MEDIUM" : severity;
+  
   const { 
     events, 
     filteredEvents, 
@@ -33,7 +38,7 @@ const Dashboard = () => {
     refreshEvents, 
     isRefreshingManually,
     timeSinceLastRefresh 
-  } = useEvents(eventType, severity, searchTerm);
+  } = useEvents(eventType, effectiveSeverity, searchTerm);
   
   useRealtimeEvents();
   
@@ -87,6 +92,9 @@ const Dashboard = () => {
         <div className="flex items-center gap-1">
           <Info size={12} />
           <span>Last updated: {timeSinceLastRefresh}</span>
+          {hideLowImpact && (
+            <span className="ml-2 text-orange-500">Low impact events hidden</span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -135,6 +143,7 @@ const Dashboard = () => {
           setSeverity={setSeverity}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
+          hideLowImpact={hideLowImpact}
         />
       </div>
 
@@ -148,7 +157,7 @@ const Dashboard = () => {
           filteredEvents={filteredEvents}
           searchTerm={searchTerm}
           eventType={eventType}
-          severity={severity}
+          severity={effectiveSeverity}
         />
       </div>
     </DashboardContainer>

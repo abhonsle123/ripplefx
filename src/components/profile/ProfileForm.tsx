@@ -10,6 +10,7 @@ import { EmailNotificationPreferences } from "./EmailNotificationPreferences";
 import { SMSNotificationPreferences } from "./SMSNotificationPreferences";
 import { TrackingPreferences } from "./TrackingPreferences";
 import { FreeTrialStatus } from "./FreeTrialStatus";
+import { FilterPreferences } from "./FilterPreferences";
 
 export type Profile = {
   id: string;
@@ -34,6 +35,9 @@ export type Profile = {
         mediumSeverity: boolean;
         lowSeverity: boolean;
       };
+    };
+    filters: {
+      hideLowImpact: boolean;
     };
     tracking: {
       industries: string[];
@@ -100,6 +104,21 @@ export const ProfileForm = ({ profile: initialProfile }: ProfileFormProps) => {
     });
   };
 
+  const updateFilterPreference = (field: string, value: boolean) => {
+    if (!profile) return;
+
+    setProfile({
+      ...profile,
+      preferences: {
+        ...profile.preferences,
+        filters: {
+          ...profile.preferences.filters,
+          [field]: value,
+        },
+      },
+    });
+  };
+
   const updateTrackingPreference = (
     type: "industries" | "companies" | "event_types",
     values: string[]
@@ -151,6 +170,13 @@ export const ProfileForm = ({ profile: initialProfile }: ProfileFormProps) => {
           }
         />
       </div>
+
+      <Separator className="my-6" />
+
+      <FilterPreferences 
+        preferences={profile.preferences.filters}
+        onPreferenceChange={updateFilterPreference}
+      />
 
       <Separator className="my-6" />
 

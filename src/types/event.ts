@@ -21,6 +21,9 @@ export interface UserPreferences {
       lowSeverity: boolean;
     };
   };
+  filters?: {
+    hideLowImpact: boolean;
+  };
   tracking?: {
     industries: string[];
     companies: string[];
@@ -32,4 +35,7 @@ export interface TrackingPreferences {
   industries?: string[];
   companies?: string[];
   event_types?: string[];
+  filters?: {
+    hideLowImpact: boolean;
+  };
 }
