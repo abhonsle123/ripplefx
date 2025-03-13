@@ -37,9 +37,9 @@ export async function processArticles(
       const eventType = determineEventType(article.title, article.description);
       const severity = determineSeverity(article.title, article.description);
       
-      // Skip creating low impact events entirely
-      if (severity === 'LOW') {
-        console.log(`Skipping low impact event: ${article.title}`);
+      // Skip creating low and medium impact events entirely
+      if (severity === 'LOW' || severity === 'MEDIUM') {
+        console.log(`Skipping ${severity.toLowerCase()} impact event: ${article.title}`);
         skippedCount++;
         continue;
       }

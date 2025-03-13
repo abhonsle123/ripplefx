@@ -80,7 +80,6 @@ const EventFilters = ({
               <SelectItem value="ALL">All Severities</SelectItem>
               <SelectItem value="CRITICAL">Critical</SelectItem>
               <SelectItem value="HIGH">High</SelectItem>
-              <SelectItem value="MEDIUM">Medium</SelectItem>
             </SelectContent>
           </Select>
         </div>

@@ -21,7 +21,7 @@ export const FilterPreferences = ({
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
             <p className="text-sm text-muted-foreground">
-              The dashboard has been configured to automatically hide low impact events to focus on market-moving news only.
+              The dashboard has been configured to automatically hide low and medium impact events to focus on high-impact market-moving news only.
             </p>
           </div>
         </div>
