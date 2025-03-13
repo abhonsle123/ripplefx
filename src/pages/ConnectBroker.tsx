@@ -63,7 +63,7 @@ const ConnectBroker = () => {
 
       if (error) throw error;
 
-      // Invalidate and refetch the broker connections query
+      // Explicitly invalidate and refetch the broker connections query
       await queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
       
       toast({
