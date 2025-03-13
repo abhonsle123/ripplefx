@@ -70,15 +70,11 @@ const ConnectBroker = () => {
 
       if (error) throw error;
       
-      // Force refetch the data instead of just invalidating
-      await refetch();
+      // Permanently remove the item from the cache with a hard cache reset
+      queryClient.removeQueries({ queryKey: ["broker-connections"] });
       
-      // Also force update the cache to remove the deleted item
-      queryClient.setQueryData(
-        ["broker-connections"], 
-        (oldData: BrokerConnection[] | undefined) => 
-          oldData ? oldData.filter(conn => conn.id !== connectionId) : []
-      );
+      // Force refetch to update the cache with fresh data
+      await refetch();
       
       toast({
         title: "Success",
