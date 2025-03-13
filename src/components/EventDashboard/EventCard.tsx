@@ -18,14 +18,22 @@ interface EventCardProps {
     industries?: string[];
     companies?: string[];
     event_types?: string[];
+    filters?: {
+      hideLowImpact: boolean;
+    };
   };
 }
 
 const EventCard = ({ event, userPreferences }: EventCardProps) => {
+  const hideLowImpact = userPreferences?.filters?.hideLowImpact || false;
+
+  // Skip analysis for LOW severity events if the user has hideLowImpact enabled
+  const shouldAnalyze = !(hideLowImpact && event.severity === 'LOW');
+
   const { data: analysis, isLoading } = useQuery({
     queryKey: ['eventAnalysis', event.id],
     queryFn: async () => {
-      if (!event.impact_analysis) {
+      if (!event.impact_analysis && shouldAnalyze) {
         const { data, error } = await supabase.functions.invoke('analyze-event', {
           body: { event_id: event.id }
         });
@@ -44,7 +52,7 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
       }
       return storedAnalysis;
     },
-    enabled: !event.impact_analysis,
+    enabled: !event.impact_analysis && shouldAnalyze,
   });
 
   const impactAnalysis = event.impact_analysis 

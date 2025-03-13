@@ -4,6 +4,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { generateAnalysis } from "./perplexityService.ts";
 import { queueNotificationForHighImpactEvent } from "./notificationService.ts";
+import { getDefaultAnalysis } from "./defaultAnalysis.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -50,7 +51,15 @@ serve(async (req) => {
 
     console.log("Found event:", event);
 
-    const analysis = await generateAnalysis(event);
+    // Skip expensive API call for LOW severity events
+    let analysis;
+    if (event.severity === 'LOW') {
+      console.log("Skipping API call for LOW severity event to save credits");
+      analysis = getDefaultAnalysis();
+    } else {
+      // Only call Perplexity API for MEDIUM, HIGH, and CRITICAL events
+      analysis = await generateAnalysis(event);
+    }
 
     // Store stock predictions with proper error handling
     if (analysis.stock_predictions) {
@@ -117,4 +126,3 @@ serve(async (req) => {
     });
   }
 });
-
