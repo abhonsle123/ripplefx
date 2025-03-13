@@ -5,6 +5,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +17,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import type { Database } from "@/integrations/supabase/types";
@@ -25,7 +26,7 @@ type BrokerConnection = Database["public"]["Tables"]["broker_connections"]["Row"
 
 interface BrokerConnectionDialogProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange: (open: boolean, wasSubmitted?: boolean) => void;
   connectionToEdit?: BrokerConnection | null;
 }
 
@@ -135,8 +136,12 @@ const BrokerConnectionDialog = ({
         });
       }
 
+      // Invalidate queries to trigger a refetch
       queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
-      onOpenChange(false);
+      
+      // Close the dialog with wasSubmitted=true
+      onOpenChange(false, true);
+      
       setFormData({
         broker_name: "",
         api_key: "",
@@ -154,12 +159,17 @@ const BrokerConnectionDialog = ({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(newOpen) => onOpenChange(newOpen)}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>
             {connectionToEdit ? "Edit Broker Connection" : "Connect Broker"}
           </DialogTitle>
+          <DialogDescription>
+            {connectionToEdit 
+              ? "Update your broker connection details." 
+              : "Connect your broker to enable automatic trading."}
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-4">
           <div className="space-y-2">

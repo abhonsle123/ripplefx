@@ -134,12 +134,22 @@ const ConnectBroker = () => {
     }
   };
 
-  const handleDialogClose = (open: boolean) => {
+  const handleDialogClose = (open: boolean, wasSubmitted: boolean = false) => {
     setIsDialogOpen(open);
     if (!open) {
       setConnectionToEdit(null);
       // Refetch connections when dialog closes to ensure we have the latest data
       refetch();
+
+      // If the dialog was closed after a successful submission, we should clear the deletedConnectionIds
+      // to ensure any re-added connections are visible
+      if (wasSubmitted) {
+        console.log("Dialog was submitted successfully, clearing deleted connection IDs");
+        setDeletedConnectionIds([]);
+        localStorage.removeItem('deletedConnectionIds');
+        queryClient.removeQueries({ queryKey: [BROKER_CONNECTIONS_KEY] });
+        refetch();
+      }
     }
   };
 
