@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -12,6 +12,8 @@ import type { Database } from "@/integrations/supabase/types";
 
 type BrokerConnection = Database["public"]["Tables"]["broker_connections"]["Row"];
 
+const BROKER_CONNECTIONS_KEY = "broker-connections";
+
 const ConnectBroker = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -19,7 +21,7 @@ const ConnectBroker = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [connectionToEdit, setConnectionToEdit] = useState<BrokerConnection | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deletedConnectionId, setDeletedConnectionId] = useState<string | null>(null);
+  const [deletedConnectionIds, setDeletedConnectionIds] = useState<string[]>([]);
 
   // Check authentication
   useEffect(() => {
@@ -33,8 +35,9 @@ const ConnectBroker = () => {
     checkAuth();
   }, [navigate]);
 
+  // Fetch broker connections
   const { data: connections = [], isLoading, refetch } = useQuery({
-    queryKey: ["broker-connections"],
+    queryKey: [BROKER_CONNECTIONS_KEY],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("broker_connections")
@@ -49,6 +52,8 @@ const ConnectBroker = () => {
         });
         throw error;
       }
+      
+      console.log("Fetched connections:", data);
       return data;
     },
   });
@@ -58,10 +63,11 @@ const ConnectBroker = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = async (connectionId: string) => {
+  const handleDelete = useCallback(async (connectionId: string) => {
     try {
       setIsDeleting(true);
-      setDeletedConnectionId(connectionId);
+      
+      console.log("Deleting broker connection:", connectionId);
       
       const { error } = await supabase
         .from("broker_connections")
@@ -70,10 +76,13 @@ const ConnectBroker = () => {
 
       if (error) throw error;
       
-      // Permanently remove the item from the cache with a hard cache reset
-      queryClient.removeQueries({ queryKey: ["broker-connections"] });
+      // Update local state to filter out this connection immediately
+      setDeletedConnectionIds(prev => [...prev, connectionId]);
       
-      // Force refetch to update the cache with fresh data
+      // Completely remove the query from cache
+      queryClient.removeQueries({ queryKey: [BROKER_CONNECTIONS_KEY] });
+      
+      // Force a complete refetch to ensure we have the latest data
       await refetch();
       
       toast({
@@ -91,21 +100,35 @@ const ConnectBroker = () => {
       console.error("Error deleting broker connection:", error);
     } finally {
       setIsDeleting(false);
-      setDeletedConnectionId(null);
     }
-  };
+  }, [queryClient, refetch, toast]);
 
   const handleDialogClose = (open: boolean) => {
     setIsDialogOpen(open);
     if (!open) {
       setConnectionToEdit(null);
+      // Refetch connections when dialog closes to ensure we have the latest data
+      refetch();
     }
   };
 
-  // Filter out the deleted connection from the UI immediately
+  // Filter out deleted connections from display
   const displayConnections = connections.filter(
-    connection => connection.id !== deletedConnectionId
+    connection => !deletedConnectionIds.includes(connection.id)
   );
+
+  // Every time we get new connections data, synchronize with our deletedConnectionIds
+  useEffect(() => {
+    if (connections.length > 0) {
+      // Get all connection ids from the latest data
+      const currentConnectionIds = new Set(connections.map(conn => conn.id));
+      
+      // Filter out deleted connection ids that no longer exist in the latest data
+      setDeletedConnectionIds(prev => 
+        prev.filter(id => currentConnectionIds.has(id))
+      );
+    }
+  }, [connections]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90">
@@ -151,7 +174,7 @@ const ConnectBroker = () => {
                   connection={connection}
                   onEdit={() => handleEdit(connection)}
                   onDelete={() => handleDelete(connection.id)}
-                  isDeleting={isDeleting && deletedConnectionId === connection.id}
+                  isDeleting={isDeleting && deletedConnectionIds.includes(connection.id)}
                 />
               ))
             )}

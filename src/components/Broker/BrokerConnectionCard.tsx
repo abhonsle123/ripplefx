@@ -19,6 +19,18 @@ const BrokerConnectionCard = ({
   onDelete,
   isDeleting = false,
 }: BrokerConnectionCardProps) => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onDelete();
+  };
+
+  const handleEdit = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    onEdit();
+  };
+
   return (
     <Card className="bg-card/40 backdrop-blur-sm border-accent/10">
       <CardHeader className="flex flex-row items-center gap-4">
@@ -46,7 +58,7 @@ const BrokerConnectionCard = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={onEdit}
+          onClick={handleEdit}
           className="hover:bg-accent"
         >
           <Edit className="h-4 w-4 mr-2" />
@@ -55,7 +67,7 @@ const BrokerConnectionCard = ({
         <Button
           variant="outline"
           size="sm"
-          onClick={onDelete}
+          onClick={handleDelete}
           disabled={isDeleting}
           className="hover:bg-destructive hover:text-destructive-foreground"
         >
