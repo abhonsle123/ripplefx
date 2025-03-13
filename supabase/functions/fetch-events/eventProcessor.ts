@@ -36,6 +36,13 @@ export async function processArticles(
 
       const eventType = determineEventType(article.title, article.description);
       const severity = determineSeverity(article.title, article.description);
+      
+      // Skip creating low impact events entirely
+      if (severity === 'LOW') {
+        console.log(`Skipping low impact event: ${article.title}`);
+        skippedCount++;
+        continue;
+      }
 
       // Create new event
       const { error: insertError } = await supabaseClient

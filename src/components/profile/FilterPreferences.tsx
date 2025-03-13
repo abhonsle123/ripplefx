@@ -20,16 +20,10 @@ export const FilterPreferences = ({
       <div className="rounded-lg border p-4 space-y-4">
         <div className="flex items-center justify-between">
           <div className="space-y-0.5">
-            <Label htmlFor="hide-low-impact" className="text-base">Hide low impact events</Label>
             <p className="text-sm text-muted-foreground">
-              When enabled, low impact events will not appear on your dashboard
+              The dashboard has been configured to automatically hide low impact events to focus on market-moving news only.
             </p>
           </div>
-          <Switch
-            id="hide-low-impact"
-            checked={preferences?.hideLowImpact || false}
-            onCheckedChange={(checked) => onPreferenceChange("hideLowImpact", checked)}
-          />
         </div>
       </div>
     </div>

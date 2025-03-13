@@ -24,10 +24,12 @@ export const useEventsQuery = (
           query = query.eq('is_public', true);
         }
 
-        // Apply severity filter at the database level if needed
+        // Always filter out LOW severity events regardless of user preferences
+        query = query.not('severity', 'eq', 'LOW');
+
+        // Apply additional severity filter at the database level if needed
         if (severity !== "ALL") {
-          // Special handling for severity
-          // If LOW is excluded, filter to only MEDIUM, HIGH, CRITICAL
+          // No need to handle LOW severity case since it's already filtered out
           if (severity === "MEDIUM") {
             query = query.in("severity", ["MEDIUM", "HIGH", "CRITICAL"]);
           } else if (severity === "HIGH") {

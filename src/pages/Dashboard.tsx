@@ -27,9 +27,9 @@ const Dashboard = () => {
   const userPreferences = useUserPreferences(userId);
   const { plan, isLoading: subscriptionLoading } = useSubscription(userId);
   
-  // Apply user's preference to hide low impact events
-  const hideLowImpact = userPreferences?.filters?.hideLowImpact || false;
-  const effectiveSeverity = hideLowImpact && severity === "ALL" ? "MEDIUM" : severity;
+  // We're now filtering out low impact events at the database level
+  // so we don't need to apply user preferences for hideLowImpact anymore
+  const effectiveSeverity = severity;
   
   const { 
     events, 
@@ -92,9 +92,6 @@ const Dashboard = () => {
         <div className="flex items-center gap-1">
           <Info size={12} />
           <span>Last updated: {timeSinceLastRefresh}</span>
-          {hideLowImpact && (
-            <span className="ml-2 text-orange-500">Low impact events hidden</span>
-          )}
         </div>
         <div className="flex items-center gap-2">
           <button 
@@ -143,7 +140,6 @@ const Dashboard = () => {
           setSeverity={setSeverity}
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
-          hideLowImpact={hideLowImpact}
         />
       </div>
 
