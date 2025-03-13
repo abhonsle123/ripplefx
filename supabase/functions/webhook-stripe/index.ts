@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@11.18.0?target=deno";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.38.4";
@@ -128,6 +127,9 @@ serve(async (req) => {
         const subscription = event.data.object;
         const subscriptionId = subscription.id;
         
+        // Check if this subscription is being canceled
+        const cancelAtPeriodEnd = subscription.cancel_at_period_end;
+        
         // Get subscription from database
         const { data: subData, error: subError } = await supabase
           .from("subscriptions")
@@ -141,10 +143,12 @@ serve(async (req) => {
         }
 
         // Update subscription status
+        const newStatus = cancelAtPeriodEnd ? "canceling" : subscription.status;
+        
         const { error } = await supabase
           .from("subscriptions")
           .update({
-            status: subscription.status,
+            status: newStatus,
             current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
           })
           .eq("stripe_subscription_id", subscriptionId);
@@ -189,6 +193,18 @@ serve(async (req) => {
 
         if (error) {
           console.error("Error updating subscription status:", error);
+        }
+
+        // Also update the user's profile to reflect the subscription change
+        const { error: profileError } = await supabase
+          .from("profiles")
+          .update({
+            subscription_status: "free",
+          })
+          .eq("id", subData.user_id);
+
+        if (profileError) {
+          console.error("Error updating profile subscription status:", profileError);
         }
 
         break;
