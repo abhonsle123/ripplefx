@@ -12,7 +12,9 @@ import { useAuthentication } from "@/hooks/useAuthentication";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
-import { Info, RefreshCw } from "lucide-react";
+import { Info, RefreshCw, AlertCircle } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 const Dashboard = () => {
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
@@ -45,15 +47,20 @@ const Dashboard = () => {
   // Set up auto refresh with 120 seconds interval
   useAutoRefresh(refreshEventsCallback, 120);
 
-  // We're removing this auto-refresh interval since it's duplicating the functionality in useAutoRefresh
-  // and causing too many refresh calls
-  // useEffect(() => {
-  //  const fullPageRefreshInterval = setInterval(() => {
-  //    window.location.reload();
-  //  }, 120000); // 2 minutes in milliseconds
-  //  
-  //  return () => clearInterval(fullPageRefreshInterval);
-  // }, []);
+  // Normal refresh - just get latest events
+  const handleRefresh = () => {
+    if (!isRefreshingManually) {
+      refreshEvents();
+    }
+  };
+  
+  // Force refresh - clean DB and get new events
+  const handleForceRefresh = () => {
+    if (!isRefreshingManually) {
+      toast.info("Force refreshing news...", { id: "force-refresh" });
+      refreshEvents(true);
+    }
+  };
 
   useEffect(() => {
     if (!subscriptionLoading && plan && (plan === "premium" || plan === "pro")) {
@@ -81,23 +88,43 @@ const Dashboard = () => {
           <Info size={12} />
           <span>Last updated: {timeSinceLastRefresh}</span>
         </div>
-        <button 
-          onClick={refreshEventsCallback} 
-          disabled={isRefreshingManually}
-          className="text-xs text-primary hover:underline flex items-center gap-1"
-        >
-          {isRefreshingManually ? (
-            <>
-              <RefreshCw size={12} className="animate-spin" />
-              <span>Refreshing...</span>
-            </>
-          ) : (
-            <>
-              <RefreshCw size={12} />
-              <span>Refresh now</span>
-            </>
-          )}
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleRefresh} 
+            disabled={isRefreshingManually}
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            {isRefreshingManually ? (
+              <>
+                <RefreshCw size={12} className="animate-spin" />
+                <span>Refreshing...</span>
+              </>
+            ) : (
+              <>
+                <RefreshCw size={12} />
+                <span>Refresh now</span>
+              </>
+            )}
+          </button>
+          
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={handleForceRefresh}
+                  disabled={isRefreshingManually}
+                  className="text-xs text-orange-500 hover:underline flex items-center gap-1"
+                >
+                  <AlertCircle size={12} />
+                  <span>Force refresh</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Clear old news and fetch fresh content</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
       
       <div className="bg-card/40 backdrop-blur-sm rounded-xl p-6 shadow-lg border border-accent/10 animate-slideUp [animation-delay:200ms]">

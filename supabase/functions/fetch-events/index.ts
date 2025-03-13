@@ -61,11 +61,12 @@ serve(async (req) => {
   try {
     const body = await req.json().catch(e => {
       console.error("Error parsing JSON:", e);
-      return { source: "unknown" };
+      return { source: "unknown", forceRefresh: false };
     });
     
     const source = body.source || "unknown";
-    console.log(`Processing fetch-events request from source: ${source}`);
+    const forceRefresh = body.forceRefresh || false;
+    console.log(`Processing fetch-events request from source: ${source}, forceRefresh: ${forceRefresh}`);
 
     // Create Supabase client
     const supabaseClient = createClient(
@@ -80,8 +81,14 @@ serve(async (req) => {
       throw new Error('NEWS_API_KEY not configured');
     }
 
+    // Use different country codes to get more variety of news (us, gb, ca)
+    const countryCode = ["us", "gb", "ca"][Math.floor(Math.random() * 3)];
+    
+    // Add a timestamp parameter to avoid caching
+    const timestamp = new Date().getTime();
+    
     const newsResponse = await fetch(
-      'https://newsapi.org/v2/top-headlines?country=us&pageSize=10',
+      `https://newsapi.org/v2/top-headlines?country=${countryCode}&pageSize=10&_t=${timestamp}`,
       {
         headers: {
           'X-Api-Key': newsApiKey
@@ -109,7 +116,7 @@ serve(async (req) => {
     }
 
     const newsData = await newsResponse.json();
-    console.log(`Fetched ${newsData.articles?.length || 0} articles from News API`);
+    console.log(`Fetched ${newsData.articles?.length || 0} articles from News API for country: ${countryCode}`);
 
     if (!newsData.articles || newsData.articles.length === 0) {
       return new Response(
@@ -127,6 +134,27 @@ serve(async (req) => {
 
     let createdCount = 0;
     let skippedCount = 0;
+
+    // Check if we need to clean the database for a force refresh
+    if (forceRefresh) {
+      const tenMinutesAgo = new Date();
+      tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 10);
+      
+      // Delete public events older than 10 minutes if forcing a refresh
+      // Only delete events that came from NEWS_API (not user-created ones)
+      const { error: deleteError, count } = await supabaseClient
+        .from('events')
+        .delete()
+        .eq('is_public', true)
+        .eq('source_api', 'NEWS_API')
+        .lt('created_at', tenMinutesAgo.toISOString());
+      
+      if (deleteError) {
+        console.error('Error cleaning old events:', deleteError);
+      } else {
+        console.log(`Cleaned ${count} old events for force refresh`);
+      }
+    }
 
     // Process each news article and create events
     for (const article of newsData.articles) {
@@ -164,7 +192,7 @@ serve(async (req) => {
             is_public: true,
             source_url: article.url,
             source_api: 'NEWS_API',
-            created_at: new Date(article.publishedAt).toISOString()
+            created_at: new Date().toISOString() // Use current time to ensure it's recent
           }]);
 
         if (insertError) {

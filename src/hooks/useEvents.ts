@@ -1,4 +1,3 @@
-
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -47,7 +46,7 @@ export const useEvents = (
         throw error;
       }
     },
-    refetchInterval: 120000, // Ensure this is 2 minutes (120000ms)
+    refetchInterval: 120000,
     retry: 3,
     retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000),
     meta: {
@@ -98,7 +97,7 @@ export const useEvents = (
     }
   };
 
-  const refreshEvents = async () => {
+  const refreshEvents = async (forceRefresh = false) => {
     try {
       if (refreshInProgress.current || isRefreshingManually) {
         console.log("Refresh already in progress, skipping this request");
@@ -117,7 +116,10 @@ export const useEvents = (
       try {
         console.log("Calling fetch-events edge function...");
         const { data, error } = await supabase.functions.invoke('fetch-events', {
-          body: { source: 'manual-refresh' }
+          body: { 
+            source: 'manual-refresh',
+            forceRefresh: forceRefresh
+          }
         });
         
         if (error) {
