@@ -22,6 +22,7 @@ const BrokerConnectionCard = ({
   const handleDelete = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    console.log("Delete button clicked for connection:", connection.id);
     onDelete();
   };
 
@@ -52,6 +53,7 @@ const BrokerConnectionCard = ({
       <CardContent>
         <div className="text-sm text-muted-foreground">
           <p>Status: {connection.is_active ? "Active" : "Inactive"}</p>
+          <p>ID: {connection.id}</p>
         </div>
       </CardContent>
       <CardFooter className="flex justify-end gap-2">
