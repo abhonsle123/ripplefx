@@ -93,8 +93,8 @@ const PrivacyPolicy = () => {
               If you have any questions about this privacy policy or our privacy practices, please contact us at:
             </p>
             <p className="mt-2">
-              <strong>Email:</strong> privacy@rippleeffect.com<br />
-              <strong>Address:</strong> 123 Financial District, San Francisco, CA 94111
+              <strong>Email:</strong> abhonsle@tmsacademy.org<br />
+              <strong>Phone:</strong> +1 (919) 725-3410
             </p>
           </section>
         </div>
