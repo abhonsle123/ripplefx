@@ -20,6 +20,18 @@ type NewsArticle = {
   content: string;
 }
 
+type FinnhubNewsArticle = {
+  category: string;
+  datetime: number;
+  headline: string;
+  id: number;
+  image: string;
+  related: string;
+  source: string;
+  summary: string;
+  url: string;
+}
+
 // Function to determine event type based on keywords
 function determineEventType(title: string, description: string): "NATURAL_DISASTER" | "GEOPOLITICAL" | "ECONOMIC" | "OTHER" {
   const text = (title + " " + description).toLowerCase();
@@ -75,78 +87,18 @@ serve(async (req) => {
       { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
     )
 
-    // Fetch news from News API with proper error handling
-    const newsApiKey = Deno.env.get('NEWS_API_KEY');
-    if (!newsApiKey) {
-      throw new Error('NEWS_API_KEY not configured');
-    }
-
-    // Use different country codes to get more variety of news (us, gb, ca)
-    const countryCode = ["us", "gb", "ca"][Math.floor(Math.random() * 3)];
-    
-    // Add a timestamp parameter to avoid caching
-    const timestamp = new Date().getTime();
-    
-    const newsResponse = await fetch(
-      `https://newsapi.org/v2/top-headlines?country=${countryCode}&pageSize=10&_t=${timestamp}`,
-      {
-        headers: {
-          'X-Api-Key': newsApiKey
-        }
-      }
-    );
-
-    if (!newsResponse.ok) {
-      if (newsResponse.status === 429) {
-        console.error('News API rate limit exceeded');
-        return new Response(
-          JSON.stringify({
-            success: false,
-            error: 'Rate limit exceeded',
-            message: 'The News API rate limit has been reached. Please try again in a few minutes.'
-          }),
-          {
-            status: 429,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          }
-        );
-      }
-      
-      throw new Error(`News API error: ${newsResponse.statusText}`);
-    }
-
-    const newsData = await newsResponse.json();
-    console.log(`Fetched ${newsData.articles?.length || 0} articles from News API for country: ${countryCode}`);
-
-    if (!newsData.articles || newsData.articles.length === 0) {
-      return new Response(
-        JSON.stringify({
-          success: true,
-          message: 'No new articles to process',
-          timestamp: new Date().toISOString()
-        }),
-        {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        }
-      );
-    }
-
-    let createdCount = 0;
-    let skippedCount = 0;
-
     // Check if we need to clean the database for a force refresh
     if (forceRefresh) {
       const tenMinutesAgo = new Date();
       tenMinutesAgo.setMinutes(tenMinutesAgo.getMinutes() - 10);
       
       // Delete public events older than 10 minutes if forcing a refresh
-      // Only delete events that came from NEWS_API (not user-created ones)
+      // Only delete events that came from API sources (not user-created ones)
       const { error: deleteError, count } = await supabaseClient
         .from('events')
         .delete()
         .eq('is_public', true)
-        .eq('source_api', 'NEWS_API')
+        .in('source_api', ['NEWS_API', 'FINNHUB_API'])
         .lt('created_at', tenMinutesAgo.toISOString());
       
       if (deleteError) {
@@ -156,8 +108,115 @@ serve(async (req) => {
       }
     }
 
-    // Process each news article and create events
-    for (const article of newsData.articles) {
+    // We'll collect news from multiple sources and then process them together
+    let allArticles = [];
+    let createdCount = 0;
+    let skippedCount = 0;
+    
+    // 1. Fetch news from News API (existing implementation)
+    try {
+      const newsApiKey = Deno.env.get('NEWS_API_KEY');
+      if (!newsApiKey) {
+        console.error('NEWS_API_KEY not configured');
+      } else {
+        // Use different country codes to get more variety of news (us, gb, ca)
+        const countryCode = ["us", "gb", "ca"][Math.floor(Math.random() * 3)];
+        
+        // Add a timestamp parameter to avoid caching
+        const timestamp = new Date().getTime();
+        
+        const newsResponse = await fetch(
+          `https://newsapi.org/v2/top-headlines?country=${countryCode}&pageSize=10&_t=${timestamp}`,
+          {
+            headers: {
+              'X-Api-Key': newsApiKey
+            }
+          }
+        );
+
+        if (!newsResponse.ok) {
+          if (newsResponse.status === 429) {
+            console.error('News API rate limit exceeded');
+          } else {
+            console.error(`News API error: ${newsResponse.statusText}`);
+          }
+        } else {
+          const newsData = await newsResponse.json();
+          console.log(`Fetched ${newsData.articles?.length || 0} articles from News API for country: ${countryCode}`);
+          
+          if (newsData.articles && newsData.articles.length > 0) {
+            // Transform News API articles to a standard format for processing
+            const standardizedArticles = newsData.articles.map((article: NewsArticle) => ({
+              title: article.title,
+              description: article.description || article.content || 'No description available',
+              url: article.url,
+              source_api: 'NEWS_API'
+            }));
+            
+            allArticles = [...allArticles, ...standardizedArticles];
+          }
+        }
+      }
+    } catch (newsApiError) {
+      console.error('Error fetching from News API:', newsApiError);
+      // Continue to next source even if this one fails
+    }
+    
+    // 2. Fetch news from Finnhub API (new implementation)
+    try {
+      const finnhubApiKey = Deno.env.get('FINNHUB_API_KEY');
+      if (!finnhubApiKey) {
+        console.error('FINNHUB_API_KEY not configured');
+      } else {
+        // Add a timestamp parameter to avoid caching
+        const timestamp = new Date().getTime();
+        
+        const finnhubResponse = await fetch(
+          `https://finnhub.io/api/v1/news?category=general&token=${finnhubApiKey}&_t=${timestamp}`
+        );
+
+        if (!finnhubResponse.ok) {
+          console.error(`Finnhub API error: ${finnhubResponse.statusText}`);
+        } else {
+          const finnhubData = await finnhubResponse.json();
+          console.log(`Fetched ${finnhubData?.length || 0} articles from Finnhub API`);
+          
+          if (finnhubData && finnhubData.length > 0) {
+            // Transform Finnhub articles to a standard format for processing
+            const standardizedArticles = finnhubData.map((article: FinnhubNewsArticle) => ({
+              title: article.headline,
+              description: article.summary || 'No description available',
+              url: article.url,
+              source_api: 'FINNHUB_API'
+            }));
+            
+            allArticles = [...allArticles, ...standardizedArticles];
+          }
+        }
+      }
+    } catch (finnhubApiError) {
+      console.error('Error fetching from Finnhub API:', finnhubApiError);
+      // Continue processing even if Finnhub API fails
+    }
+    
+    console.log(`Processing ${allArticles.length} total articles from all sources`);
+    
+    if (allArticles.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          message: 'No articles to process from any source',
+          timestamp: new Date().toISOString()
+        }),
+        {
+          status: 200,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Process each article and create events
+    for (const article of allArticles) {
       try {
         if (!article.title || !article.description) {
           console.log('Skipping article with missing title or description');
@@ -178,20 +237,20 @@ serve(async (req) => {
           continue;
         }
 
-        const eventType = determineEventType(article.title, article.description || '');
-        const severity = determineSeverity(article.title, article.description || '');
+        const eventType = determineEventType(article.title, article.description);
+        const severity = determineSeverity(article.title, article.description);
 
         // Create new event
         const { error: insertError } = await supabaseClient
           .from('events')
           .insert([{
             title: article.title,
-            description: article.description || article.content || 'No description available',
+            description: article.description,
             event_type: eventType,
             severity: severity,
             is_public: true,
             source_url: article.url,
-            source_api: 'NEWS_API',
+            source_api: article.source_api,
             created_at: new Date().toISOString() // Use current time to ensure it's recent
           }]);
 
@@ -202,7 +261,7 @@ serve(async (req) => {
         }
 
         createdCount++;
-        console.log(`Created new event from article: ${article.title}`);
+        console.log(`Created new event from article: ${article.title} (${article.source_api})`);
       } catch (error) {
         console.error('Error processing article:', error);
         skippedCount++;
