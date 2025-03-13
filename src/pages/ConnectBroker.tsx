@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import { Plus } from "lucide-react";
@@ -19,15 +19,21 @@ const ConnectBroker = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [connectionToEdit, setConnectionToEdit] = useState<BrokerConnection | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deletedConnectionId, setDeletedConnectionId] = useState<string | null>(null);
 
   // Check authentication
-  supabase.auth.getSession().then(({ data: { session } }) => {
-    if (!session) {
-      navigate("/auth");
-    }
-  });
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        navigate("/auth");
+      }
+    };
+    
+    checkAuth();
+  }, [navigate]);
 
-  const { data: connections = [], isLoading } = useQuery({
+  const { data: connections = [], isLoading, refetch } = useQuery({
     queryKey: ["broker-connections"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -55,6 +61,7 @@ const ConnectBroker = () => {
   const handleDelete = async (connectionId: string) => {
     try {
       setIsDeleting(true);
+      setDeletedConnectionId(connectionId);
       
       const { error } = await supabase
         .from("broker_connections")
@@ -62,9 +69,16 @@ const ConnectBroker = () => {
         .eq("id", connectionId);
 
       if (error) throw error;
-
-      // Explicitly invalidate and refetch the broker connections query
-      await queryClient.invalidateQueries({ queryKey: ["broker-connections"] });
+      
+      // Force refetch the data instead of just invalidating
+      await refetch();
+      
+      // Also force update the cache to remove the deleted item
+      queryClient.setQueryData(
+        ["broker-connections"], 
+        (oldData: BrokerConnection[] | undefined) => 
+          oldData ? oldData.filter(conn => conn.id !== connectionId) : []
+      );
       
       toast({
         title: "Success",
@@ -81,6 +95,7 @@ const ConnectBroker = () => {
       console.error("Error deleting broker connection:", error);
     } finally {
       setIsDeleting(false);
+      setDeletedConnectionId(null);
     }
   };
 
@@ -90,6 +105,11 @@ const ConnectBroker = () => {
       setConnectionToEdit(null);
     }
   };
+
+  // Filter out the deleted connection from the UI immediately
+  const displayConnections = connections.filter(
+    connection => connection.id !== deletedConnectionId
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background via-background/95 to-background/90">
@@ -114,7 +134,7 @@ const ConnectBroker = () => {
                   className="h-48 rounded-xl bg-card/40 animate-pulse"
                 />
               ))
-            ) : connections.length === 0 ? (
+            ) : displayConnections.length === 0 ? (
               <div className="col-span-full flex flex-col items-center justify-center p-8 text-center bg-card/40 rounded-xl">
                 <h3 className="text-xl font-semibold mb-2">No broker connections yet</h3>
                 <p className="text-muted-foreground mb-4">
@@ -129,13 +149,13 @@ const ConnectBroker = () => {
                 </Button>
               </div>
             ) : (
-              connections.map((connection) => (
+              displayConnections.map((connection) => (
                 <BrokerConnectionCard
                   key={connection.id}
                   connection={connection}
                   onEdit={() => handleEdit(connection)}
                   onDelete={() => handleDelete(connection.id)}
-                  isDeleting={isDeleting}
+                  isDeleting={isDeleting && deletedConnectionId === connection.id}
                 />
               ))
             )}
