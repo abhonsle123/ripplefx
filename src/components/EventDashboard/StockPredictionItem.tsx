@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { StockPrediction } from "./StockPredictions";
 import { Badge } from "@/components/ui/badge";
+import { useState } from "react";
 
 interface StockPredictionItemProps {
   stock: StockPrediction;
@@ -27,12 +28,35 @@ const StockPredictionItem = ({
   const colorClass = isPositive ? "text-green-600" : "text-red-600";
   const bgColorClass = isPositive ? "bg-green-100" : "bg-red-100";
   const expectedDirection = isPositive ? "+" : "-";
+  const [localWatching, setLocalWatching] = useState(isWatching);
+  const [localProcessing, setLocalProcessing] = useState(isProcessing);
+  
+  // Update local state when props change
+  if (localWatching !== isWatching && !localProcessing) {
+    setLocalWatching(isWatching);
+  }
+  
+  if (localProcessing !== isProcessing) {
+    setLocalProcessing(isProcessing);
+  }
+
+  const handleWatchClick = () => {
+    if (localProcessing) return;
+    
+    // Optimistic UI update
+    if (!localWatching) {
+      setLocalWatching(true);
+      setLocalProcessing(true);
+    }
+    
+    onWatchClick(stock, isPositive, index);
+  };
 
   return (
     <div
       className={cn(
-        "flex items-center justify-between p-2 rounded border",
-        isWatching
+        "flex items-center justify-between p-2 rounded border transition-all duration-200",
+        localWatching
           ? "border-primary/40 bg-primary/5"
           : "border-muted hover:border-muted-foreground/30"
       )}
@@ -59,18 +83,18 @@ const StockPredictionItem = ({
         </div>
       </div>
       <Button
-        onClick={() => onWatchClick(stock, isPositive, index)}
+        onClick={handleWatchClick}
         size="sm"
         variant="ghost"
         className={cn(
           "h-7 w-7 p-0",
-          isWatching && "text-primary"
+          localWatching && "text-primary"
         )}
-        disabled={isProcessing}
+        disabled={localProcessing}
       >
-        {isProcessing ? (
+        {localProcessing ? (
           <Loader2 className="h-4 w-4 animate-spin" />
-        ) : isWatching ? (
+        ) : localWatching ? (
           <EyeOff className="h-4 w-4" />
         ) : (
           <Eye className="h-4 w-4" />

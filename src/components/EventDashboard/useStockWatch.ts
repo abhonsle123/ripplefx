@@ -2,10 +2,12 @@
 import { useState } from "react";
 import { useToast } from "@/components/ui/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 import type { StockPrediction } from "./StockPredictions";
 
 export const useStockWatch = (eventId: string) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [watchingStocks, setWatchingStocks] = useState<string[]>([]);
   const [processingStocks, setProcessingStocks] = useState<string[]>([]);
 
@@ -103,7 +105,12 @@ export const useStockWatch = (eventId: string) => {
         if (createError) throw createError;
       }
 
+      // Update the local state
       setWatchingStocks(prev => [...prev, stock.symbol]);
+      
+      // Invalidate the watchlist query to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["stock-watches", session.user.id] });
+      
       toast({
         title: "Stock Watch Added",
         description: `You are now following ${stock.symbol}. You'll receive updates about its movement.`,
