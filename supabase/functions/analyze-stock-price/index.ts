@@ -1,6 +1,6 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from '@supabase/supabase-js';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -28,7 +28,7 @@ serve(async (req) => {
     // Validate inputs
     if (!stockPredictionId) {
       return new Response(
-        JSON.stringify({ error: 'Missing stock prediction ID' }),
+        JSON.stringify({ error: 'Missing required parameters' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -36,7 +36,7 @@ serve(async (req) => {
     // Get the stock prediction
     const { data: stockPrediction, error: stockError } = await supabase
       .from('stock_predictions')
-      .select('*, event:event_id(*)')
+      .select('*')
       .eq('id', stockPredictionId)
       .single();
 
@@ -48,89 +48,63 @@ serve(async (req) => {
     }
 
     const symbol = stockPrediction.symbol;
-    const isPositive = stockPrediction.is_positive;
-    let currentConfidenceScore = stockPrediction.confidence_score || 0;
-    let currentPriceChangePercentage = stockPrediction.price_change_percentage || 0;
-
-    console.log(`Analyzing stock ${symbol} with current confidence: ${currentConfidenceScore}`);
-
-    // Simulate getting latest market data - in a real implementation, you would fetch from Alpaca or another API
-    // Here we're simulating the analysis with random data
-    try {
-      // Simulate market reaction to news
-      const marketReaction = Math.random() * 0.5 + 0.7; // Value between 0.7 and 1.2
+    
+    // In a real implementation, fetch the latest stock price from a financial API
+    // For this example, we'll simulate a price and update
+    const currentPrice = Math.random() * 100 + 50; // Random price between $50 and $150
+    console.log(`Simulated current price for ${symbol}: $${currentPrice.toFixed(2)}`);
+    
+    // Calculate a slight adjustment to the price change percentage
+    let adjustedPercentage = stockPrediction.price_change_percentage;
+    const adjustment = (Math.random() * 2) - 1; // Random adjustment between -1% and +1%
+    
+    if (stockPrediction.is_positive) {
+      adjustedPercentage = Math.max(0.5, adjustedPercentage + adjustment);
+    } else {
+      adjustedPercentage = Math.min(-0.5, adjustedPercentage + adjustment);
+    }
+    
+    console.log(`Adjusted price change percentage for ${symbol}: ${adjustedPercentage.toFixed(2)}%`);
+    
+    // Update the stock prediction with new analysis
+    const { data: updatedPrediction, error: updateError } = await supabase
+      .from('stock_predictions')
+      .update({
+        price_change_percentage: adjustedPercentage,
+        last_analysis_date: new Date().toISOString(),
+        // In a real implementation, you might update other fields based on real analysis
+      })
+      .eq('id', stockPredictionId)
+      .select()
+      .single();
       
-      // Adjust confidence based on market reaction
-      const newConfidenceScore = Math.min(100, Math.max(0, 
-        currentConfidenceScore * marketReaction + (Math.random() * 10 - 5)
-      ));
-      
-      // Adjust price change prediction
-      const priceChangeMultiplier = newConfidenceScore / currentConfidenceScore;
-      const newPriceChangePercentage = isPositive ? 
-        currentPriceChangePercentage * priceChangeMultiplier :
-        currentPriceChangePercentage / priceChangeMultiplier;
-      
-      console.log(`New confidence score: ${newConfidenceScore.toFixed(2)}`);
-      console.log(`New price change prediction: ${newPriceChangePercentage.toFixed(2)}%`);
-      
-      // Generate an updated price impact analysis
-      const updatedAnalysis = {
-        confidence_adjustment: {
-          previous: currentConfidenceScore,
-          current: newConfidenceScore,
-          change: newConfidenceScore - currentConfidenceScore
-        },
-        price_prediction_adjustment: {
-          previous: currentPriceChangePercentage,
-          current: newPriceChangePercentage,
-          change: newPriceChangePercentage - currentPriceChangePercentage
-        },
-        market_factors: {
-          market_volatility: Math.random() * 100,
-          sector_performance: Math.random() * 20 - 10,
-          recent_volume: Math.floor(Math.random() * 1000000) + 100000
-        },
-        last_updated: new Date().toISOString()
-      };
-      
-      // Update the stock prediction
-      const { data: updatedPrediction, error: updateError } = await supabase
-        .from('stock_predictions')
-        .update({
-          confidence_score: newConfidenceScore,
-          price_change_percentage: newPriceChangePercentage,
-          price_impact_analysis: {
-            ...stockPrediction.price_impact_analysis,
-            updates: [...(stockPrediction.price_impact_analysis?.updates || []), updatedAnalysis]
-          },
-          last_analysis_date: new Date().toISOString()
-        })
-        .eq('id', stockPredictionId)
-        .select()
-        .single();
-      
-      if (updateError) {
-        throw updateError;
-      }
-      
+    if (updateError) {
       return new Response(
-        JSON.stringify({ 
-          success: true, 
-          message: `Successfully updated analysis for ${symbol}`,
-          updatedPrediction
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    } catch (error) {
-      console.error('Error analyzing stock price:', error);
-      return new Response(
-        JSON.stringify({ error: 'Failed to analyze stock price', details: error.message }),
+        JSON.stringify({ error: 'Failed to update stock prediction', details: updateError.message }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    
+    // Update all user watches for this stock prediction with the latest price
+    await supabase
+      .from('user_stock_watches')
+      .update({
+        last_price_check: new Date().toISOString(),
+        last_price: currentPrice,
+      })
+      .eq('stock_prediction_id', stockPredictionId);
+    
+    return new Response(
+      JSON.stringify({
+        success: true,
+        message: `Analysis updated for ${symbol}`,
+        data: updatedPrediction
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+    
   } catch (error) {
-    console.error('Server error:', error);
+    console.error('Error analyzing stock price:', error);
     return new Response(
       JSON.stringify({ error: 'Server error', details: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
