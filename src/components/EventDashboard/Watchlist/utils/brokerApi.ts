@@ -1,5 +1,6 @@
 
 import { supabase } from "@/integrations/supabase/client";
+import type { Database } from "@/integrations/supabase/types";
 
 /**
  * Gets the active broker connection for a user
@@ -9,7 +10,7 @@ export const getBrokerConnection = async (userId: string) => {
     .from('broker_connections')
     .select('*')
     .eq('user_id', userId)
-    .eq('status', 'ACTIVE')
+    .eq('is_active', true)
     .limit(1)
     .single();
 
