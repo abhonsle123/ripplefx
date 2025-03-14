@@ -19,7 +19,7 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { Loader2 } from "lucide-react";
+import { Loader2, AlertCircle } from "lucide-react";
 
 interface BrokerConnectionFormProps {
   onSubmit: (formData: {
@@ -36,26 +36,35 @@ const BrokerConnectionForm = ({ onSubmit, isSaving }: BrokerConnectionFormProps)
     api_key: "",
     api_secret: "",
   });
+  const [error, setError] = useState<string | null>(null);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setError(null);
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSelectChange = (value: string) => {
+    setError(null);
     setFormData((prev) => ({ ...prev, broker_name: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await onSubmit(formData);
-    if (success) {
-      // Reset form
-      setFormData({
-        broker_name: "alpaca_paper",
-        api_key: "",
-        api_secret: "",
-      });
+    setError(null);
+    
+    try {
+      const success = await onSubmit(formData);
+      if (success) {
+        // Reset form
+        setFormData({
+          broker_name: "alpaca_paper",
+          api_key: "",
+          api_secret: "",
+        });
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to connect broker");
     }
   };
 
@@ -69,6 +78,13 @@ const BrokerConnectionForm = ({ onSubmit, isSaving }: BrokerConnectionFormProps)
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          {error && (
+            <div className="bg-destructive/15 p-3 rounded-md flex items-start gap-2 text-sm">
+              <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+              <span className="text-destructive">{error}</span>
+            </div>
+          )}
+          
           <div className="space-y-2">
             <Label htmlFor="broker_name">Broker</Label>
             <Select 
@@ -83,6 +99,9 @@ const BrokerConnectionForm = ({ onSubmit, isSaving }: BrokerConnectionFormProps)
                 <SelectItem value="alpaca_live">Alpaca (Live Trading)</SelectItem>
               </SelectContent>
             </Select>
+            <p className="text-xs text-muted-foreground">
+              Note: You can only have one connection per broker type
+            </p>
           </div>
 
           <div className="space-y-2">

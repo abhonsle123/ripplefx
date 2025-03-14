@@ -87,6 +87,40 @@ export const useBrokerConnections = (userId: string | null) => {
         throw new Error('API Key and Secret are required');
       }
       
+      // Check if there's a pending deletion for this broker type in localStorage
+      const deletedIds = getDeletedIds();
+      if (deletedIds.length > 0) {
+        // Get existing connections to check if the user already has this broker type
+        const { data: existingConnections, error: fetchError } = await supabase
+          .from('broker_connections')
+          .select('id, broker_name')
+          .eq('user_id', userId)
+          .eq('broker_name', formData.broker_name);
+          
+        if (fetchError) throw fetchError;
+        
+        // If there's a matching broker in the database that was "deleted" in localStorage,
+        // we should remove it completely before adding the new one
+        if (existingConnections && existingConnections.length > 0) {
+          const existingId = existingConnections[0].id;
+          
+          // Delete the existing broker connection with this broker name
+          const { error: deleteError } = await supabase
+            .from('broker_connections')
+            .delete()
+            .eq('id', existingId);
+            
+          if (deleteError) {
+            console.error('Error removing existing broker connection:', deleteError);
+            throw new Error('Could not add new broker connection. Please try again.');
+          }
+          
+          // Remove the ID from localStorage
+          const newDeletedIds = deletedIds.filter(id => id !== existingId);
+          localStorage.setItem('deletedBrokerIds', JSON.stringify(newDeletedIds));
+        }
+      }
+      
       // Insert the new broker connection
       const { data, error } = await supabase
         .from('broker_connections')
@@ -102,7 +136,13 @@ export const useBrokerConnections = (userId: string | null) => {
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        // Check specifically for the unique constraint violation
+        if (error.message.includes('duplicate key') || error.code === '23505') {
+          throw new Error(`You already have a connection for ${formData.broker_name === 'alpaca_paper' ? 'Alpaca Paper Trading' : 'Alpaca Live Trading'}. Please delete it first.`);
+        }
+        throw error;
+      }
       
       // Deactivate other connections
       if (data) {
