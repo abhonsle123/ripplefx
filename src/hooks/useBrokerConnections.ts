@@ -87,41 +87,29 @@ export const useBrokerConnections = (userId: string | null) => {
         throw new Error('API Key and Secret are required');
       }
       
-      // IMPROVED APPROACH: Always check for and remove existing connections of the same broker type
-      // regardless of localStorage status
+      // First, aggressively clean up any existing connections with the same broker name
+      // This is a critical step to ensure no duplicate connections exist
       
-      // Get existing connections for this broker type
-      const { data: existingConnections, error: fetchError } = await supabase
+      console.log(`Cleaning up existing ${formData.broker_name} connections...`);
+      
+      // 1. Delete from the database directly - don't rely on any checks
+      const { error: deleteError } = await supabase
         .from('broker_connections')
-        .select('id, broker_name')
+        .delete()
         .eq('user_id', userId)
         .eq('broker_name', formData.broker_name);
         
-      if (fetchError) throw fetchError;
-      
-      // If there's an existing connection for this broker type, remove it first
-      if (existingConnections && existingConnections.length > 0) {
-        for (const conn of existingConnections) {
-          // Delete the connection from the database
-          const { error: deleteError } = await supabase
-            .from('broker_connections')
-            .delete()
-            .eq('id', conn.id);
-            
-          if (deleteError) {
-            console.error('Error removing existing broker connection:', deleteError);
-            throw new Error('Could not add new broker connection. Please try again.');
-          }
-        }
-        
-        // Also clean up any localStorage tracking for these IDs
-        const deletedIds = getDeletedIds();
-        const existingIds = existingConnections.map(c => c.id);
-        const newDeletedIds = deletedIds.filter(id => !existingIds.includes(id));
-        localStorage.setItem('deletedBrokerIds', JSON.stringify(newDeletedIds));
+      if (deleteError) {
+        console.error('Error removing existing broker connection from DB:', deleteError);
+        // Continue anyway - we still want to try to add the new connection
       }
       
-      // Insert the new broker connection
+      // 2. Clear all localStorage data related to deleted brokers
+      clearDeletedIds();
+      
+      console.log(`Creating new ${formData.broker_name} connection...`);
+      
+      // 3. Now try to insert the new broker connection
       const { data, error } = await supabase
         .from('broker_connections')
         .insert([
@@ -137,14 +125,15 @@ export const useBrokerConnections = (userId: string | null) => {
         .single();
       
       if (error) {
-        // Improved error handling
+        console.error('Error inserting new broker connection:', error);
+        // Improved error handling with more details
         if (error.message.includes('duplicate key') || error.code === '23505') {
-          throw new Error(`You already have a connection for ${formData.broker_name === 'alpaca_paper' ? 'Alpaca Paper Trading' : 'Alpaca Live Trading'}. Please delete it first.`);
+          throw new Error(`Unable to add connection: A connection for ${formData.broker_name === 'alpaca_paper' ? 'Alpaca Paper Trading' : 'Alpaca Live Trading'} already exists in the database. Please try again after refreshing the page.`);
         }
         throw error;
       }
       
-      // Deactivate other connections
+      // 4. If successful, deactivate other connections
       if (data) {
         await supabase
           .from('broker_connections')
@@ -155,10 +144,7 @@ export const useBrokerConnections = (userId: string | null) => {
       
       toast.success('Broker connected successfully');
       
-      // Clear all localStorage tracking now that we have a clean state
-      clearDeletedIds();
-      
-      // Refresh the broker connections list
+      // 5. Refresh the broker connections list to ensure UI is in sync
       await fetchBrokerConnections();
       return true;
     } catch (error: any) {
@@ -174,23 +160,32 @@ export const useBrokerConnections = (userId: string | null) => {
     if (!confirm('Are you sure you want to delete this broker connection?')) return;
     
     try {
-      // Optimistically update the UI
+      // 1. Optimistically update the UI
       setBrokerConnections(prevConnections => 
         prevConnections.filter(connection => connection.id !== id)
       );
       
-      // Store the ID being deleted in localStorage for persistent tracking
+      // 2. Store the ID being deleted in localStorage for persistent tracking
       addDeletedId(id);
       
-      // Perform the actual deletion in the database
+      // 3. Get the broker info before deletion to show in the message
+      const connectionToDelete = brokerConnections.find(conn => conn.id === id);
+      const brokerType = connectionToDelete?.broker_name === 'alpaca_paper' 
+        ? 'Alpaca Paper Trading' 
+        : 'Alpaca Live Trading';
+      
+      // 4. Perform the actual deletion in the database
       const { error } = await supabase
         .from('broker_connections')
         .delete()
         .eq('id', id);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Database deletion error:', error);
+        throw error;
+      }
       
-      toast.success('Broker connection deleted');
+      toast.success(`${brokerType} connection deleted`);
     } catch (error: any) {
       console.error('Error deleting broker connection:', error);
       toast.error('Failed to delete broker connection');

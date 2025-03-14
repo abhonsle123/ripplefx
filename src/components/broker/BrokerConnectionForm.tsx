@@ -19,7 +19,8 @@ import {
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
-import { Loader2, AlertCircle } from "lucide-react";
+import { Loader2, AlertCircle, Info } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface BrokerConnectionFormProps {
   onSubmit: (formData: {
@@ -65,6 +66,7 @@ const BrokerConnectionForm = ({ onSubmit, isSaving }: BrokerConnectionFormProps)
       }
     } catch (err: any) {
       setError(err.message || "Failed to connect broker");
+      toast.error(err.message || "Failed to connect broker");
     }
   };
 
@@ -78,11 +80,19 @@ const BrokerConnectionForm = ({ onSubmit, isSaving }: BrokerConnectionFormProps)
       </CardHeader>
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
+          {/* Info alert about only having one connection per broker type */}
+          <Alert className="bg-blue-50 border-blue-200">
+            <Info className="h-4 w-4 text-blue-600" />
+            <AlertDescription className="text-blue-700 text-sm">
+              Note: You can only have one active connection per broker type. Adding a new connection will replace any existing one.
+            </AlertDescription>
+          </Alert>
+          
           {error && (
-            <div className="bg-destructive/15 p-3 rounded-md flex items-start gap-2 text-sm">
-              <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
-              <span className="text-destructive">{error}</span>
-            </div>
+            <Alert variant="destructive" className="bg-destructive/10 border-destructive/20">
+              <AlertCircle className="h-4 w-4 text-destructive" />
+              <AlertDescription className="text-destructive">{error}</AlertDescription>
+            </Alert>
           )}
           
           <div className="space-y-2">
@@ -99,9 +109,6 @@ const BrokerConnectionForm = ({ onSubmit, isSaving }: BrokerConnectionFormProps)
                 <SelectItem value="alpaca_live">Alpaca (Live Trading)</SelectItem>
               </SelectContent>
             </Select>
-            <p className="text-xs text-muted-foreground">
-              Note: You can only have one connection per broker type
-            </p>
           </div>
 
           <div className="space-y-2">
