@@ -21,16 +21,17 @@ serve(async (req) => {
     );
 
     // Get the request body
-    const { stockPredictionId } = await req.json();
+    const { stockPredictionId, amount, brokerId, userId } = await req.json();
 
-    if (!stockPredictionId) {
+    // Validate the request
+    if (!stockPredictionId || !amount || !brokerId || !userId) {
       return new Response(
-        JSON.stringify({ error: 'Missing stock prediction ID' }),
+        JSON.stringify({ error: 'Missing required parameters' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 }
       );
     }
 
-    console.log(`Analyzing stock price for prediction ID: ${stockPredictionId}`);
+    console.log(`Processing trade request: Stock ID: ${stockPredictionId}, Amount: ${amount}, Broker ID: ${brokerId}`);
 
     // Get the stock prediction details
     const { data: stockPrediction, error: stockError } = await supabaseClient
@@ -47,48 +48,54 @@ serve(async (req) => {
       );
     }
 
-    // In a real implementation, this would fetch the actual stock price from an external API
-    // For now, we'll simulate price changes
-    
-    // Generate a random price change between -5% and 15%
-    // Biased toward the prediction direction (positive or negative)
-    const bias = stockPrediction.is_positive ? 0.7 : 0.3; // Bias coefficient
-    const randomFactor = Math.random();
-    const priceChange = (randomFactor < bias ? 1 : -1) * (Math.random() * 10 + 2);
-    
-    // Calculate the new price
-    const basePrice = stockPrediction.current_price || 100; // Default to 100 if no current price
-    const newPrice = basePrice * (1 + priceChange / 100);
+    // In a real implementation, this would connect to an actual broker API
+    // For now, we'll simulate a successful trade execution
 
-    // Update the stock prediction with new analysis
-    const { data: updatedPrediction, error: updateError } = await supabaseClient
-      .from('stock_predictions')
-      .update({
-        current_price: newPrice,
-        price_change_percentage: priceChange,
-        last_analysis_date: new Date().toISOString(),
-        // Update confidence score based on price movement matching prediction
-        confidence_score: stockPrediction.confidence_score * 
-          ((priceChange > 0 && stockPrediction.is_positive) || 
-           (priceChange < 0 && !stockPrediction.is_positive) ? 1.05 : 0.95)
-      })
-      .eq('id', stockPredictionId)
+    // Log the trade in the database
+    const { data: trade, error: tradeError } = await supabaseClient
+      .from('trades')
+      .insert([
+        {
+          user_id: userId,
+          stock_prediction_id: stockPredictionId,
+          broker_connection_id: brokerId,
+          amount,
+          status: 'COMPLETED',
+          direction: stockPrediction.is_positive ? 'BUY' : 'SELL'
+        }
+      ])
       .select()
       .single();
 
-    if (updateError) {
-      console.error('Error updating stock prediction:', updateError);
+    if (tradeError) {
+      console.error('Error recording trade:', tradeError);
       return new Response(
-        JSON.stringify({ error: 'Failed to update stock prediction' }),
+        JSON.stringify({ error: 'Failed to record trade' }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 500 }
       );
+    }
+
+    // Update the watch record to reflect the investment
+    const { error: watchUpdateError } = await supabaseClient
+      .from('user_stock_watches')
+      .update({ 
+        status: 'INVESTING', 
+        investment_amount: amount,
+        entry_price: stockPrediction.current_price || null
+      })
+      .eq('user_id', userId)
+      .eq('stock_prediction_id', stockPredictionId);
+
+    if (watchUpdateError) {
+      console.error('Error updating watch status:', watchUpdateError);
+      // We'll still consider this a success since the trade went through
     }
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: 'Stock price analyzed successfully',
-        data: updatedPrediction
+        message: 'Trade executed successfully',
+        trade 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
