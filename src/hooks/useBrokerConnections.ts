@@ -8,9 +8,33 @@ export const useBrokerConnections = (userId: string | null) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [brokerConnections, setBrokerConnections] = useState<BrokerConnection[]>([]);
-  const [lastDeletedId, setLastDeletedId] = useState<string | null>(null);
+  
+  // Use localStorage to persistently track deleted IDs across page navigations
+  const getDeletedIds = useCallback(() => {
+    try {
+      const storedIds = localStorage.getItem('deletedBrokerIds');
+      return storedIds ? JSON.parse(storedIds) : [];
+    } catch (e) {
+      console.error('Error parsing deleted broker IDs from localStorage:', e);
+      return [];
+    }
+  }, []);
+  
+  const addDeletedId = useCallback((id: string) => {
+    try {
+      const currentIds = getDeletedIds();
+      const updatedIds = [...currentIds, id];
+      localStorage.setItem('deletedBrokerIds', JSON.stringify(updatedIds));
+    } catch (e) {
+      console.error('Error saving deleted broker ID to localStorage:', e);
+    }
+  }, [getDeletedIds]);
+  
+  const clearDeletedIds = useCallback(() => {
+    localStorage.removeItem('deletedBrokerIds');
+  }, []);
 
-  // Memoize the fetchBrokerConnections function to avoid unnecessary re-renders
+  // Memoize the fetchBrokerConnections function
   const fetchBrokerConnections = useCallback(async () => {
     if (!userId) return;
     
@@ -24,11 +48,11 @@ export const useBrokerConnections = (userId: string | null) => {
 
       if (error) throw error;
       
-      // Apply any pending deletions to ensure consistency
-      let filteredData = data || [];
-      if (lastDeletedId) {
-        filteredData = filteredData.filter(connection => connection.id !== lastDeletedId);
-      }
+      // Filter out any brokers that have been deleted (tracked in localStorage)
+      const deletedIds = getDeletedIds();
+      const filteredData = (data || []).filter(
+        connection => !deletedIds.includes(connection.id)
+      );
       
       setBrokerConnections(filteredData);
     } catch (error: any) {
@@ -37,9 +61,9 @@ export const useBrokerConnections = (userId: string | null) => {
     } finally {
       setIsLoading(false);
     }
-  }, [userId, lastDeletedId]);
+  }, [userId, getDeletedIds]);
 
-  // Fetch broker connections when userId changes or lastDeletedId changes
+  // Fetch broker connections when userId changes
   useEffect(() => {
     if (!userId) return;
     fetchBrokerConnections();
@@ -91,10 +115,10 @@ export const useBrokerConnections = (userId: string | null) => {
       
       toast.success('Broker connected successfully');
       
-      // Reset the lastDeletedId when adding a new connection
-      setLastDeletedId(null);
+      // Clear the deleted IDs tracking when adding a new connection
+      clearDeletedIds();
       
-      // Refresh the broker connections list after adding a new one
+      // Refresh the broker connections list
       await fetchBrokerConnections();
       return true;
     } catch (error: any) {
@@ -110,15 +134,15 @@ export const useBrokerConnections = (userId: string | null) => {
     if (!confirm('Are you sure you want to delete this broker connection?')) return;
     
     try {
-      // Store the ID being deleted for tracking
-      setLastDeletedId(id);
-      
       // Optimistically update the UI
       setBrokerConnections(prevConnections => 
         prevConnections.filter(connection => connection.id !== id)
       );
       
-      // Then perform the actual deletion
+      // Store the ID being deleted in localStorage for persistent tracking
+      addDeletedId(id);
+      
+      // Perform the actual deletion in the database
       const { error } = await supabase
         .from('broker_connections')
         .delete()
@@ -131,8 +155,7 @@ export const useBrokerConnections = (userId: string | null) => {
       console.error('Error deleting broker connection:', error);
       toast.error('Failed to delete broker connection');
       
-      // Only clear lastDeletedId on error and refresh from server
-      setLastDeletedId(null);
+      // Refresh to ensure UI is in sync with backend
       fetchBrokerConnections();
     }
   };
