@@ -97,33 +97,44 @@ export const useBrokerConnections = (userId: string | null) => {
     if (!confirm('Are you sure you want to delete this broker connection?')) return;
     
     try {
-      // First optimistically update the UI
-      setBrokerConnections(prevConnections => 
-        prevConnections.filter(connection => connection.id !== id)
-      );
-      
-      // Then perform the actual deletion
+      // First perform the actual deletion
       const { error } = await supabase
         .from('broker_connections')
         .delete()
         .eq('id', id);
       
-      if (error) {
-        // If there was an error, revert the UI update by fetching the connections again
-        fetchBrokerConnections();
-        throw error;
-      }
+      if (error) throw error;
+      
+      // Update the UI after confirmed deletion
+      setBrokerConnections(prevConnections => 
+        prevConnections.filter(connection => connection.id !== id)
+      );
       
       toast.success('Broker connection deleted');
     } catch (error: any) {
       console.error('Error deleting broker connection:', error);
       toast.error('Failed to delete broker connection');
+      // Re-fetch to ensure UI is in sync with backend
+      fetchBrokerConnections();
     }
   };
 
   const setActiveBroker = async (id: string) => {
     try {
-      // Optimistically update UI first
+      // First perform the database update
+      await supabase
+        .from('broker_connections')
+        .update({ is_active: false })
+        .eq('user_id', userId);
+      
+      const { error } = await supabase
+        .from('broker_connections')
+        .update({ is_active: true })
+        .eq('id', id);
+      
+      if (error) throw error;
+      
+      // Update UI after confirmed update
       setBrokerConnections(prevConnections => 
         prevConnections.map(connection => ({
           ...connection,
@@ -131,28 +142,12 @@ export const useBrokerConnections = (userId: string | null) => {
         }))
       );
       
-      // Set all connections to inactive
-      await supabase
-        .from('broker_connections')
-        .update({ is_active: false })
-        .eq('user_id', userId);
-      
-      // Set the selected connection to active
-      const { error } = await supabase
-        .from('broker_connections')
-        .update({ is_active: true })
-        .eq('id', id);
-      
-      if (error) {
-        // If there was an error, revert the UI update by fetching the connections again
-        fetchBrokerConnections();
-        throw error;
-      }
-      
       toast.success('Broker connection activated');
     } catch (error: any) {
       console.error('Error activating broker connection:', error);
       toast.error('Failed to activate broker connection');
+      // Re-fetch to ensure UI is in sync with backend
+      fetchBrokerConnections();
     }
   };
 
