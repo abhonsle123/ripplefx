@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { BrokerConnection } from "@/types/broker";
@@ -8,13 +8,10 @@ export const useBrokerConnections = (userId: string | null) => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [brokerConnections, setBrokerConnections] = useState<BrokerConnection[]>([]);
+  const [lastDeletedId, setLastDeletedId] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!userId) return;
-    fetchBrokerConnections();
-  }, [userId]);
-
-  const fetchBrokerConnections = async () => {
+  // Memoize the fetchBrokerConnections function to avoid unnecessary re-renders
+  const fetchBrokerConnections = useCallback(async () => {
     if (!userId) return;
     
     try {
@@ -26,14 +23,27 @@ export const useBrokerConnections = (userId: string | null) => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setBrokerConnections(data || []);
+      
+      // Apply any pending deletions to ensure consistency
+      let filteredData = data || [];
+      if (lastDeletedId) {
+        filteredData = filteredData.filter(connection => connection.id !== lastDeletedId);
+      }
+      
+      setBrokerConnections(filteredData);
     } catch (error: any) {
       console.error('Error fetching broker connections:', error);
       toast.error('Failed to load broker connections');
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [userId, lastDeletedId]);
+
+  // Fetch broker connections when userId changes or lastDeletedId changes
+  useEffect(() => {
+    if (!userId) return;
+    fetchBrokerConnections();
+  }, [userId, fetchBrokerConnections]);
 
   const addBrokerConnection = async (formData: {
     broker_name: string;
@@ -81,6 +91,9 @@ export const useBrokerConnections = (userId: string | null) => {
       
       toast.success('Broker connected successfully');
       
+      // Reset the lastDeletedId when adding a new connection
+      setLastDeletedId(null);
+      
       // Refresh the broker connections list after adding a new one
       await fetchBrokerConnections();
       return true;
@@ -97,7 +110,15 @@ export const useBrokerConnections = (userId: string | null) => {
     if (!confirm('Are you sure you want to delete this broker connection?')) return;
     
     try {
-      // First perform the actual deletion
+      // Store the ID being deleted for tracking
+      setLastDeletedId(id);
+      
+      // Optimistically update the UI
+      setBrokerConnections(prevConnections => 
+        prevConnections.filter(connection => connection.id !== id)
+      );
+      
+      // Then perform the actual deletion
       const { error } = await supabase
         .from('broker_connections')
         .delete()
@@ -105,23 +126,28 @@ export const useBrokerConnections = (userId: string | null) => {
       
       if (error) throw error;
       
-      // Update the UI after confirmed deletion
-      setBrokerConnections(prevConnections => 
-        prevConnections.filter(connection => connection.id !== id)
-      );
-      
       toast.success('Broker connection deleted');
     } catch (error: any) {
       console.error('Error deleting broker connection:', error);
       toast.error('Failed to delete broker connection');
-      // Re-fetch to ensure UI is in sync with backend
+      
+      // Only clear lastDeletedId on error and refresh from server
+      setLastDeletedId(null);
       fetchBrokerConnections();
     }
   };
 
   const setActiveBroker = async (id: string) => {
     try {
-      // First perform the database update
+      // Optimistically update UI
+      setBrokerConnections(prevConnections => 
+        prevConnections.map(connection => ({
+          ...connection,
+          is_active: connection.id === id
+        }))
+      );
+      
+      // Update database
       await supabase
         .from('broker_connections')
         .update({ is_active: false })
@@ -134,19 +160,12 @@ export const useBrokerConnections = (userId: string | null) => {
       
       if (error) throw error;
       
-      // Update UI after confirmed update
-      setBrokerConnections(prevConnections => 
-        prevConnections.map(connection => ({
-          ...connection,
-          is_active: connection.id === id
-        }))
-      );
-      
       toast.success('Broker connection activated');
     } catch (error: any) {
       console.error('Error activating broker connection:', error);
       toast.error('Failed to activate broker connection');
-      // Re-fetch to ensure UI is in sync with backend
+      
+      // Refresh from server on error
       fetchBrokerConnections();
     }
   };
