@@ -1,6 +1,5 @@
 
 import { supabase } from "@/integrations/supabase/client";
-import type { Database } from "@/integrations/supabase/types";
 
 /**
  * Gets the active broker connection for a user
