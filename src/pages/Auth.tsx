@@ -11,6 +11,7 @@ const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isSignUp, setIsSignUp] = useState(false);
   const [isForgotPassword, setIsForgotPassword] = useState(false);
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -21,6 +22,7 @@ const Auth = () => {
   // Get redirect parameter
   const searchParams = new URLSearchParams(location.search);
   const redirect = searchParams.get('redirect');
+  const isReset = searchParams.get('type') === 'recovery';
 
   // Check if user is already logged in
   useEffect(() => {
@@ -55,6 +57,21 @@ const Auth = () => {
     };
   }, [navigate, redirect]);
 
+  // Check if we're handling a password reset from email link
+  useEffect(() => {
+    const handlePasswordReset = async () => {
+      if (isReset) {
+        setIsPasswordReset(true);
+        toast({
+          title: "Set New Password",
+          description: "Please enter your new password below.",
+        });
+      }
+    };
+
+    handlePasswordReset();
+  }, [isReset, toast]);
+
   const handleRedirect = () => {
     if (redirect === 'pricing') {
       navigate('/?scrollTo=pricing');
@@ -69,8 +86,12 @@ const Auth = () => {
 
     try {
       if (isForgotPassword) {
+        // Get current URL without search parameters to use as the base for redirects
+        const baseUrl = window.location.origin;
+        const resetRedirectUrl = `${baseUrl}/auth?type=recovery`;
+        
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-          redirectTo: `${window.location.origin}/auth?reset=true`,
+          redirectTo: resetRedirectUrl,
         });
 
         if (error) throw error;
@@ -82,6 +103,20 @@ const Auth = () => {
         
         // Return to sign in view
         setIsForgotPassword(false);
+      } else if (isPasswordReset) {
+        // Handle the password update for users coming from the reset link
+        const { error } = await supabase.auth.updateUser({
+          password: password,
+        });
+
+        if (error) throw error;
+
+        toast({
+          title: "Password Updated",
+          description: "Your password has been updated successfully. Please sign in with your new password.",
+        });
+        
+        setIsPasswordReset(false);
       } else if (isSignUp) {
         const { data: { session }, error } = await supabase.auth.signUp({
           email,
@@ -127,24 +162,6 @@ const Auth = () => {
     }
   };
 
-  // Check if we're handling a password reset from email link
-  useEffect(() => {
-    const handlePasswordReset = async () => {
-      // Check if this is a password reset return
-      const isReset = searchParams.get('reset') === 'true';
-      const type = searchParams.get('type');
-      
-      if (type === 'recovery') {
-        toast({
-          title: "Set New Password",
-          description: "Please enter your new password below.",
-        });
-      }
-    };
-
-    handlePasswordReset();
-  }, [location.search]);
-
   return (
     <div className="min-h-screen pt-32 pb-20 bg-background">
       <div className="container px-4">
@@ -152,12 +169,14 @@ const Auth = () => {
           <h1 className="text-3xl font-bold mb-8 text-center">
             {isForgotPassword 
               ? "Reset Your Password" 
-              : isSignUp 
-                ? "Create an Account" 
-                : "Welcome Back"}
+              : isPasswordReset
+                ? "Set New Password"
+                : isSignUp 
+                  ? "Create an Account" 
+                  : "Welcome Back"}
           </h1>
           <form onSubmit={handleAuth} className="space-y-6">
-            {isSignUp && !isForgotPassword && (
+            {isSignUp && !isForgotPassword && !isPasswordReset && (
               <div className="space-y-2">
                 <Label htmlFor="username">Username</Label>
                 <Input
@@ -170,43 +189,52 @@ const Auth = () => {
                 />
               </div>
             )}
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+            
+            {!isPasswordReset && (
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+            )}
+            
             {!isForgotPassword && (
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">
+                  {isPasswordReset ? "New Password" : "Password"}
+                </Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  required={!isForgotPassword}
+                  required
                   minLength={6}
                 />
               </div>
             )}
+            
             <Button type="submit" className="w-full" disabled={isLoading}>
               {isLoading
                 ? "Loading..."
                 : isForgotPassword
                   ? "Send Reset Link"
-                  : isSignUp
-                    ? "Create Account"
-                    : "Sign In"}
+                  : isPasswordReset
+                    ? "Update Password"
+                    : isSignUp
+                      ? "Create Account"
+                      : "Sign In"}
             </Button>
           </form>
           
           {/* Authentication options */}
           <div className="mt-4 space-y-3">
-            {!isForgotPassword && (
+            {!isForgotPassword && !isPasswordReset && (
               <p className="text-center text-sm text-muted-foreground">
                 {isSignUp ? "Already have an account?" : "Don't have an account?"}{" "}
                 <button
@@ -219,7 +247,7 @@ const Auth = () => {
               </p>
             )}
             
-            {!isSignUp && !isForgotPassword && (
+            {!isSignUp && !isForgotPassword && !isPasswordReset && (
               <p className="text-center text-sm text-muted-foreground">
                 <button
                   type="button"
@@ -231,11 +259,14 @@ const Auth = () => {
               </p>
             )}
             
-            {isForgotPassword && (
+            {(isForgotPassword || isPasswordReset) && (
               <p className="text-center text-sm text-muted-foreground">
                 <button
                   type="button"
-                  onClick={() => setIsForgotPassword(false)}
+                  onClick={() => {
+                    setIsForgotPassword(false);
+                    setIsPasswordReset(false);
+                  }}
                   className="text-primary hover:underline"
                 >
                   Back to Sign In
