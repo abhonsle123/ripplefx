@@ -43,12 +43,18 @@ const Auth = () => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state change event:", event);
       if (event === 'SIGNED_IN' && session) {
         handleRedirect();
       } else if (event === 'SIGNED_OUT') {
         navigate('/auth');
-      } else if (event === 'TOKEN_REFRESHED') {
-        console.log('Token has been refreshed');
+      } else if (event === 'PASSWORD_RECOVERY') {
+        // Handle the password recovery event
+        setIsPasswordReset(true);
+        toast({
+          title: "Set New Password",
+          description: "Please enter your new password below.",
+        });
       }
     });
 
@@ -59,17 +65,14 @@ const Auth = () => {
 
   // Check if we're handling a password reset from email link
   useEffect(() => {
-    const handlePasswordReset = async () => {
-      if (isReset) {
-        setIsPasswordReset(true);
-        toast({
-          title: "Set New Password",
-          description: "Please enter your new password below.",
-        });
-      }
-    };
-
-    handlePasswordReset();
+    if (isReset) {
+      console.log("Password reset flow detected from URL");
+      setIsPasswordReset(true);
+      toast({
+        title: "Set New Password",
+        description: "Please enter your new password below.",
+      });
+    }
   }, [isReset, toast]);
 
   const handleRedirect = () => {
@@ -86,9 +89,12 @@ const Auth = () => {
 
     try {
       if (isForgotPassword) {
-        // Get current URL without search parameters to use as the base for redirects
+        // Get current URL origin to use as the base for redirects
         const baseUrl = window.location.origin;
         const resetRedirectUrl = `${baseUrl}/auth?type=recovery`;
+        
+        console.log("Sending password reset to:", email);
+        console.log("With redirect URL:", resetRedirectUrl);
         
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
           redirectTo: resetRedirectUrl,
@@ -105,6 +111,8 @@ const Auth = () => {
         setIsForgotPassword(false);
       } else if (isPasswordReset) {
         // Handle the password update for users coming from the reset link
+        console.log("Updating password in reset flow");
+        
         const { error } = await supabase.auth.updateUser({
           password: password,
         });
@@ -152,6 +160,7 @@ const Auth = () => {
         handleRedirect();
       }
     } catch (error: any) {
+      console.error("Auth error:", error);
       toast({
         title: "Error",
         description: error.message,
