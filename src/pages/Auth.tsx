@@ -19,10 +19,23 @@ const Auth = () => {
   const location = useLocation();
   const { toast } = useToast();
   
-  // Get redirect parameter
+  // Parse URL parameters
   const searchParams = new URLSearchParams(location.search);
+  
+  // Extract potential reset token parameters from the URL
+  // Supabase sends different parameters in their reset link
+  const hasTypeRecovery = searchParams.get('type') === 'recovery';
+  const hasAccessToken = !!searchParams.get('access_token');
+  const hasRefreshToken = !!searchParams.get('refresh_token');
+  const hasExpiresIn = !!searchParams.get('expires_in');
+  const hasExpiresAt = !!searchParams.get('expires_at');
+  
+  // Determine if this is a password reset request based on URL parameters
+  const isPasswordResetRequest = hasTypeRecovery || 
+    (hasAccessToken && hasRefreshToken && (hasExpiresIn || hasExpiresAt));
+  
+  // Get redirect parameter
   const redirect = searchParams.get('redirect');
-  const isReset = searchParams.get('type') === 'recovery';
 
   // Check if user is already logged in
   useEffect(() => {
@@ -32,24 +45,24 @@ const Auth = () => {
         console.error("Session check error:", error);
         return;
       }
-      if (session) {
+      if (session && !isPasswordResetRequest) {
         handleRedirect();
       }
     };
 
     checkSession();
+  }, []);
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+  // Set up auth state change listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("Auth state change event:", event);
-      if (event === 'SIGNED_IN' && session) {
+      
+      if (event === 'SIGNED_IN' && session && !isPasswordResetRequest) {
         handleRedirect();
       } else if (event === 'SIGNED_OUT') {
         navigate('/auth');
       } else if (event === 'PASSWORD_RECOVERY') {
-        // Handle the password recovery event
         setIsPasswordReset(true);
         toast({
           title: "Set New Password",
@@ -63,17 +76,17 @@ const Auth = () => {
     };
   }, [navigate, redirect]);
 
-  // Check if we're handling a password reset from email link
+  // Handle password reset from URL parameters
   useEffect(() => {
-    if (isReset) {
-      console.log("Password reset flow detected from URL");
+    if (isPasswordResetRequest) {
+      console.log("Password reset detected from URL parameters");
       setIsPasswordReset(true);
       toast({
         title: "Set New Password",
         description: "Please enter your new password below.",
       });
     }
-  }, [isReset, toast]);
+  }, [isPasswordResetRequest, toast]);
 
   const handleRedirect = () => {
     if (redirect === 'pricing') {
@@ -89,7 +102,7 @@ const Auth = () => {
 
     try {
       if (isForgotPassword) {
-        // Get current URL origin to use as the base for redirects
+        // Get absolute URL for redirection
         const baseUrl = window.location.origin;
         const resetRedirectUrl = `${baseUrl}/auth?type=recovery`;
         
@@ -110,7 +123,7 @@ const Auth = () => {
         // Return to sign in view
         setIsForgotPassword(false);
       } else if (isPasswordReset) {
-        // Handle the password update for users coming from the reset link
+        // Handle password update for users with reset token
         console.log("Updating password in reset flow");
         
         const { error } = await supabase.auth.updateUser({
