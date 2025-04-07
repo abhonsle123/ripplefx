@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import { Resend } from "npm:resend@2.0.0";
@@ -92,17 +91,23 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Format the affected organizations for the email
-    const affectedOrganizations = Array.isArray(event.affected_organizations) 
-      ? event.affected_organizations 
-      : typeof event.affected_organizations === 'object'
-        ? Object.values(event.affected_organizations)
-        : [];
+    // Format the affected organizations for the email - adding safety checks
+    const affectedOrganizations = [];
+    if (event.affected_organizations) {
+      // Handle different possible types of affected_organizations
+      if (Array.isArray(event.affected_organizations)) {
+        affectedOrganizations.push(...event.affected_organizations);
+      } else if (typeof event.affected_organizations === 'object' && event.affected_organizations !== null) {
+        affectedOrganizations.push(...Object.values(event.affected_organizations));
+      }
+    }
 
     // Format stock impact notifications if available
     let stockImpactSection = '';
     if (event.impact_analysis?.stock_predictions) {
-      const { positive = [], negative = [] } = event.impact_analysis.stock_predictions;
+      const stockPredictions = event.impact_analysis.stock_predictions;
+      const positive = Array.isArray(stockPredictions.positive) ? stockPredictions.positive : [];
+      const negative = Array.isArray(stockPredictions.negative) ? stockPredictions.negative : [];
       
       if (positive.length > 0 || negative.length > 0) {
         stockImpactSection = `

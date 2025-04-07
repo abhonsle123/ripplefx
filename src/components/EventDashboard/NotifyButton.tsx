@@ -35,10 +35,13 @@ export const NotifyButton = ({ eventId, severity }: NotifyButtonProps) => {
       });
       
       const { data, error } = await supabase.functions.invoke("send-event-notification", {
-        body: { eventId }
+        body: { eventId, sendToAll: true }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error("Error sending notifications:", error);
+        throw error;
+      }
       
       toast.success(data.message || "Notifications sent successfully", {
         duration: 5000
