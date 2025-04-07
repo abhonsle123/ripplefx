@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import { Resend } from "npm:resend@2.0.0";
@@ -6,6 +7,9 @@ const resend = new Resend(Deno.env.get("RESEND_API_KEY"));
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
+
+// Read the public site URL from environment or use a fallback
+const publicSiteUrl = Deno.env.get("PUBLIC_SITE_URL") || "https://ripple-effect.vercel.app";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -192,7 +196,7 @@ ${negative.slice(0, 3).map(stock => `<li><strong>${stock.symbol}</strong>: ${sto
       <p>${event.impact_analysis.market_impact}</p>
       ` : ''}
       
-      <a href="${supabaseUrl}/dashboard" class="button">View Full Details on Dashboard</a>
+      <a href="${publicSiteUrl}/dashboard" class="button">View Full Details on Dashboard</a>
       
       <p>Stay informed,<br>The RippleEffect Team</p>
     </div>
