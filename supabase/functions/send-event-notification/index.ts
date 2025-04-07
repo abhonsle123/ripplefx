@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import { Resend } from "npm:resend@2.0.0";
@@ -8,8 +7,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Read the public site URL from environment or use a fallback
-const publicSiteUrl = Deno.env.get("PUBLIC_SITE_URL") || "https://ripple-effect.vercel.app";
+const dashboardUrl = "https://ripplefx.app/dashboard";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,7 +22,6 @@ interface EventNotificationRequest {
 }
 
 const handler = async (req: Request): Promise<Response> => {
-  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -38,7 +35,6 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Processing notification request for event ${eventId}`);
 
-    // Fetch the event details
     const { data: event, error: eventError } = await supabase
       .from("events")
       .select("*")
@@ -56,17 +52,13 @@ const handler = async (req: Request): Promise<Response> => {
 
     console.log(`Event found: ${event.title}, severity: ${event.severity}`);
 
-    // Define our query for fetching users to notify
     let profilesQuery = supabase.from("profiles").select("*");
 
-    // If sendToAll is false and userId is provided, only send to that specific user
     if (!sendToAll && userId) {
       profilesQuery = profilesQuery.eq("id", userId);
     } else {
-      // Otherwise, send to all users who have email notifications enabled
       profilesQuery = profilesQuery.filter("preferences->notifications->email->enabled", "eq", true);
 
-      // Apply severity filters based on user preferences
       if (event.severity === "HIGH") {
         profilesQuery = profilesQuery.filter("preferences->notifications->email->highSeverity", "eq", true);
       } else if (event.severity === "MEDIUM") {
@@ -95,10 +87,8 @@ const handler = async (req: Request): Promise<Response> => {
       );
     }
 
-    // Format the affected organizations for the email - adding safety checks
     const affectedOrganizations = [];
     if (event.affected_organizations) {
-      // Handle different possible types of affected_organizations
       if (Array.isArray(event.affected_organizations)) {
         affectedOrganizations.push(...event.affected_organizations);
       } else if (typeof event.affected_organizations === 'object' && event.affected_organizations !== null) {
@@ -106,7 +96,6 @@ const handler = async (req: Request): Promise<Response> => {
       }
     }
 
-    // Format stock impact notifications if available
     let stockImpactSection = '';
     if (event.impact_analysis?.stock_predictions) {
       const stockPredictions = event.impact_analysis.stock_predictions;
@@ -130,7 +119,6 @@ ${negative.slice(0, 3).map(stock => `<li><strong>${stock.symbol}</strong>: ${sto
       }
     }
 
-    // Send emails to each user
     const emailPromises = profiles.map(async (profile) => {
       if (!profile.email) {
         console.log(`User ${profile.id} has no email address`);
@@ -196,7 +184,7 @@ ${negative.slice(0, 3).map(stock => `<li><strong>${stock.symbol}</strong>: ${sto
       <p>${event.impact_analysis.market_impact}</p>
       ` : ''}
       
-      <a href="${publicSiteUrl}/dashboard" class="button">View Full Details on Dashboard</a>
+      <a href="${dashboardUrl}" class="button">View Full Details on Dashboard</a>
       
       <p>Stay informed,<br>The RippleEffect Team</p>
     </div>
