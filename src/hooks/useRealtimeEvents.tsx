@@ -4,7 +4,7 @@ import { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import type { Event } from "@/types/event";
+import type { Event, UserPreferences } from "@/types/event";
 import { Bell } from "lucide-react";
 
 export const useRealtimeEvents = () => {
@@ -24,7 +24,12 @@ export const useRealtimeEvents = () => {
         .eq("id", session.user.id)
         .single();
 
-      if (data?.preferences?.notifications?.email?.enabled) {
+      // Safely handle the preferences object
+      const preferences = data?.preferences as UserPreferences | null;
+      
+      if (preferences && 
+          typeof preferences === 'object' &&
+          preferences.notifications?.email?.enabled) {
         setNotificationsEnabled(true);
       }
     };
