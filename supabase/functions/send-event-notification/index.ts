@@ -1,3 +1,4 @@
+
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import { Resend } from "npm:resend@2.0.0";
@@ -109,12 +110,12 @@ const handler = async (req: Request): Promise<Response> => {
 
 <h4>📈 Positive Impact:</h4>
 <ul>
-${positive.slice(0, 5).map(stock => `<li><strong>${stock.symbol}</strong>: ${stock.rationale}</li>`).join('')}
+${positive.slice(0, 3).map(stock => `<li><strong>${stock.symbol}</strong>: ${stock.rationale}</li>`).join('')}
 </ul>
 
 <h4>📉 Negative Impact:</h4>
 <ul>
-${negative.slice(0, 5).map(stock => `<li><strong>${stock.symbol}</strong>: ${stock.rationale}</li>`).join('')}
+${negative.slice(0, 3).map(stock => `<li><strong>${stock.symbol}</strong>: ${stock.rationale}</li>`).join('')}
 </ul>
 `;
       }
@@ -137,36 +138,47 @@ ${negative.slice(0, 5).map(stock => `<li><strong>${stock.symbol}</strong>: ${sto
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
     .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
+    .header-${event.severity.toLowerCase()} { 
+      background-color: ${event.severity === 'CRITICAL' ? '#d9534f' : 
+                        event.severity === 'HIGH' ? '#f0ad4e' : 
+                        event.severity === 'MEDIUM' ? '#5bc0de' : '#5cb85c'}; 
+      color: white; 
+    }
     .content { padding: 20px; }
     .footer { text-align: center; margin-top: 20px; font-size: 12px; color: #666; }
-    .severity-high { color: #d9534f; }
-    .severity-medium { color: #f0ad4e; }
+    .severity-high { color: #f0ad4e; }
+    .severity-medium { color: #5bc0de; }
     .severity-critical { color: #d9534f; font-weight: bold; }
+    .severity-low { color: #5cb85c; }
     .button { display: inline-block; padding: 10px 20px; background-color: #0d6efd; color: white; 
               text-decoration: none; border-radius: 5px; margin-top: 15px; }
+    .summary { background-color: #f8f9fa; padding: 15px; border-left: 4px solid #0d6efd; margin: 15px 0; }
+    .location { font-style: italic; color: #666; }
   </style>
 </head>
 <body>
   <div class="container">
-    <div class="header">
-      <h1>Event Alert</h1>
+    <div class="header header-${event.severity.toLowerCase()}">
+      <h1>Event Alert: ${event.event_type}</h1>
     </div>
     <div class="content">
       <p>Dear ${profile.full_name || "Valued User"},</p>
       
-      <p>A new <span class="severity-${event.severity.toLowerCase()}">${event.severity}</span> 
+      <p>A <span class="severity-${event.severity.toLowerCase()}">${event.severity} severity</span> 
          ${event.event_type} event has occurred in 
-         ${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown Location'}.</p>
+         <span class="location">${event.city ? `${event.city}, ` : ''}${event.country || 'Unknown Location'}</span>.</p>
       
-      <h3>Event Details:</h3>
-      <p>${event.description}</p>
+      <div class="summary">
+        <h2>${event.title}</h2>
+        <p>${event.description}</p>
+      </div>
       
       ${stockImpactSection}
       
       ${affectedOrganizations.length > 0 ? `
       <h3>Affected Organizations:</h3>
       <ul>
-        ${affectedOrganizations.map(org => `<li>${org}</li>`).join('')}
+        ${affectedOrganizations.slice(0, 5).map(org => `<li>${org}</li>`).join('')}
       </ul>
       ` : ''}
       
@@ -175,12 +187,13 @@ ${negative.slice(0, 5).map(stock => `<li><strong>${stock.symbol}</strong>: ${sto
       <p>${event.impact_analysis.market_impact}</p>
       ` : ''}
       
-      <a href="${supabaseUrl}/dashboard" class="button">View Dashboard</a>
+      <a href="${supabaseUrl}/dashboard" class="button">View Full Details on Dashboard</a>
       
       <p>Stay informed,<br>The RippleEffect Team</p>
     </div>
     <div class="footer">
-      <p>This email was sent to you because you've enabled event notifications.</p>
+      <p>This email was sent to you because you've enabled event notifications. 
+      You can manage your notification preferences in your profile settings.</p>
     </div>
   </div>
 </body>
@@ -191,7 +204,7 @@ ${negative.slice(0, 5).map(stock => `<li><strong>${stock.symbol}</strong>: ${sto
         const emailResult = await resend.emails.send({
           from: "RippleEffect <notifications@resend.dev>",
           to: [profile.email],
-          subject: `🚨 ${event.severity} Alert: ${event.event_type} in ${event.country || 'Unknown Location'}`,
+          subject: `🚨 ${event.severity} Alert: ${event.title}`,
           html: emailHtml,
         });
 

@@ -33,15 +33,16 @@ export const useEventsRefresh = (refetch: () => Promise<any>): {
       console.log("Starting manual refresh of events...");
       
       // Get current event count before refresh
-      let currentEventCount = 0;
+      let currentEvents = [];
       if (notifyOnNew) {
-        const { data: currentEvents, error: currentError } = await supabase
+        const { data: events, error: currentError } = await supabase
           .from("events")
-          .select("id", { count: "exact" });
+          .select("id")
+          .order("created_at", { ascending: false });
           
-        if (!currentError) {
-          currentEventCount = currentEvents.length;
-          console.log(`Current event count before refresh: ${currentEventCount}`);
+        if (!currentError && events) {
+          currentEvents = events;
+          console.log(`Current event count before refresh: ${currentEvents.length}`);
         }
       }
       
@@ -75,30 +76,34 @@ export const useEventsRefresh = (refetch: () => Promise<any>): {
       await queryClient.invalidateQueries({ queryKey: ["events"] });
       
       // After refresh, check if we got new events and notify about them
-      if (notifyOnNew && previousEventCount.current !== null) {
+      if (notifyOnNew) {
         const { data: newEvents, error: newError } = await supabase
           .from("events")
-          .select("id")
+          .select("id, title, severity, event_type, country, city, description")
           .order("created_at", { ascending: false });
           
         if (!newError && newEvents) {
-          const newEventCount = newEvents.length;
-          const addedCount = newEventCount - currentEventCount;
+          // Compare events to find new ones
+          const existingEventIds = new Set(currentEvents.map(e => e.id));
+          const addedEvents = newEvents.filter(event => !existingEventIds.has(event.id));
           
-          if (addedCount > 0) {
-            console.log(`${addedCount} new events found, sending notifications...`);
+          if (addedEvents.length > 0) {
+            console.log(`${addedEvents.length} new events found, sending notifications...`);
             
             // Send notifications for the newest events
-            const newEventIds = newEvents.slice(0, addedCount).map(e => e.id);
-            
-            for (const eventId of newEventIds) {
+            for (const event of addedEvents) {
               try {
                 await supabase.functions.invoke("send-event-notification", {
-                  body: { eventId, sendToAll: true }
+                  body: { eventId: event.id, sendToAll: true }
                 });
-                console.log(`Notification sent for event ID: ${eventId}`);
+                console.log(`Notification sent for event: ${event.title}`);
+                
+                toast.success(`New event: ${event.title}`, {
+                  description: `${event.severity} severity in ${event.country || 'Unknown Location'}`,
+                  duration: 5000,
+                });
               } catch (notifyError) {
-                console.error(`Failed to send notification for event ${eventId}:`, notifyError);
+                console.error(`Failed to send notification for event ${event.id}:`, notifyError);
               }
             }
           }

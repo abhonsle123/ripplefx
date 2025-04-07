@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Bell } from "lucide-react";
+import { Bell, AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -30,7 +30,9 @@ export const NotifyButton = ({ eventId, severity }: NotifyButtonProps) => {
         return;
       }
       
-      toast.info("Sending notifications...");
+      toast.info("Sending email notifications...", {
+        icon: <Bell className="h-4 w-4" />
+      });
       
       const { data, error } = await supabase.functions.invoke("send-event-notification", {
         body: { eventId }
@@ -38,7 +40,9 @@ export const NotifyButton = ({ eventId, severity }: NotifyButtonProps) => {
       
       if (error) throw error;
       
-      toast.success(data.message || "Notifications sent successfully");
+      toast.success(data.message || "Notifications sent successfully", {
+        duration: 5000
+      });
     } catch (error) {
       console.error("Error sending notifications:", error);
       toast.error("Failed to send notifications");
@@ -51,12 +55,16 @@ export const NotifyButton = ({ eventId, severity }: NotifyButtonProps) => {
   const getSeverityColor = () => {
     switch (severity) {
       case "HIGH":
-        return "bg-orange-500 hover:bg-orange-600";
+        return "bg-orange-500 hover:bg-orange-600 text-white";
       case "CRITICAL":
-        return "bg-red-500 hover:bg-red-600";
+        return "bg-red-500 hover:bg-red-600 text-white";
       default:
         return ""; // Use default button color for other severities
     }
+  };
+
+  const getButtonIcon = () => {
+    return severity === "CRITICAL" ? <AlertCircle className="h-4 w-4 mr-1" /> : <Bell className="h-4 w-4 mr-1" />;
   };
 
   return (
@@ -64,18 +72,18 @@ export const NotifyButton = ({ eventId, severity }: NotifyButtonProps) => {
       <Tooltip>
         <TooltipTrigger asChild>
           <Button
-            variant="outline"
+            variant={severity === "CRITICAL" || severity === "HIGH" ? "default" : "outline"}
             size="sm"
             className={`${getSeverityColor()} transition-colors`}
             onClick={handleNotify}
             disabled={isNotifying}
           >
-            <Bell className="h-4 w-4 mr-1" />
+            {getButtonIcon()}
             {isNotifying ? "Sending..." : "Notify"}
           </Button>
         </TooltipTrigger>
         <TooltipContent>
-          <p>Send notifications about this event</p>
+          <p>Send email notifications about this event</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

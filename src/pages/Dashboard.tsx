@@ -97,13 +97,12 @@ const Dashboard = () => {
           <span>Last updated: {timeSinceLastRefresh}</span>
         </div>
         <div className="flex items-center gap-3">
-          {/* Add notification toggle */}
+          {/* Add notification toggle - fix by removing the size attribute */}
           <div className="flex items-center space-x-2">
             <Switch
               id="notify-on-refresh"
               checked={notifyOnRefresh}
               onCheckedChange={setNotifyOnRefresh}
-              size="sm"
             />
             <Label htmlFor="notify-on-refresh" className="text-xs flex items-center">
               <Bell size={12} className="mr-1" />
