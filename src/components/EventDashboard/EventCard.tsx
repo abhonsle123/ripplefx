@@ -8,6 +8,7 @@ import type { Database } from "@/integrations/supabase/types";
 import EventCardHeader from "./EventCardHeader";
 import EventCardDetails from "./EventCardDetails";
 import ImpactAnalysis from "./ImpactAnalysis";
+import { NotifyButton } from "./NotifyButton";
 import type { ImpactAnalysis as ImpactAnalysisType } from "@/supabase/functions/analyze-event/types";
 
 type Event = Database["public"]["Tables"]["events"]["Row"];
@@ -113,18 +114,23 @@ const EventCard = ({ event, userPreferences }: EventCardProps) => {
           </div>
         )}
       </CardContent>
-      {event.source_url && (
-        <CardFooter>
+      <CardFooter className="flex justify-between">
+        {event.source_url ? (
           <Button 
             variant="outline" 
-            className="w-full group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+            className="group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
             onClick={() => window.open(event.source_url, '_blank')}
           >
             <ExternalLink className="h-4 w-4 mr-2" />
             View Source
           </Button>
-        </CardFooter>
-      )}
+        ) : (
+          <div></div> // Empty div for spacing when no source URL
+        )}
+        
+        {/* Add the notification button */}
+        <NotifyButton eventId={event.id} severity={event.severity} />
+      </CardFooter>
     </Card>
   );
 };

@@ -12,9 +12,11 @@ import { useAuthentication } from "@/hooks/useAuthentication";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useSubscription } from "@/hooks/useSubscription";
 import { toast } from "sonner";
-import { Info, RefreshCw, AlertCircle } from "lucide-react";
+import { Info, RefreshCw, AlertCircle, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 const Dashboard = () => {
   const [eventType, setEventType] = useState<EventType | "ALL">("ALL");
@@ -22,6 +24,7 @@ const Dashboard = () => {
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [view, setView] = useState<"grid" | "watchlist">("grid");
   const [isCreating, setIsCreating] = useState(false);
+  const [notifyOnRefresh, setNotifyOnRefresh] = useState(false);
   
   const { userId } = useAuthentication();
   const userPreferences = useUserPreferences(userId);
@@ -45,9 +48,9 @@ const Dashboard = () => {
   const refreshEventsCallback = useCallback(async () => {
     // Only call the refresh function if we're not already refreshing
     if (!isRefreshingManually) {
-      await refreshEvents();
+      await refreshEvents(false, notifyOnRefresh);
     }
-  }, [refreshEvents, isRefreshingManually]);
+  }, [refreshEvents, isRefreshingManually, notifyOnRefresh]);
   
   // Set up auto refresh with 120 seconds interval
   useAutoRefresh(refreshEventsCallback, 120);
@@ -55,7 +58,7 @@ const Dashboard = () => {
   // Normal refresh - just get latest events
   const handleRefresh = () => {
     if (!isRefreshingManually) {
-      refreshEvents();
+      refreshEvents(false, notifyOnRefresh);
     }
   };
   
@@ -63,7 +66,7 @@ const Dashboard = () => {
   const handleForceRefresh = () => {
     if (!isRefreshingManually) {
       toast.info("Force refreshing news...", { id: "force-refresh" });
-      refreshEvents(true);
+      refreshEvents(true, notifyOnRefresh);
     }
   };
 
@@ -93,7 +96,21 @@ const Dashboard = () => {
           <Info size={12} />
           <span>Last updated: {timeSinceLastRefresh}</span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Add notification toggle */}
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="notify-on-refresh"
+              checked={notifyOnRefresh}
+              onCheckedChange={setNotifyOnRefresh}
+              size="sm"
+            />
+            <Label htmlFor="notify-on-refresh" className="text-xs flex items-center">
+              <Bell size={12} className="mr-1" />
+              Notify on new events
+            </Label>
+          </div>
+          
           <button 
             onClick={handleRefresh} 
             disabled={isRefreshingManually}
