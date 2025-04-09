@@ -9,7 +9,7 @@ const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Hardcode the exact dashboard URL to ensure it works correctly
-const dashboardUrl = "https://ripplefx.app/dashboard";
+const dashboardUrl = "https://ripplefx.app";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
