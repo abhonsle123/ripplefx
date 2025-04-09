@@ -5,6 +5,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { generateAnalysis } from "./perplexityService.ts";
 import { queueNotificationForHighImpactEvent } from "./notificationService.ts";
 import { getDefaultAnalysis } from "./defaultAnalysis.ts";
+import { getCurrentEconomicContext } from "./economicContext.ts";
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -51,6 +52,10 @@ serve(async (req) => {
 
     console.log("Found event:", event);
 
+    // Get current economic context
+    const economicContext = getCurrentEconomicContext();
+    console.log("Current economic context:", economicContext);
+
     // Skip expensive API call for LOW severity events
     let analysis;
     if (event.severity === 'LOW') {
@@ -96,6 +101,16 @@ serve(async (req) => {
         console.log("Successfully stored predictions:", predictions);
       }
     }
+
+    // Add economic context to the impact analysis
+    analysis.economic_context = {
+      state: economicContext.currentState,
+      interest_rates: economicContext.interestRateEnvironment,
+      inflation: economicContext.inflationRate,
+      unemployment: economicContext.unemploymentTrend,
+      consumer_confidence: economicContext.consumerConfidence,
+      description: economicContext.description
+    };
 
     // Update the event with the impact analysis
     const { error: updateError } = await supabase

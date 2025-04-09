@@ -39,3 +39,12 @@ export interface TrackingPreferences {
     hideLowImpact: boolean;
   };
 }
+
+export interface EconomicContext {
+  state: string;
+  interest_rates: string;
+  inflation: string;
+  unemployment: string;
+  consumer_confidence: string;
+  description: string;
+}

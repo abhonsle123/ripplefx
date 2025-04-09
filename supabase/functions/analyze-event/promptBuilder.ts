@@ -1,4 +1,6 @@
 
+import { getCurrentEconomicContext, getSectorRecessionImpacts } from "./economicContext.ts";
+
 export function formatAffectedOrganizations(organizations: any): string {
   if (!organizations) return 'Unknown';
   
@@ -19,6 +21,8 @@ export function formatAffectedOrganizations(organizations: any): string {
 
 export function buildPrompt(event: any): string {
   const affectedOrgsString = formatAffectedOrganizations(event.affected_organizations);
+  const economicContext = getCurrentEconomicContext();
+  const sectorRecessionImpacts = getSectorRecessionImpacts();
 
   return `Analyze this event and provide a comprehensive market impact analysis. For stock predictions, you MUST:
     1. Use only official stock ticker symbols (e.g., 'AAPL' not 'Apple Inc.')
@@ -26,6 +30,21 @@ export function buildPrompt(event: any): string {
     3. Focus on stocks with direct exposure to the event
     4. Consider both primary and secondary effects on stock prices
     5. Be HIGHLY CONSISTENT in your directional predictions
+    6. IMPORTANT - FACTOR IN THE CURRENT ECONOMIC ENVIRONMENT described below
+
+    CURRENT ECONOMIC CONTEXT (${new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}):
+    ${economicContext.description}
+
+    Key Economic Indicators:
+    - Economic State: ${economicContext.currentState}
+    - Interest Rate Environment: ${economicContext.interestRateEnvironment}
+    - Inflation Rate: ${economicContext.inflationRate}
+    - Unemployment Trend: ${economicContext.unemploymentTrend}
+    - Consumer Confidence: ${economicContext.consumerConfidence}
+    - Market Volatility: ${economicContext.marketVolatility}
+
+    Sector-Specific Recession Impacts:
+    ${Object.entries(sectorRecessionImpacts).map(([sector, impact]) => `- ${sector}: ${impact}`).join('\n    ')}
 
     Consider all of the following factors when predicting stock movements and market impact:
 
@@ -94,7 +113,7 @@ export function buildPrompt(event: any): string {
        - Specific historical examples with percentage moves for relevant sectors/stocks
        - Post-event recovery periods from comparable historical scenarios
        - Statistical patterns in volatility spikes following similar events
-       - Sector rotation patterns observed after comparable historical events
+       - Sector rotation patterns observed after similar historical events
        - Market breadth changes during similar historical periods
        - Typical trading volume changes observed in historical parallels
        - Price action patterns (gaps, reversals, consolidations) in comparable events
@@ -108,6 +127,14 @@ export function buildPrompt(event: any): string {
        - Consider differences in sector weights and market concentration versus historical periods
        - Evaluate the applicability of historical patterns to current market dynamics
 
+    9. Recession-Specific Analysis:
+       - Assess how the current recessionary environment amplifies or mitigates the event's impact
+       - Consider defensive positioning of specific companies and sectors
+       - Evaluate debt levels and refinancing risks in a recessionary credit environment
+       - Analyze how reduced consumer spending may compound event impacts
+       - Consider potential for government stimulus or intervention in response to events during recession
+       - Evaluate cash flow sustainability during prolonged economic weakness
+
     IMPORTANT REQUIREMENTS FOR CONFIDENCE SCORES:
     - Assign confidence scores based on quality of available data and historical precedents
     - Overall prediction score should reflect the cumulative confidence across all factors
@@ -115,6 +142,7 @@ export function buildPrompt(event: any): string {
     - Market direction score should reflect certainty about broader market moves
     - Use intermediate values (0.65, 0.75) rather than extremes unless extremely certain
     - Thoroughly justify any confidence score above 0.8 with specific factors
+    - IMPORTANT: Lower confidence scores for positive predictions during recession unless company has strong defensive characteristics
 
     Return ONLY the following JSON structure with NO additional text or markdown:
     {
@@ -173,6 +201,7 @@ export function buildPrompt(event: any): string {
     - For economic events: focus on financial institutions, cyclical stocks, and interest-rate sensitive sectors
     - For geopolitical events: analyze defense contractors, energy companies, and regional exposure
     - For technological disruptions: evaluate direct competitors and supply chain participants
+    - RECESSION CONTEXT: Be more conservative with positive stock predictions and focus on defensive stocks
     
     HISTORICAL MARKET REACTION GUIDELINES:
     - Natural Disasters: Examine insurance carriers' stock movements following comparable events (e.g., Hurricane Katrina -15% sector impact)

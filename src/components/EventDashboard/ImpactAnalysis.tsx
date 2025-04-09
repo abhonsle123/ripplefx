@@ -5,16 +5,27 @@ import StockDialog from "./StockDialog";
 import StockPredictions from "./StockPredictions";
 import ConfidenceScores from "./ConfidenceScores";
 import { getConfidenceColor, formatConfidence } from "./utils/formatters";
+import { AlertCircle } from "lucide-react";
 
 interface StockPrediction {
   symbol: string;
   rationale: string;
 }
 
+interface EconomicContext {
+  state: string;
+  interest_rates: string;
+  inflation: string;
+  unemployment: string;
+  consumer_confidence: string;
+  description: string;
+}
+
 interface ImpactAnalysisProps {
   eventId: string;
   analysis: {
     affected_sectors: string[];
+    economic_context?: EconomicContext;
     stock_predictions?: {
       positive?: StockPrediction[];
       negative?: StockPrediction[];
@@ -42,6 +53,37 @@ const ImpactAnalysis = ({ eventId, analysis }: ImpactAnalysisProps) => {
   return (
     <div className="mt-4 space-y-2 border-t pt-4">
       <h4 className="font-semibold text-sm mb-2">Market Impact Analysis</h4>
+      
+      {analysis.economic_context && (
+        <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md text-xs">
+          <div className="flex items-start gap-2">
+            <AlertCircle className="h-4 w-4 text-amber-500 mt-0.5 flex-shrink-0" />
+            <div>
+              <h5 className="font-medium text-amber-800">Economic Context</h5>
+              <p className="text-amber-700 mt-1">{analysis.economic_context.description}</p>
+              
+              <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-amber-800 font-medium">Economic State:</span>
+                  <span className="font-medium capitalize">{analysis.economic_context.state}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-amber-800 font-medium">Interest Rates:</span>
+                  <span className="font-medium capitalize">{analysis.economic_context.interest_rates}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-amber-800 font-medium">Inflation:</span>
+                  <span className="font-medium capitalize">{analysis.economic_context.inflation}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-amber-800 font-medium">Unemployment:</span>
+                  <span className="font-medium capitalize">{analysis.economic_context.unemployment}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       
       {analysis.affected_sectors && (
         <div className="text-sm">
