@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.8";
 import { Resend } from "npm:resend@2.0.0";
@@ -15,6 +14,8 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+const dashboardUrl = "https://ripplefx.app";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -25,7 +26,6 @@ async function processNotificationQueue() {
   try {
     console.log("Starting notification processing...");
     
-    // Get unprocessed notifications with related data
     const { data: notifications, error: fetchError } = await supabase
       .from("notification_queue")
       .select("*, events(*), profiles(*)")
@@ -51,7 +51,6 @@ async function processNotificationQueue() {
       try {
         console.log(`Processing notification for event ${event.id} and profile ${profile.id}`);
         
-        // Check notification preferences
         const preferences = profile.preferences?.notifications;
         if (!preferences) {
           console.log("No notification preferences found for profile:", profile.id);
@@ -77,7 +76,6 @@ async function processNotificationQueue() {
             ? Object.values(event.affected_organizations)
             : [];
 
-        // Format stock impact notifications
         let stockImpactSection = '';
         let smsStockImpact = '';
         if (event.impact_analysis?.stock_predictions) {
@@ -101,7 +99,6 @@ Stocks Affected:
           }
         }
 
-        // Send email notification if enabled
         if (emailEnabled && profile.email) {
           console.log("Attempting to send email to:", profile.email);
           
@@ -121,7 +118,7 @@ ${affectedOrganizations.map(org => `• ${org}`).join('\n')}
 📊 Market Impact Analysis:
 ${event.impact_analysis?.market_impact || 'No market impact analysis available.'}
 
-View full details and manage your watchlist: ${supabaseUrl}/dashboard
+View full details and manage your watchlist: ${dashboardUrl}
 
 Stay informed,
 The RippleEffect Team
@@ -141,7 +138,6 @@ The RippleEffect Team
           }
         }
 
-        // Send SMS notification if enabled
         if (smsEnabled && phoneNumber) {
           console.log("Attempting to send SMS to:", phoneNumber);
           
@@ -150,7 +146,7 @@ The RippleEffect Team
 
 ${event.description.slice(0, 100)}...${smsStockImpact}
 
-View details: ${supabaseUrl}/dashboard`;
+View details: ${dashboardUrl}`;
 
           try {
             const smsResult = await twilio.messages.create({
@@ -165,7 +161,6 @@ View details: ${supabaseUrl}/dashboard`;
           }
         }
 
-        // Mark notification as processed
         const { error: updateError } = await supabase
           .from("notification_queue")
           .update({ processed: true })
@@ -181,7 +176,6 @@ View details: ${supabaseUrl}/dashboard`;
       } catch (error) {
         console.error(`Error processing notification ${notification.id}:`, error);
         
-        // Mark notification as processed with error
         await supabase
           .from("notification_queue")
           .update({ 
@@ -202,7 +196,6 @@ View details: ${supabaseUrl}/dashboard`;
 
 const handler = async (_req: Request): Promise<Response> => {
   try {
-    // Handle CORS preflight requests
     if (_req.method === "OPTIONS") {
       return new Response(null, { headers: corsHeaders });
     }

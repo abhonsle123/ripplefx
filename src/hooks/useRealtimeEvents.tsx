@@ -1,4 +1,3 @@
-
 import { useEffect, useRef, useState } from "react";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -7,13 +6,14 @@ import { toast } from "sonner";
 import type { Event, UserPreferences } from "@/types/event";
 import { Bell } from "lucide-react";
 
+const appBaseUrl = "https://ripplefx.app";
+
 export const useRealtimeEvents = () => {
   const queryClient = useQueryClient();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
 
   useEffect(() => {
-    // Check user preferences for automatic notifications
     const checkUserPreferences = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.user?.id) return;
@@ -24,7 +24,6 @@ export const useRealtimeEvents = () => {
         .eq("id", session.user.id)
         .single();
 
-      // Safely handle the preferences object
       const preferences = data?.preferences as UserPreferences | null;
       
       if (preferences && 
@@ -42,33 +41,28 @@ export const useRealtimeEvents = () => {
     
     const setupRealtimeSubscription = async () => {
       try {
-        // Clean up any existing subscription to prevent duplicates
         if (channelRef.current) {
           await supabase.removeChannel(channelRef.current);
         }
         
-        // Set up new subscription
         const channel = supabase
           .channel("events-channel")
           .on(
             "postgres_changes",
             {
-              event: "*", // Listen for all changes - INSERT, UPDATE, DELETE
+              event: "*", 
               schema: "public",
               table: "events",
             },
             async (payload) => {
               if (!isSubscribed) return;
               
-              // Invalidate query to refresh the data
               queryClient.invalidateQueries({ queryKey: ["events"] });
               
-              // For new events, show a notification and potentially send emails
               if (payload.eventType === "INSERT") {
                 const newEvent = payload.new as Event;
                 console.log("New event received via realtime:", newEvent.title);
                 
-                // Show toast notification for the new event
                 toast.info(
                   <div>
                     <div className="font-semibold">{newEvent.title}</div>
@@ -95,7 +89,6 @@ export const useRealtimeEvents = () => {
                   }
                 );
                 
-                // If user has enabled automatic notifications, send them automatically
                 if (notificationsEnabled && (newEvent.severity === 'HIGH' || newEvent.severity === 'CRITICAL')) {
                   try {
                     console.log("Automatically sending notifications for high severity event");
