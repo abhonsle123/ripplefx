@@ -35,6 +35,9 @@ export type Profile = {
         mediumSeverity: boolean;
         lowSeverity: boolean;
       };
+      dashboard?: {
+        notifyOnNewEvents: boolean;
+      };
     };
     filters: {
       hideLowImpact: boolean;
@@ -52,7 +55,21 @@ interface ProfileFormProps {
 }
 
 export const ProfileForm = ({ profile: initialProfile }: ProfileFormProps) => {
-  const [profile, setProfile] = useState<Profile>(initialProfile);
+  // Ensure dashboard preferences has default value if not present
+  const enhancedProfile = {
+    ...initialProfile,
+    preferences: {
+      ...initialProfile.preferences,
+      notifications: {
+        ...initialProfile.preferences.notifications,
+        dashboard: {
+          notifyOnNewEvents: initialProfile.preferences.notifications?.dashboard?.notifyOnNewEvents || false
+        }
+      }
+    }
+  };
+  
+  const [profile, setProfile] = useState<Profile>(enhancedProfile);
   const [notificationEmail, setNotificationEmail] = useState(initialProfile.email || "");
   const [updating, setUpdating] = useState(false);
 
@@ -99,6 +116,27 @@ export const ProfileForm = ({ profile: initialProfile }: ProfileFormProps) => {
             ...profile.preferences.notifications[channel],
             [field]: value,
           },
+        },
+      },
+    });
+  };
+
+  const updateDashboardPreference = (
+    field: string,
+    value: boolean
+  ) => {
+    if (!profile) return;
+
+    setProfile({
+      ...profile,
+      preferences: {
+        ...profile.preferences,
+        notifications: {
+          ...profile.preferences.notifications,
+          dashboard: {
+            ...profile.preferences.notifications.dashboard,
+            [field]: value
+          }
         },
       },
     });
@@ -157,9 +195,13 @@ export const ProfileForm = ({ profile: initialProfile }: ProfileFormProps) => {
         <EmailNotificationPreferences
           notificationEmail={notificationEmail}
           preferences={profile.preferences.notifications.email}
+          dashboardPreferences={profile.preferences.notifications.dashboard}
           onEmailChange={setNotificationEmail}
           onPreferenceChange={(field, value) =>
             updateNotificationPreference("email", field, value)
+          }
+          onDashboardPreferenceChange={(field, value) =>
+            updateDashboardPreference(field, value)
           }
         />
 

@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { RealtimeChannel } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
@@ -8,7 +9,7 @@ import { Bell } from "lucide-react";
 
 const appBaseUrl = "https://ripplefx.app";
 
-export const useRealtimeEvents = () => {
+export const useRealtimeEvents = (notifyOnNewEvents = false) => {
   const queryClient = useQueryClient();
   const channelRef = useRef<RealtimeChannel | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean>(false);
@@ -27,14 +28,21 @@ export const useRealtimeEvents = () => {
       const preferences = data?.preferences as UserPreferences | null;
       
       if (preferences && 
-          typeof preferences === 'object' &&
-          preferences.notifications?.email?.enabled) {
-        setNotificationsEnabled(true);
+          typeof preferences === 'object') {
+        // Check both standard notification settings and dashboard notification settings
+        const emailNotificationsEnabled = preferences.notifications?.email?.enabled;
+        const dashboardNotificationsEnabled = preferences.notifications?.dashboard?.notifyOnNewEvents;
+        
+        // Enable notifications if either email or dashboard notifications are enabled
+        setNotificationsEnabled(Boolean(emailNotificationsEnabled || dashboardNotificationsEnabled || notifyOnNewEvents));
+      } else {
+        // If no preferences are set, use the current notifyOnNewEvents value
+        setNotificationsEnabled(notifyOnNewEvents);
       }
     };
 
     checkUserPreferences();
-  }, []);
+  }, [notifyOnNewEvents]);
 
   useEffect(() => {
     let isSubscribed = true;
@@ -89,6 +97,7 @@ export const useRealtimeEvents = () => {
                   }
                 );
                 
+                // Send notifications if enabled via either preference
                 if (notificationsEnabled && (newEvent.severity === 'HIGH' || newEvent.severity === 'CRITICAL')) {
                   try {
                     console.log("Automatically sending notifications for high severity event");

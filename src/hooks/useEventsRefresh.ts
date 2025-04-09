@@ -90,7 +90,7 @@ export const useEventsRefresh = (refetch: () => Promise<any>): {
           if (addedEvents.length > 0) {
             console.log(`${addedEvents.length} new events found, sending notifications...`);
             
-            // Send notifications for the newest events
+            // Send notifications for all new events
             for (const event of addedEvents) {
               try {
                 await supabase.functions.invoke("send-event-notification", {

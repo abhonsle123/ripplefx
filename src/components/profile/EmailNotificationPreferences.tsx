@@ -2,6 +2,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 
 type EmailPreferences = {
   enabled: boolean;
@@ -10,18 +11,26 @@ type EmailPreferences = {
   lowSeverity: boolean;
 };
 
+type DashboardPreferences = {
+  notifyOnNewEvents: boolean;
+};
+
 type EmailNotificationPreferencesProps = {
   notificationEmail: string;
   preferences: EmailPreferences;
+  dashboardPreferences?: DashboardPreferences;
   onEmailChange: (email: string) => void;
   onPreferenceChange: (field: string, value: boolean) => void;
+  onDashboardPreferenceChange?: (field: string, value: boolean) => void;
 };
 
 export const EmailNotificationPreferences = ({
   notificationEmail,
   preferences,
+  dashboardPreferences,
   onEmailChange,
   onPreferenceChange,
+  onDashboardPreferenceChange,
 }: EmailNotificationPreferencesProps) => {
   return (
     <div className="space-y-4">
@@ -109,6 +118,27 @@ export const EmailNotificationPreferences = ({
           </div>
         </div>
       </div>
+
+      {dashboardPreferences !== undefined && onDashboardPreferenceChange && (
+        <div className="space-y-4 border-t pt-4 mt-4">
+          <Label className="text-base">Dashboard Notifications</Label>
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="dashboardNotifyOnNewEvents"
+              checked={dashboardPreferences.notifyOnNewEvents}
+              onCheckedChange={(checked) =>
+                onDashboardPreferenceChange("notifyOnNewEvents", checked)
+              }
+            />
+            <label
+              htmlFor="dashboardNotifyOnNewEvents"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+            >
+              Always notify on new events
+            </label>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -20,6 +20,9 @@ export interface UserPreferences {
       mediumSeverity: boolean;
       lowSeverity: boolean;
     };
+    dashboard?: {
+      notifyOnNewEvents: boolean;
+    };
   };
   filters?: {
     hideLowImpact: boolean;

@@ -20,6 +20,9 @@ const defaultPreferences = {
       mediumSeverity: false,
       lowSeverity: false,
     },
+    dashboard: {
+      notifyOnNewEvents: false,
+    },
   },
   filters: {
     hideLowImpact: false,
@@ -74,6 +77,9 @@ export const useProfileData = () => {
               highSeverity: Boolean(prefs.notifications?.sms?.highSeverity ?? false),
               mediumSeverity: Boolean(prefs.notifications?.sms?.mediumSeverity ?? false),
               lowSeverity: Boolean(prefs.notifications?.sms?.lowSeverity ?? false),
+            },
+            dashboard: {
+              notifyOnNewEvents: Boolean(prefs.notifications?.dashboard?.notifyOnNewEvents ?? false),
             },
           },
           filters: {

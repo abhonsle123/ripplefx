@@ -11,6 +11,7 @@ import { useAutoRefresh } from "@/hooks/useAutoRefresh";
 import { useAuthentication } from "@/hooks/useAuthentication";
 import { useUserPreferences } from "@/hooks/useUserPreferences";
 import { useSubscription } from "@/hooks/useSubscription";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Info, RefreshCw, AlertCircle, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -43,7 +44,8 @@ const Dashboard = () => {
     timeSinceLastRefresh 
   } = useEvents(eventType, effectiveSeverity, searchTerm);
   
-  useRealtimeEvents();
+  // Pass the notifyOnRefresh state to useRealtimeEvents to ensure it's respected
+  useRealtimeEvents(notifyOnRefresh);
   
   const refreshEventsCallback = useCallback(async () => {
     // Only call the refresh function if we're not already refreshing
@@ -69,6 +71,52 @@ const Dashboard = () => {
       refreshEvents(true, notifyOnRefresh);
     }
   };
+
+  // Load notification preference from user preferences
+  useEffect(() => {
+    if (userPreferences?.notifications?.dashboard?.notifyOnNewEvents !== undefined) {
+      setNotifyOnRefresh(userPreferences.notifications.dashboard.notifyOnNewEvents);
+    }
+  }, [userPreferences]);
+
+  // Save notification preference when it changes
+  useEffect(() => {
+    const saveNotificationPreference = async () => {
+      if (!userId) return;
+
+      try {
+        const { data: existingProfile } = await supabase
+          .from("profiles")
+          .select("preferences")
+          .eq("id", userId)
+          .single();
+
+        if (existingProfile) {
+          const updatedPreferences = {
+            ...existingProfile.preferences,
+            notifications: {
+              ...(existingProfile.preferences?.notifications || {}),
+              dashboard: {
+                ...(existingProfile.preferences?.notifications?.dashboard || {}),
+                notifyOnNewEvents: notifyOnRefresh
+              }
+            }
+          };
+
+          await supabase
+            .from("profiles")
+            .update({ preferences: updatedPreferences })
+            .eq("id", userId);
+
+          console.log("Saved notification preference:", notifyOnRefresh);
+        }
+      } catch (error) {
+        console.error("Error saving notification preference:", error);
+      }
+    };
+
+    saveNotificationPreference();
+  }, [notifyOnRefresh, userId]);
 
   useEffect(() => {
     if (!subscriptionLoading && plan && (plan === "premium" || plan === "pro")) {
@@ -97,7 +145,6 @@ const Dashboard = () => {
           <span>Last updated: {timeSinceLastRefresh}</span>
         </div>
         <div className="flex items-center gap-3">
-          {/* Add notification toggle - fix by removing the size attribute */}
           <div className="flex items-center space-x-2">
             <Switch
               id="notify-on-refresh"

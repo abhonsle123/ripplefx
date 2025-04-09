@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import type { TrackingPreferences } from "@/types/event";
+import type { TrackingPreferences, UserPreferences } from "@/types/event";
 
 export const useUserPreferences = (userId: string | null) => {
   const [userPreferences, setUserPreferences] = useState<TrackingPreferences | null>(null);
@@ -17,10 +17,7 @@ export const useUserPreferences = (userId: string | null) => {
         .single();
       
       if (!error && data?.preferences) {
-        const prefs = data.preferences as { 
-          tracking?: { industries: string[]; companies: string[]; event_types: string[]; },
-          filters?: { hideLowImpact: boolean; }
-        };
+        const prefs = data.preferences as UserPreferences;
         
         setUserPreferences({
           industries: prefs.tracking?.industries || [],
