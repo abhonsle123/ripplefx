@@ -1,4 +1,3 @@
-
 import { useState, useCallback, useEffect } from "react";
 import type { EventType, SeverityLevel } from "@/types/event";
 import DashboardHeader from "@/components/EventDashboard/DashboardHeader";
@@ -100,19 +99,34 @@ const Dashboard = () => {
                                           currentPreferences !== null && 
                                           !Array.isArray(currentPreferences);
           
+          // Create the notifications object with proper type checking
+          const notificationsObject = isObjectWithProperties && 
+                                    'notifications' in currentPreferences && 
+                                    typeof currentPreferences.notifications === 'object' && 
+                                    currentPreferences.notifications !== null && 
+                                    !Array.isArray(currentPreferences.notifications) 
+                                    ? currentPreferences.notifications 
+                                    : {};
+          
+          // Create the dashboard object with proper type checking
+          const dashboardObject = isObjectWithProperties && 
+                                'notifications' in currentPreferences && 
+                                typeof currentPreferences.notifications === 'object' && 
+                                currentPreferences.notifications !== null && 
+                                !Array.isArray(currentPreferences.notifications) && 
+                                'dashboard' in currentPreferences.notifications && 
+                                typeof currentPreferences.notifications.dashboard === 'object' && 
+                                currentPreferences.notifications.dashboard !== null && 
+                                !Array.isArray(currentPreferences.notifications.dashboard) 
+                                ? currentPreferences.notifications.dashboard 
+                                : {};
+          
           const updatedPreferences = isObjectWithProperties ? {
             ...currentPreferences,
             notifications: {
-              ...(isObjectWithProperties && 'notifications' in currentPreferences ? 
-                currentPreferences.notifications : {}),
+              ...notificationsObject,
               dashboard: {
-                ...(isObjectWithProperties && 
-                   'notifications' in currentPreferences && 
-                   typeof currentPreferences.notifications === 'object' &&
-                   currentPreferences.notifications !== null &&
-                   !Array.isArray(currentPreferences.notifications) &&
-                   'dashboard' in currentPreferences.notifications ? 
-                  currentPreferences.notifications.dashboard : {}),
+                ...dashboardObject,
                 notifyOnNewEvents: notifyOnRefresh
               }
             }
