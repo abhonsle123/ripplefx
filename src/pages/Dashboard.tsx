@@ -94,13 +94,25 @@ const Dashboard = () => {
         if (existingProfile && existingProfile.preferences) {
           const currentPreferences = existingProfile.preferences;
           
-          // Make sure we're dealing with an object
-          const updatedPreferences = typeof currentPreferences === 'object' ? {
+          // Add more specific type checking to ensure we're dealing with an object
+          // that has properties and not an array
+          const isObjectWithProperties = typeof currentPreferences === 'object' && 
+                                          currentPreferences !== null && 
+                                          !Array.isArray(currentPreferences);
+          
+          const updatedPreferences = isObjectWithProperties ? {
             ...currentPreferences,
             notifications: {
-              ...(currentPreferences.notifications || {}),
+              ...(isObjectWithProperties && 'notifications' in currentPreferences ? 
+                currentPreferences.notifications : {}),
               dashboard: {
-                ...(currentPreferences.notifications?.dashboard || {}),
+                ...(isObjectWithProperties && 
+                   'notifications' in currentPreferences && 
+                   typeof currentPreferences.notifications === 'object' &&
+                   currentPreferences.notifications !== null &&
+                   !Array.isArray(currentPreferences.notifications) &&
+                   'dashboard' in currentPreferences.notifications ? 
+                  currentPreferences.notifications.dashboard : {}),
                 notifyOnNewEvents: notifyOnRefresh
               }
             }
