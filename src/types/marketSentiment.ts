@@ -2,7 +2,7 @@
 export interface SourcePrediction {
   source: string;
   isPositive: boolean;
-  confidence?: number;
+  confidence?: number; // 0-1 scale representing confidence level
   explanation?: string;
   timestamp?: string;
 }

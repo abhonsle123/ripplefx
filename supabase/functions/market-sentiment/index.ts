@@ -29,15 +29,11 @@ serve(async (req) => {
     }
 
     // In a real implementation, we would fetch data from financial APIs here
-    // For now, we'll simulate the data
+    // For now, we'll generate deterministic predictions based on the symbol
     
-    // Simulate market sentiment with data that might be slightly biased based on the first letter
-    // Just to create some differentiation between stocks
-    const firstChar = symbol.charAt(0).toLowerCase();
-    const charValue = firstChar.charCodeAt(0) - 97; // 'a' is 97
-    const basePositivity = (charValue % 26) / 26; // 0-1 range based on letter
+    // Create a deterministic seed based on the symbol
+    const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
     
-    // Create predictions from 8 sources with the slight bias
     const sources = [
       "RippleEffect AI",
       "Bloomberg",
@@ -49,14 +45,20 @@ serve(async (req) => {
       "Seeking Alpha"
     ];
     
-    const predictions = sources.map(source => {
-      // RippleEffect AI prediction is weighted
-      const bias = source === "RippleEffect AI" ? 0.1 : 0;
-      const positivityThreshold = 0.5 - basePositivity * 0.2 - bias;
+    // Generate deterministic predictions for each source
+    const predictions = sources.map((source, index) => {
+      // Create a deterministic value between 0 and 1 based on symbol and source
+      const sourceValue = ((seed + index * 13) % 100) / 100;
+      
+      // Make RippleEffect AI slightly more positive for testing
+      const threshold = source === "RippleEffect AI" ? 0.45 : 0.5;
       
       return {
         source,
-        isPositive: Math.random() > positivityThreshold,
+        isPositive: sourceValue > threshold,
+        confidence: Math.round((sourceValue + 0.3) * 100) / 100,
+        explanation: source === "RippleEffect AI" ? 
+          `Analysis based on market trends for ${symbol}` : undefined,
         timestamp: new Date().toISOString()
       };
     });
