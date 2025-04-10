@@ -91,13 +91,22 @@ const Dashboard = () => {
           .eq("id", userId)
           .single();
 
-        if (existingProfile) {
-          const updatedPreferences = {
-            ...existingProfile.preferences,
+        if (existingProfile && existingProfile.preferences) {
+          const currentPreferences = existingProfile.preferences;
+          
+          // Make sure we're dealing with an object
+          const updatedPreferences = typeof currentPreferences === 'object' ? {
+            ...currentPreferences,
             notifications: {
-              ...(existingProfile.preferences?.notifications || {}),
+              ...(currentPreferences.notifications || {}),
               dashboard: {
-                ...(existingProfile.preferences?.notifications?.dashboard || {}),
+                ...(currentPreferences.notifications?.dashboard || {}),
+                notifyOnNewEvents: notifyOnRefresh
+              }
+            }
+          } : {
+            notifications: {
+              dashboard: {
                 notifyOnNewEvents: notifyOnRefresh
               }
             }

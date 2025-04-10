@@ -25,6 +25,11 @@ export const useUserPreferences = (userId: string | null) => {
           event_types: prefs.tracking?.event_types || [],
           filters: {
             hideLowImpact: Boolean(prefs.filters?.hideLowImpact)
+          },
+          notifications: {
+            dashboard: {
+              notifyOnNewEvents: Boolean(prefs.notifications?.dashboard?.notifyOnNewEvents)
+            }
           }
         });
       }

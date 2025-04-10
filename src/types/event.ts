@@ -41,6 +41,11 @@ export interface TrackingPreferences {
   filters?: {
     hideLowImpact: boolean;
   };
+  notifications?: {
+    dashboard?: {
+      notifyOnNewEvents: boolean;
+    };
+  };
 }
 
 export interface EconomicContext {
