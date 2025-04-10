@@ -1,26 +1,64 @@
 
+# This is an example `config.toml` file that contains all the possible settings
+# for a Supabase Edge Functions project.
+
 project_id = "pqxzzviqodstimvybgow"
 
-[functions.fetch-events]
-verify_jwt = false
+[api]
+port = 54321
+schemas = ["public", "storage", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
 
-[functions.process-notifications]
-verify_jwt = false
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 15
 
-[functions.execute-trade]
-verify_jwt = false
+[studio]
+port = 54323
 
-[functions.analyze-stock-price]
-verify_jwt = false
+[inbucket]
+port = 54324
+smtp_port = 54325
+pop3_port = 54326
 
-[functions.create-checkout-session]
+[storage]
+file_size_limit = "50MiB"
+
+[auth]
+site_url = "http://localhost:3000"
+additional_redirect_urls = ["https://localhost:3000"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+refresh_token_reuse_interval = 10
+enable_signup = true
+
+[auth.email]
+enable_signup = true
+double_confirm_changes = true
+enable_confirmations = false
+
+[auth.sms]
+enable_signup = true
+enable_confirmations = true
+
+[realtime]
+enabled = true
+ip_address = "127.0.0.1"
+port = 5432
+
+[functions]
+serve_port = 54321
+function_port = 9000
+invoke_port = 54323
+env_secret_names = []
+
+[functions.analyze-event]
 verify_jwt = true
 
-[functions.webhook-stripe]
-verify_jwt = false
+[functions.analyze-stock-price]
+verify_jwt = true
 
-[functions.send-contact-email]
-verify_jwt = false
-
-[functions.send-event-notification]
-verify_jwt = false
+[functions.market-sentiment]
+verify_jwt = true

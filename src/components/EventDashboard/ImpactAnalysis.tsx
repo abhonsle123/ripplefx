@@ -4,8 +4,10 @@ import { useState } from "react";
 import StockDialog from "./StockDialog";
 import StockPredictions from "./StockPredictions";
 import ConfidenceScores from "./ConfidenceScores";
+import MarketSentimentScore from "./MarketSentimentScore";
 import { getConfidenceColor, formatConfidence } from "./utils/formatters";
 import { AlertCircle } from "lucide-react";
+import { useMarketSentiment } from "@/hooks/useMarketSentiment";
 
 interface StockPrediction {
   symbol: string;
@@ -49,6 +51,13 @@ const ImpactAnalysis = ({ eventId, analysis }: ImpactAnalysisProps) => {
     setSelectedStock(stock);
     setIsPositive(positive);
   };
+
+  // Get the first positive stock symbol for the MSS (or first negative if no positive)
+  const targetSymbol = analysis?.stock_predictions?.positive?.[0]?.symbol || 
+                      analysis?.stock_predictions?.negative?.[0]?.symbol;
+                      
+  // Fetch market sentiment data for the primary symbol
+  const { sentimentData } = useMarketSentiment(targetSymbol || '', eventId);
 
   return (
     <div className="mt-4 space-y-2 border-t pt-4">
@@ -100,6 +109,14 @@ const ImpactAnalysis = ({ eventId, analysis }: ImpactAnalysisProps) => {
 
       {analysis.stock_predictions && (
         <>
+          {/* Add the Market Sentiment Score component if we have a symbol to analyze */}
+          {targetSymbol && sentimentData && (
+            <MarketSentimentScore 
+              sentimentData={sentimentData} 
+              className="mb-4"
+            />
+          )}
+          
           <StockPredictions
             eventId={eventId}
             positive={analysis.stock_predictions.positive}
