@@ -1,7 +1,4 @@
 
-# This is an example `config.toml` file that contains all the possible settings
-# for a Supabase Edge Functions project.
-
 project_id = "pqxzzviqodstimvybgow"
 
 [api]
@@ -61,4 +58,5 @@ verify_jwt = true
 verify_jwt = true
 
 [functions.market-sentiment]
-verify_jwt = true
+verify_jwt = false
+
