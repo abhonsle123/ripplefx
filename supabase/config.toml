@@ -59,4 +59,3 @@ verify_jwt = true
 
 [functions.market-sentiment]
 verify_jwt = false
-

@@ -20,7 +20,7 @@ export const useMarketSentiment = (symbol: string, eventId: string) => {
         setIsLoading(true);
         console.log(`Fetching sentiment data for symbol: ${symbol}, event: ${eventId || 'N/A'}`);
         
-        // Call the market-sentiment edge function
+        // Call the market-sentiment edge function which will now use real APIs when possible
         const { data, error: fnError } = await supabase.functions.invoke('market-sentiment', {
           body: { symbol, eventId }
         });
