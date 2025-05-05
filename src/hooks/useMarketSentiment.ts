@@ -63,7 +63,7 @@ const generateDeterministicPredictions = (symbol: string): SourcePrediction[] =>
   // Use the symbol to create a deterministic seed
   const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   
-  // List of financial sources
+  // List of financial sources - ensure RippleEffect AI only appears once
   const sources = [
     "RippleEffect AI",
     "Bloomberg",

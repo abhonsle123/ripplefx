@@ -190,7 +190,6 @@ function generateDeterministicPredictions(symbol: string) {
   const seed = symbol.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   
   const sources = [
-    "RippleEffect AI",
     "Bloomberg",
     "Alpha Vantage",
     "Yahoo Finance",
@@ -203,15 +202,14 @@ function generateDeterministicPredictions(symbol: string) {
   return sources.map((source, index) => {
     const sourceValue = ((seed + index * 13) % 100) / 100;
     
-    const threshold = source === "RippleEffect AI" ? 0.45 : 0.5;
+    const threshold = 0.5;
     const isPositive = sourceValue > threshold;
     
     return {
       source,
       isPositive,
       confidence: Math.round((sourceValue + 0.3) * 100) / 100,
-      explanation: source === "RippleEffect AI" ? 
-        `Analysis based on event impact for ${symbol}` : undefined,
+      explanation: undefined,
       timestamp: new Date().toISOString()
     };
   });
@@ -257,21 +255,25 @@ serve(async (req) => {
     });
     
     // If we don't have enough real API data, supplement with deterministic data
+    // excluding sources we already have (including RippleEffect AI)
     if (predictions.length < 3) {
       console.log(`Insufficient API data (only ${predictions.length} sources), adding deterministic predictions`);
       
       // Get deterministic predictions excluding sources we already have
       const existingSources = predictions.map(p => p.source);
       const deterministicPredictions = generateDeterministicPredictions(symbol)
-        .filter(p => !existingSources.includes(p.source))
+        .filter(p => !existingSources.includes(p.source) && p.source !== "RippleEffect AI")
         .slice(0, Math.max(0, 5 - predictions.length)); // Add enough to make at least 5 total
       
       predictions.push(...deterministicPredictions);
     }
     
     // Always add RippleEffect AI prediction (our special sauce)
-    const rippleEffectPrediction = generateRippleEffectPrediction(symbol, predictions);
-    predictions.push(rippleEffectPrediction);
+    // Make sure it doesn't already exist in the predictions
+    if (!predictions.some(p => p.source === "RippleEffect AI")) {
+      const rippleEffectPrediction = generateRippleEffectPrediction(symbol, predictions);
+      predictions.push(rippleEffectPrediction);
+    }
     
     // Calculate the sentiment score
     const totalPredictions = predictions.length;
