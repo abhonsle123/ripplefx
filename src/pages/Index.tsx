@@ -38,7 +38,7 @@ const Index = () => {
   }, [location, searchParams]);
 
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
+    <div className="min-h-screen bg-slate-900 overflow-hidden">
       <Hero />
       <ScrollAnimationWrapper variant="fadeUp">
         <HowItWorks />
