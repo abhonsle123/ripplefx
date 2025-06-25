@@ -1,105 +1,128 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.8';
-import { 
-  corsHeaders, 
-  fetchFinnhubData, 
-  fetchAlphaVantageData, 
-  fetchYahooFinanceData, 
-  fetchBloombergData 
-} from './apiServices.ts';
-import { 
-  SourcePrediction,
-  generateDeterministicPredictions, 
-  generateRippleEffectPrediction 
-} from './predictionGenerators.ts';
+import { corsHeaders, securityHeaders, validateRequest, sanitizeInput, rateLimitCheck } from './securityMiddleware.ts';
+import { generateMarketSentiment } from './predictionGenerators.ts';
+import { fetchFinancialData } from './apiServices.ts';
 import { updateStockPrediction } from './databaseServices.ts';
 
-serve(async (req) => {
-  // Handle CORS preflight requests
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+serve(async (req: Request) => {
+  // Handle CORS preflight
   if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { 
+      headers: { ...corsHeaders, ...securityHeaders } 
+    });
   }
 
   try {
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-
-    // Parse request body
-    const { symbol, eventId } = await req.json();
-
-    if (!symbol) {
+    // Security validation
+    const validation = validateRequest(req);
+    if (!validation.isValid) {
       return new Response(
-        JSON.stringify({ error: 'Missing symbol parameter' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: validation.error }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, ...securityHeaders } 
+        }
       );
     }
 
-    console.log(`Processing market sentiment for symbol: ${symbol}, event: ${eventId || 'N/A'}`);
-    
-    // Collect predictions from available API sources
-    const predictions: SourcePrediction[] = [];
-    
-    // Fetch data from financial APIs in parallel
-    const [finnhubData, alphaVantageData, yahooFinanceData, bloombergData] = await Promise.all([
-      fetchFinnhubData(symbol),
-      fetchAlphaVantageData(symbol),
-      fetchYahooFinanceData(symbol),
-      fetchBloombergData(symbol),
-    ]);
-    
-    // Add successful API responses to predictions
-    [finnhubData, alphaVantageData, yahooFinanceData, bloombergData].forEach(data => {
-      if (data) predictions.push(data);
-    });
-    
-    // If we don't have enough real API data, supplement with deterministic data
-    // excluding sources we already have (including RippleEffect AI)
-    if (predictions.length < 3) {
-      console.log(`Insufficient API data (only ${predictions.length} sources), adding deterministic predictions`);
-      
-      // Get deterministic predictions excluding sources we already have
-      const existingSources = predictions.map(p => p.source);
-      const deterministicPredictions = generateDeterministicPredictions(symbol)
-        .filter(p => !existingSources.includes(p.source) && p.source !== "RippleEffect AI")
-        .slice(0, Math.max(0, 5 - predictions.length)); // Add enough to make at least 5 total
-      
-      predictions.push(...deterministicPredictions);
+    // Verify JWT token
+    const authHeader = req.headers.get('authorization');
+    if (!authHeader?.startsWith('Bearer ')) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid authorization format' }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, ...securityHeaders } 
+        }
+      );
     }
-    
-    // Always add RippleEffect AI prediction (our special sauce)
-    // Make sure it doesn't already exist in the predictions
-    if (!predictions.some(p => p.source === "RippleEffect AI")) {
-      const rippleEffectPrediction = generateRippleEffectPrediction(symbol, predictions);
-      predictions.push(rippleEffectPrediction);
-    }
-    
-    // Calculate the sentiment score
-    const totalPredictions = predictions.length;
-    const positiveCount = predictions.filter(p => p.isPositive).length;
-    const score = Math.round((positiveCount / totalPredictions) * 100);
-    
-    const result = {
-      score,
-      predictions,
-      lastUpdated: new Date().toISOString()
-    };
 
-    // If an event ID was provided, update the database with this sentiment data
-    if (eventId) {
-      await updateStockPrediction(supabase, eventId, symbol, result);
+    const token = authHeader.substring(7);
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    
+    if (authError || !user) {
+      return new Response(
+        JSON.stringify({ error: 'Invalid or expired token' }), 
+        { 
+          status: 401, 
+          headers: { ...corsHeaders, ...securityHeaders } 
+        }
+      );
     }
+
+    // Rate limiting check
+    const clientId = user.id;
+    const rateLimitResult = rateLimitCheck(clientId);
+    if (!rateLimitResult.allowed) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Rate limit exceeded',
+          resetTime: rateLimitResult.resetTime 
+        }), 
+        { 
+          status: 429, 
+          headers: { ...corsHeaders, ...securityHeaders } 
+        }
+      );
+    }
+
+    // Parse and sanitize request body
+    const rawBody = await req.json();
+    const body = sanitizeInput(rawBody);
+    
+    const { symbol, eventId } = body;
+    
+    if (!symbol || !eventId) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required parameters: symbol and eventId' }), 
+        { 
+          status: 400, 
+          headers: { ...corsHeaders, ...securityHeaders } 
+        }
+      );
+    }
+
+    console.log(`Processing market sentiment for symbol: ${symbol}, event: ${eventId}`);
+
+    // Fetch financial data
+    const financialData = await fetchFinancialData(symbol);
+    
+    // Generate market sentiment analysis
+    const sentimentAnalysis = await generateMarketSentiment(symbol, financialData);
+    
+    // Update stock prediction with sentiment data
+    await updateStockPrediction(supabase, eventId, symbol, sentimentAnalysis);
 
     return new Response(
-      JSON.stringify(result),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        success: true, 
+        symbol, 
+        sentimentAnalysis 
+      }), 
+      { 
+        status: 200, 
+        headers: { ...corsHeaders, ...securityHeaders } 
+      }
     );
+
   } catch (error) {
-    console.error('Error processing market sentiment:', error);
+    console.error('Market sentiment error:', error);
+    
     return new Response(
-      JSON.stringify({ error: 'Server error', details: error.message }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ 
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error'
+      }), 
+      { 
+        status: 500, 
+        headers: { ...corsHeaders, ...securityHeaders } 
+      }
     );
   }
 });
