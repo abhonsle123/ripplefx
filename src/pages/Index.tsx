@@ -2,6 +2,7 @@
 import { useEffect } from "react";
 import { useLocation, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
+import { Helmet } from "react-helmet";
 import Hero from "@/components/landing/Hero";
 import HowItWorks from "@/components/landing/HowItWorks";
 import FeatureGrid from "@/components/landing/FeatureGrid";
@@ -38,21 +39,63 @@ const Index = () => {
   }, [location, searchParams]);
 
   return (
-    <div className="min-h-screen bg-slate-900 overflow-hidden">
-      <Hero />
-      <ScrollAnimationWrapper variant="fadeUp">
-        <HowItWorks />
-      </ScrollAnimationWrapper>
-      <ScrollAnimationWrapper variant="scaleIn">
-        <FeatureGrid />
-      </ScrollAnimationWrapper>
-      <ScrollAnimationWrapper variant="fadeUp">
-        <PricingSection />
-      </ScrollAnimationWrapper>
-      <ScrollAnimationWrapper variant="scaleIn">
-        <FAQ />
-      </ScrollAnimationWrapper>
-    </div>
+    <>
+      <Helmet>
+        <title>RippleFX - Real-Time Market Intelligence & AI-Powered Trading Platform</title>
+        <meta name="description" content="RippleFX provides real-time market impact analysis, AI-powered stock predictions, and automated trading alerts. Stay ahead of market-moving events with advanced analytics and predictive insights." />
+        <meta name="keywords" content="RippleFX, market intelligence, AI trading, stock predictions, real-time alerts, market analysis, trading platform, financial analytics" />
+        <link rel="canonical" href="https://ripplefx.com" />
+        
+        {/* Structured Data for HomePage */}
+        <script type="application/ld+json">
+          {JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "WebPage",
+            "name": "RippleFX - Real-Time Market Intelligence",
+            "description": "AI-powered trading platform with real-time market analysis and stock predictions",
+            "url": "https://ripplefx.com",
+            "mainEntity": {
+              "@type": "SoftwareApplication",
+              "name": "RippleFX",
+              "applicationCategory": "FinanceApplication",
+              "operatingSystem": "Web",
+              "description": "Real-time market intelligence and AI-powered trading platform"
+            }
+          })}
+        </script>
+      </Helmet>
+      
+      <main className="min-h-screen bg-slate-900 overflow-hidden">
+        {/* Semantic HTML structure for better SEO */}
+        <header>
+          <Hero />
+        </header>
+        
+        <section aria-label="How RippleFX Works">
+          <ScrollAnimationWrapper variant="fadeUp">
+            <HowItWorks />
+          </ScrollAnimationWrapper>
+        </section>
+        
+        <section aria-label="RippleFX Features">
+          <ScrollAnimationWrapper variant="scaleIn">
+            <FeatureGrid />
+          </ScrollAnimationWrapper>
+        </section>
+        
+        <section aria-label="Pricing Plans">
+          <ScrollAnimationWrapper variant="fadeUp">
+            <PricingSection />
+          </ScrollAnimationWrapper>
+        </section>
+        
+        <section aria-label="Frequently Asked Questions">
+          <ScrollAnimationWrapper variant="scaleIn">
+            <FAQ />
+          </ScrollAnimationWrapper>
+        </section>
+      </main>
+    </>
   );
 };
 

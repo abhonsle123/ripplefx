@@ -7,7 +7,7 @@ const Hero = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="relative min-h-screen overflow-hidden">
+    <section className="relative min-h-screen overflow-hidden" role="banner">
       {/* Advanced gradient background */}
       <div className="absolute inset-0">
         <div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-background to-slate-900" />
@@ -26,28 +26,28 @@ const Hero = () => {
 
       <div className="container relative px-4 pt-32 pb-20 z-10">
         <div className="text-center max-w-4xl mx-auto space-y-8">
-          {/* Main heading */}
+          {/* Main heading with proper SEO structure */}
           <h1 className="text-5xl md:text-7xl font-bold mb-6 tracking-tight text-white leading-tight">
-            Real-Time Market Intelligence 
+            RippleFX: Real-Time Market Intelligence 
             <span className="block bg-gradient-to-r from-blue-400 via-purple-400 to-blue-600 bg-clip-text text-transparent mt-2">
               Powered by AI
             </span>
           </h1>
           
-          {/* Subtitle */}
+          {/* Subtitle with SEO keywords */}
           <p className="text-xl md:text-2xl text-slate-300 max-w-3xl mx-auto leading-relaxed">
-            Stay ahead of market-moving events with advanced AI analysis, 
-            real-time alerts, and predictive insights that protect your investments.
+            Stay ahead of market-moving events with RippleFX's advanced AI analysis, 
+            real-time trading alerts, and predictive market insights that protect your investments and maximize returns.
           </p>
 
-          {/* Tech badges */}
-          <div className="flex items-center justify-center gap-4 pt-4">
-            <TechBadge icon={<Zap className="w-4 h-4" />} text="AI" />
-            <TechBadge icon={<BarChart3 className="w-4 h-4" />} text="Analytics" />
+          {/* Tech badges with semantic meaning */}
+          <div className="flex items-center justify-center gap-4 pt-4" role="list" aria-label="RippleFX Key Features">
+            <TechBadge icon={<Zap className="w-4 h-4" />} text="AI Analytics" />
+            <TechBadge icon={<BarChart3 className="w-4 h-4" />} text="Market Data" />
             <TechBadge icon={<TrendingUp className="w-4 h-4" />} text="Predictions" />
           </div>
 
-          {/* CTA buttons */}
+          {/* CTA buttons with clear labels */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-6 pt-12">
             <Button 
               className="w-full sm:w-auto group bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white px-8 py-4 text-lg rounded-xl transition-all duration-300 hover:translate-y-[-2px] hover:shadow-xl shadow-blue-500/25" 
@@ -55,8 +55,9 @@ const Hero = () => {
               onClick={() => {
                 navigate("/pricing?scrollTo=pricing");
               }}
+              aria-label="Start using RippleFX - Get real-time market intelligence"
             >
-              Get Started
+              Start Free Trial
               <ArrowRight className="ml-2 w-5 h-5 group-hover:translate-x-1 transition-transform duration-300" />
             </Button>
             <Button 
@@ -64,19 +65,20 @@ const Hero = () => {
               className="w-full sm:w-auto bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20 px-8 py-4 text-lg rounded-xl transition-all duration-300 hover:translate-y-[-2px]"
               size="lg"
               onClick={() => navigate("/features")}
+              aria-label="Learn about RippleFX features and capabilities"
             >
-              Documentation
+              Explore Features
             </Button>
           </div>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 
-// Tech badge component
+// Tech badge component with semantic HTML
 const TechBadge = ({ icon, text }: { icon: React.ReactNode, text: string }) => (
-  <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 text-white/90">
+  <div className="flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 text-white/90" role="listitem">
     {icon}
     <span className="text-sm font-medium">{text}</span>
   </div>
@@ -85,7 +87,7 @@ const TechBadge = ({ icon, text }: { icon: React.ReactNode, text: string }) => (
 // Animated 3D-style elements
 const AnimatedElements = () => {
   return (
-    <div className="absolute inset-0">
+    <div className="absolute inset-0" aria-hidden="true">
       {/* Floating market-themed cards */}
       <div className="absolute top-1/4 left-[10%] animate-floating">
         <MarketCard title="AAPL" value="+2.4%" positive delay="0s" />
