@@ -1,6 +1,5 @@
-
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { determineEventType, determineSeverity } from "./eventClassifier.ts";
+import { determineEventType, determineSeverity, validateEventClassification } from "./eventClassifier.ts";
 import type { StandardizedArticle } from "./types.ts";
 
 /**
@@ -105,5 +104,95 @@ export async function cleanOldEvents(
   } else {
     console.log(`Cleaned ${count} old events for force refresh`);
     return count || 0;
+  }
+}
+
+/**
+ * Processes and stores an event in the database
+ */
+export async function processAndStoreEvent(
+  title: string,
+  description: string,
+  sourceUrl: string,
+  sourceApi: string,
+  supabase: any,
+  location?: { country?: string; city?: string }
+): Promise<void> {
+  try {
+    // Determine event type and severity using enhanced classification
+    const eventType = determineEventType(title, description);
+    const initialSeverity = determineSeverity(title, description);
+    
+    // Validate the classification - downgrade if it doesn't meet criteria
+    const isValidClassification = validateEventClassification(title, description, initialSeverity);
+    const severity = isValidClassification ? initialSeverity : 
+      (initialSeverity === "CRITICAL" ? "HIGH" : 
+       initialSeverity === "HIGH" ? "MEDIUM" : 
+       initialSeverity === "MEDIUM" ? "LOW" : "LOW");
+    
+    console.log(`Event classified as: ${eventType} - ${severity} (original: ${initialSeverity}, valid: ${isValidClassification})`);
+    
+    // Skip storing LOW and MEDIUM severity events to reduce noise
+    if (severity === 'LOW' || severity === 'MEDIUM') {
+      console.log(`Skipping low impact event: ${title}`);
+      return;
+    }
+    
+    // Check if event already exists
+    const { data: existingEvent } = await supabase
+      .from('events')
+      .select('id')
+      .eq('title', title)
+      .single();
+    
+    if (existingEvent) {
+      console.log(`Event already exists: ${title}`);
+      return;
+    }
+    
+    // Create the event object
+    const eventData = {
+      title,
+      description,
+      event_type: eventType,
+      severity,
+      source_url: sourceUrl,
+      source_api: sourceApi,
+      country: location?.country || null,
+      city: location?.city || null,
+      is_public: true,
+      user_id: null
+    };
+    
+    // Insert the event
+    const { data, error } = await supabase
+      .from('events')
+      .insert([eventData])
+      .select()
+      .single();
+    
+    if (error) {
+      console.error('Error inserting event:', error);
+      throw error;
+    }
+    
+    console.log(`Successfully stored ${severity} severity event: ${title}`);
+    
+    // Only analyze HIGH and CRITICAL events to save API credits
+    if (severity === 'HIGH' || severity === 'CRITICAL') {
+      try {
+        console.log(`Triggering analysis for ${severity} event: ${data.id}`);
+        await supabase.functions.invoke('analyze-event', {
+          body: { event_id: data.id }
+        });
+      } catch (analysisError) {
+        console.error('Error triggering event analysis:', analysisError);
+        // Don't throw - event is still stored successfully
+      }
+    }
+    
+  } catch (error) {
+    console.error('Error processing event:', error);
+    throw error;
   }
 }
