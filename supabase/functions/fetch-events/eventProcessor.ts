@@ -1,9 +1,9 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
-import { determineEventType, determineSeverity, validateEventClassification } from "./eventClassifier.ts";
+import { classifyEventWithAI } from "./aiEventClassifier.ts";
 import type { StandardizedArticle } from "./types.ts";
 
 /**
- * Processes an array of articles and creates events in the database
+ * Processes an array of articles and creates events in the database using AI classification
  */
 export async function processArticles(
   articles: StandardizedArticle[], 
@@ -33,12 +33,16 @@ export async function processArticles(
         continue;
       }
 
-      const eventType = determineEventType(article.title, article.description);
-      const severity = determineSeverity(article.title, article.description);
+      // Use AI to classify the event
+      const classification = await classifyEventWithAI(
+        article.title, 
+        article.description, 
+        supabaseClient
+      );
       
       // Skip creating low and medium impact events entirely
-      if (severity === 'LOW' || severity === 'MEDIUM') {
-        console.log(`Skipping ${severity.toLowerCase()} impact event: ${article.title}`);
+      if (classification.severity === 'LOW' || classification.severity === 'MEDIUM') {
+        console.log(`Skipping ${classification.severity.toLowerCase()} impact event: ${article.title}`);
         skippedCount++;
         continue;
       }
@@ -49,12 +53,12 @@ export async function processArticles(
         .insert([{
           title: article.title,
           description: article.description,
-          event_type: eventType,
-          severity: severity,
+          event_type: classification.eventType,
+          severity: classification.severity,
           is_public: true,
           source_url: article.url,
           source_api: article.source_api,
-          created_at: new Date().toISOString() // Use current time to ensure it's recent
+          created_at: new Date().toISOString()
         }]);
 
       if (insertError) {
@@ -64,7 +68,8 @@ export async function processArticles(
       }
 
       createdCount++;
-      console.log(`Created new event from article: ${article.title} (${article.source_api})`);
+      console.log(`Created new event from article: ${article.title} (${article.source_api}) - AI classified as ${classification.severity} with ${classification.confidence} confidence`);
+      
     } catch (error) {
       console.error('Error processing article:', error);
       skippedCount++;
@@ -108,7 +113,7 @@ export async function cleanOldEvents(
 }
 
 /**
- * Processes and stores an event in the database
+ * Processes and stores an event in the database using AI classification
  */
 export async function processAndStoreEvent(
   title: string,
@@ -119,22 +124,14 @@ export async function processAndStoreEvent(
   location?: { country?: string; city?: string }
 ): Promise<void> {
   try {
-    // Determine event type and severity using enhanced classification
-    const eventType = determineEventType(title, description);
-    const initialSeverity = determineSeverity(title, description);
+    // Use AI to classify the event
+    const classification = await classifyEventWithAI(title, description, supabase);
     
-    // Validate the classification - downgrade if it doesn't meet criteria
-    const isValidClassification = validateEventClassification(title, description, initialSeverity);
-    const severity = isValidClassification ? initialSeverity : 
-      (initialSeverity === "CRITICAL" ? "HIGH" : 
-       initialSeverity === "HIGH" ? "MEDIUM" : 
-       initialSeverity === "MEDIUM" ? "LOW" : "LOW");
-    
-    console.log(`Event classified as: ${eventType} - ${severity} (original: ${initialSeverity}, valid: ${isValidClassification})`);
+    console.log(`Event classified with AI as: ${classification.eventType} - ${classification.severity} (confidence: ${classification.confidence})`);
     
     // Skip storing LOW and MEDIUM severity events to reduce noise
-    if (severity === 'LOW' || severity === 'MEDIUM') {
-      console.log(`Skipping low impact event: ${title}`);
+    if (classification.severity === 'LOW' || classification.severity === 'MEDIUM') {
+      console.log(`Skipping ${classification.severity.toLowerCase()} impact event: ${title}`);
       return;
     }
     
@@ -154,8 +151,8 @@ export async function processAndStoreEvent(
     const eventData = {
       title,
       description,
-      event_type: eventType,
-      severity,
+      event_type: classification.eventType,
+      severity: classification.severity,
       source_url: sourceUrl,
       source_api: sourceApi,
       country: location?.country || null,
@@ -176,12 +173,12 @@ export async function processAndStoreEvent(
       throw error;
     }
     
-    console.log(`Successfully stored ${severity} severity event: ${title}`);
+    console.log(`Successfully stored ${classification.severity} severity event: ${title} (AI confidence: ${classification.confidence})`);
     
     // Only analyze HIGH and CRITICAL events to save API credits
-    if (severity === 'HIGH' || severity === 'CRITICAL') {
+    if (classification.severity === 'HIGH' || classification.severity === 'CRITICAL') {
       try {
-        console.log(`Triggering analysis for ${severity} event: ${data.id}`);
+        console.log(`Triggering analysis for ${classification.severity} event: ${data.id}`);
         await supabase.functions.invoke('analyze-event', {
           body: { event_id: data.id }
         });
