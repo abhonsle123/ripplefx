@@ -58,13 +58,13 @@ const SecureBrokerForm = () => {
       // Insert the broker connection with user_id
       const { error } = await supabase
         .from('broker_connections')
-        .insert([{
+        .insert({
           broker_name: formData.broker_name as "alpaca_paper" | "alpaca_live",
           api_key: formData.api_key,
           api_secret: formData.api_secret,
           user_id: user.id,
           is_active: true
-        }]);
+        });
 
       if (error) {
         console.error('Error saving broker connection:', error);
