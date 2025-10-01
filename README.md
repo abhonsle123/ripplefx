@@ -150,10 +150,6 @@ supabase functions deploy
 
 This is a personal project, but suggestions and feedback are welcome!
 
-## 📄 License
-
-MIT License - feel free to use this project as inspiration for your own work.
-
 ## 🙏 Acknowledgments
 
 - Built with [Cursor](https://cursor.sh) - AI-powered code editor
